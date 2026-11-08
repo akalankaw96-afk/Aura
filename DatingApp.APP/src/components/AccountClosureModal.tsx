@@ -616,3 +616,4 @@ export const AccountClosureModal: React.FC<AccountClosureModalProps> = ({
     </div>
   );
 };
+
