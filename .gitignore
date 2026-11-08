@@ -15,6 +15,7 @@ build/
 dist/
 .cache/
 *.tsbuildinfo
+**/*.tsbuildinfo
 
 # =======================================================
 # .NET / C# / Visual Studio Build Outputs

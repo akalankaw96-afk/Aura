@@ -11,17 +11,33 @@ import type { FeaturedProfile } from "@/content/home";
  * Figma: Profile Card (16:1057) as used in "04 Featured profiles".
  * 296 × 497 · padding 8 · radius lg · border default · Shadow/SM.
  */
-export function ProfileCard({ profile, onInterest }: { profile: FeaturedProfile; onInterest?: (p: FeaturedProfile) => void }) {
+export function ProfileCard({
+  profile,
+  onInterest,
+  onView,
+}: {
+  profile: FeaturedProfile;
+  onInterest?: (p: FeaturedProfile) => void;
+  onView?: (p: FeaturedProfile) => void;
+}) {
   const [saved, setSaved] = useState(false);
   const [sent, setSent] = useState(false);
 
   return (
-    <article className="flex flex-col rounded-lg border border-line bg-surface-card p-2 shadow-sm transition-shadow hover:shadow-lg">
+    <article className="flex flex-col rounded-lg border border-line bg-surface-card p-2 shadow-sm transition-all hover:-translate-y-1 hover:shadow-lg">
       {/* Photo 280 × 264 */}
-      <div className="relative aspect-[280/264] overflow-hidden rounded-sm bg-surface-muted">
+      <div
+        className={cn("relative aspect-[280/264] overflow-hidden rounded-sm bg-surface-muted", onView && "cursor-pointer group")}
+        onClick={() => onView?.(profile)}
+      >
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={profile.photo} alt={`Profile photo of ${profile.id}`} loading="lazy" className="absolute inset-0 h-full w-full object-cover" />
-        <div className="absolute inset-0 flex flex-col justify-between p-3">
+        <img
+          src={profile.photo}
+          alt={`Profile photo of ${profile.id}`}
+          loading="lazy"
+          className="absolute inset-0 h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+        />
+        <div className="absolute inset-0 flex flex-col justify-between p-3 pointer-events-none">
           <div className="flex items-start justify-between">
             <div className="flex flex-col items-start gap-1.5">
               <span className="inline-flex h-[22px] items-center gap-1 rounded-full bg-success-bg px-2 text-label-sm text-success-fg">
@@ -37,8 +53,11 @@ export function ProfileCard({ profile, onInterest }: { profile: FeaturedProfile;
               type="button"
               aria-label={saved ? `Remove ${profile.id} from shortlist` : `Shortlist ${profile.id}`}
               aria-pressed={saved}
-              onClick={() => setSaved((s) => !s)}
-              className="flex h-10 w-10 items-center justify-center rounded-full bg-surface-glass-strong text-brand transition-transform active:scale-95"
+              onClick={(e) => {
+                e.stopPropagation();
+                setSaved((s) => !s);
+              }}
+              className="pointer-events-auto flex h-10 w-10 items-center justify-center rounded-full bg-surface-glass-strong text-brand transition-transform active:scale-95 hover:bg-white"
             >
               <Heart size={20} color="currentColor" variant={saved ? "Bold" : "Linear"} />
             </button>
@@ -51,8 +70,11 @@ export function ProfileCard({ profile, onInterest }: { profile: FeaturedProfile;
 
       {/* Body: padding 16/12/12/12, gap 16 */}
       <div className="flex flex-1 flex-col gap-4 px-3 pb-3 pt-4">
-        <div className="flex flex-col gap-1">
-          <h3 className="text-h5 text-ink">{profile.id}</h3>
+        <div
+          className={cn("flex flex-col gap-1", onView && "cursor-pointer")}
+          onClick={() => onView?.(profile)}
+        >
+          <h3 className="text-h5 text-ink hover:text-brand-text transition-colors">{profile.id}</h3>
           <p className="flex items-center gap-1.5 text-body-sm text-ink-secondary">
             <Flag country={profile.country} />
             {profile.location}
@@ -81,12 +103,22 @@ export function ProfileCard({ profile, onInterest }: { profile: FeaturedProfile;
             <Heart size={18} color="currentColor" variant={sent ? "Bold" : "Linear"} />
             {sent ? "Interest sent" : "Send interest"}
           </button>
-          <Link
-            href={`/register?profile=${profile.id}`}
-            className="flex h-[42px] items-center justify-center gap-2 rounded-full bg-brand-gradient px-4 text-button-sm text-ink-on-brand transition-shadow hover:shadow-glow"
-          >
-            View <ArrowRight2 size={18} color="currentColor" />
-          </Link>
+          {onView ? (
+            <button
+              type="button"
+              onClick={() => onView(profile)}
+              className="flex h-[42px] items-center justify-center gap-2 rounded-full bg-brand-gradient px-4 text-button-sm text-ink-on-brand transition-shadow hover:shadow-glow"
+            >
+              View <ArrowRight2 size={18} color="currentColor" />
+            </button>
+          ) : (
+            <Link
+              href={`/search?id=${profile.id}`}
+              className="flex h-[42px] items-center justify-center gap-2 rounded-full bg-brand-gradient px-4 text-button-sm text-ink-on-brand transition-shadow hover:shadow-glow"
+            >
+              View <ArrowRight2 size={18} color="currentColor" />
+            </Link>
+          )}
         </div>
       </div>
     </article>

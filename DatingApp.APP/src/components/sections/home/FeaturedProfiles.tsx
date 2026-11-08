@@ -7,7 +7,8 @@ import { Chip } from "@/components/ui/Chip";
 import { SectionHeader } from "@/components/ui/SectionHeader";
 import { useToast } from "@/components/ui/Toast";
 import { ProfileCard } from "@/components/cards/ProfileCard";
-import { FEATURED } from "@/content/home";
+import { ProfileDetailModal, type ProposalDetail } from "@/components/profile/ProfileDetailModal";
+import { FEATURED, type FeaturedProfile } from "@/content/home";
 
 /**
  * Figma: 04 Featured profiles — padding 48/80/96, gap 48.
@@ -18,7 +19,29 @@ import { FEATURED } from "@/content/home";
 export function FeaturedProfiles() {
   const toast = useToast();
   const [filter, setFilter] = useState<"all" | "bride" | "groom">("all");
+  const [activeModalProfile, setActiveModalProfile] = useState<ProposalDetail | null>(null);
   const list = useMemo(() => FEATURED.profiles.filter((p) => filter === "all" || p.gender === filter), [filter]);
+
+  const handleOpenDetail = (p: FeaturedProfile) => {
+    setActiveModalProfile({
+      id: p.id,
+      code: p.id,
+      gender: p.gender,
+      age: p.age,
+      height: p.height,
+      profession: p.profession,
+      education: p.profession.includes("Doctor") ? "MBBS, Colombo" : p.profession.includes("Engineer") ? "BSc Eng (Hons)" : "Bachelor's Degree",
+      location: p.location,
+      country: p.country.toUpperCase(),
+      religion: p.religion,
+      photo: p.photo,
+      bio: `Verified candidate proposal (${p.id}). Dedicated professional with family values, balanced lifestyle, and cultural harmony.`,
+      aboutFamily: "Respected, traditional Sri Lankan family background with high social esteem and strong community values.",
+      horoscope: p.horoscope,
+      rasi: p.horoscope ? "Mesha (Aries)" : undefined,
+      nakshatra: p.horoscope ? "Aswida" : undefined,
+    });
+  };
 
   return (
     <section id="profiles" className="scroll-mt-28 overflow-hidden pb-16 pt-12 lg:pb-24">
@@ -43,19 +66,33 @@ export function FeaturedProfiles() {
         <div className="-mx-page-x flex min-w-0 snap-x snap-mandatory gap-4 overflow-x-auto px-page-x pb-2 scrollbar-none sm:mx-0 sm:grid sm:grid-cols-2 sm:gap-8 sm:overflow-visible sm:px-0 lg:grid-cols-4">
           {list.map((p) => (
             <div key={p.id} className="w-[85%] shrink-0 snap-center sm:w-auto">
-              <ProfileCard profile={p} onInterest={() => toast.success("Interest sent", `${p.id} will be notified. We’ll tell you when they reply.`)} />
+              <ProfileCard
+                profile={p}
+                onView={handleOpenDetail}
+                onInterest={() => toast.success("Interest sent", `${p.id} will be notified. We’ll tell you when they reply.`)}
+              />
             </div>
           ))}
         </div>
 
         <Link
-          href="/register"
+          href="/search"
           className="mx-auto flex h-14 items-center gap-3 rounded-full bg-brand-gradient px-8 text-button-lg text-ink-on-brand transition-shadow hover:shadow-glow"
         >
           {FEATURED.cta}
           <ArrowRight2 size={24} color="currentColor" />
         </Link>
       </div>
+
+      {activeModalProfile && (
+        <ProfileDetailModal
+          profile={activeModalProfile}
+          onClose={() => setActiveModalProfile(null)}
+          onConnect={(p, note) => {
+            toast.success("Interest Sent!", `Your request with introduction has been delivered to ${p.id}.`);
+          }}
+        />
+      )}
     </section>
   );
 }

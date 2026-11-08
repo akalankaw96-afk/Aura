@@ -74,7 +74,7 @@ export function CategoryWall() {
           <div aria-hidden className="pointer-events-none absolute inset-y-0 right-0 w-16 bg-[linear-gradient(270deg,var(--color-bg-page),transparent)] md:w-40" />
         </div>
 
-        <Link href="/register" className="mx-auto flex h-14 items-center rounded-full bg-brand-gradient px-8 text-button-lg text-ink-on-brand transition-shadow hover:shadow-glow md:hidden">
+        <Link href="/search" className="mx-auto flex h-14 items-center rounded-full bg-brand-gradient px-8 text-button-lg text-ink-on-brand transition-shadow hover:shadow-glow md:hidden">
           {CATEGORIES.cta}
         </Link>
       </div>
@@ -86,7 +86,7 @@ function Brick({ label, count, icon, hidden }: { label: string; count: string; i
   const Icon = ICONS[icon];
   return (
     <Link
-      href={`/register?category=${encodeURIComponent(label)}`}
+      href={`/search?category=${encodeURIComponent(label)}`}
       aria-hidden={hidden || undefined}
       tabIndex={hidden ? -1 : undefined}
       className="flex h-20 w-[232px] shrink-0 items-center gap-3 rounded-lg border border-line bg-surface-card px-4 shadow-sm transition-all hover:-translate-y-0.5 hover:border-brand-focus hover:shadow-lg"

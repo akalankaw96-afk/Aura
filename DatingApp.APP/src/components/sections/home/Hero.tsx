@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { ArrowDown2, Heart, SearchNormal1, TickCircle, User, Verify } from "iconsax-react";
 import { cn } from "@/lib/cn";
 import { Navbar } from "@/components/layout/Navbar";
@@ -87,6 +88,7 @@ const AGE_PRESETS = ["18 – 24", "25 – 32", "33 – 40", "40+"];
 const AGES = Array.from({ length: 43 }, (_, i) => String(18 + i));
 
 function HeroSearch() {
+  const router = useRouter();
   const toast = useToast();
   const [lookingFor, setLookingFor] = useState<"Bride" | "Groom">("Bride");
   const [age, setAge] = useState({ min: "25", max: "32" });
@@ -111,7 +113,7 @@ function HeroSearch() {
 
   const search = () => {
     setOpen(null);
-    toast.info(`Searching ${lookingFor.toLowerCase()}s aged ${ageLabel}`, "The search results page is the next screen to build.");
+    router.push(`/search?for=${lookingFor.toLowerCase()}&min=${age.min}&max=${age.max}`);
   };
 
   const segment = (active: boolean) =>
