@@ -5,6 +5,7 @@ import { ArrowDown2, Heart, SearchNormal1, TickCircle, User, Verify } from "icon
 import { cn } from "@/lib/cn";
 import { Navbar } from "@/components/layout/Navbar";
 import { Chip } from "@/components/ui/Chip";
+import { Select } from "@/components/ui/Select";
 import { useToast } from "@/components/ui/Toast";
 import { ProfileGlassCard } from "@/components/cards/ProfileGlassCard";
 import { HERO, MARQUEE_PROFILES } from "@/content/home";
@@ -208,18 +209,5 @@ function HeroSearch() {
 }
 
 function AgeSelect({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) {
-  return (
-    <select
-      aria-label={label}
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-      className="h-[50px] flex-1 cursor-pointer rounded-md border border-line-strong bg-surface-card px-4 text-body-md text-ink outline-none focus:border-brand-focus focus:shadow-ring-brand"
-    >
-      {AGES.map((a) => (
-        <option key={a} value={a}>
-          {a}
-        </option>
-      ))}
-    </select>
-  );
+  return <Select aria-label={label} value={value} onChange={onChange} options={AGES} searchPlaceholder="Type an age" containerClassName="flex-1" />;
 }

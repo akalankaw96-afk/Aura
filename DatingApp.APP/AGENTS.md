@@ -21,7 +21,8 @@ Vikasitha is a Sri Lankan matrimony website. `DatingApp.APP` is the Next.js 15 /
    - Field problem → inline error under the field (`error` prop)
    - Something the user must act on → `<Alert>` inside the card
    - Quick confirmation or system message → `useToast()`, shown top-centre, 4 s
-10. **No API calls from components yet.** Mocks live in `src/lib/demo.ts` and in one `setTimeout` per submit handler. When connecting, call `src/services/api.ts` and keep the same UI states.
+10. **Dropdowns:** always use `<Select>` from `ui/Select.tsx` (Figma *Dropdown Menu*). Never use a native `<select>`: it looks different on every OS and doesn't match the design.
+11. **No API calls from components yet.** Mocks live in `src/lib/demo.ts` and in one `setTimeout` per submit handler. When connecting, call `src/services/api.ts` and keep the same UI states.
 
 ## Before you finish any change
 - [ ] `npm run check` passes (typecheck + build)

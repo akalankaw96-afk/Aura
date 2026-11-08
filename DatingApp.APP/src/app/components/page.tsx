@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { ArrowRight2, User } from "iconsax-react";
+import { ArrowRight2, Profile2User, User } from "iconsax-react";
 import {
   Alert,
   Badge,
@@ -10,6 +10,8 @@ import {
   Checkbox,
   Chip,
   CoupleAvatar,
+  DropdownMenu,
+  DropdownOption,
   Input,
   LanguageSwitch,
   Logo,
@@ -17,6 +19,7 @@ import {
   PasswordField,
   PhoneField,
   Select,
+  SortDropdown,
   Stepper,
   Textarea,
   ToastCard,
@@ -48,7 +51,7 @@ function Row({ label, children }: { label: string; children: React.ReactNode }) 
   );
 }
 
-const NAV = ["Buttons", "Inputs", "Phone & Password", "OTP", "Selection", "Badges", "Feedback", "Stepper", "Brand"];
+const NAV = ["Buttons", "Inputs", "Dropdowns", "Phone & Password", "OTP", "Selection", "Badges", "Feedback", "Stepper", "Brand"];
 
 export default function ComponentsPage() {
   const toast = useToast();
@@ -59,6 +62,8 @@ export default function ComponentsPage() {
   const [chip, setChip] = useState("Myself");
   const [about, setAbout] = useState("I’m a doctor working in Kandy, close to my family.");
   const [step, setStep] = useState(2);
+  const [religion, setReligion] = useState("Christian");
+  const [sortValue, setSortValue] = useState("Newest first");
 
   return (
     <div className="min-h-screen overflow-x-hidden bg-surface-subtle">
@@ -108,12 +113,136 @@ export default function ComponentsPage() {
               <Input label="Full name" placeholder="Enter your full name" icon={<User size={20} color="currentColor" />} helper="Helper text" />
               <Input label="Full name" defaultValue="Nethmi Perera" icon={<User size={20} color="currentColor" />} error="Please enter your full name" />
               <Input label="Full name" placeholder="Enter your full name" icon={<User size={20} color="currentColor" />} disabled helper="Disabled" />
-              <Select label="Religion" placeholder="Select" options={["Buddhist", "Hindu", "Christian", "Islam"]} value="" onChange={() => {}} />
+              <Select label="Religion" placeholder="Select" options={["Buddhist", "Hindu", "Christian", "Catholic", "Islam", "Other"]} value={religion} onChange={setReligion} helper="More than 4 options → search appears" />
+              <Select label="Gender" placeholder="Select" options={["Female", "Male"]} value="" onChange={() => {}} helper="4 or fewer → no search" />
               <Select label="Religion" options={["Buddhist", "Hindu"]} value="Buddhist" onChange={() => {}} error="Required" />
             </div>
             <div className="mt-6 grid gap-6 md:grid-cols-2">
               <Textarea label="About you" hint="Optional" value={about} onChange={setAbout} helper="Tip: profiles with a short, warm description get more replies." />
               <Textarea label="About you" value="Call me on 077 123 4567" onChange={() => {}} error="Rejected: contains a phone number — please remove it" />
+            </div>
+          </Section>
+        </Card>
+
+        <Card className="p-6">
+          <Section id="dropdowns" title="Dropdowns & Select" figma="Input (Type = Select) [15:1111/133:34238], Dropdown Menu [133:33402], Dropdown Option [133:33314], Sort Dropdown [86:19427]">
+            <div className="space-y-8">
+              <div>
+                <h3 className="mb-3 text-label-lg font-bold text-ink">1. Interactive Controls</h3>
+                <div className="grid gap-6 md:grid-cols-3">
+                  <Select
+                    label="Religion"
+                    placeholder="Select"
+                    icon={<Profile2User size={20} color="currentColor" />}
+                    options={["Buddhist", "Hindu", "Christian", "Catholic", "Islam", "Other"]}
+                    value={religion}
+                    onChange={setReligion}
+                    helper="More than 4 options → search appears"
+                  />
+                  <Select
+                    label="Gender"
+                    placeholder="Select"
+                    options={["Female", "Male"]}
+                    value=""
+                    onChange={() => {}}
+                    helper="4 or fewer → no search"
+                  />
+                  <Select
+                    label="Religion"
+                    options={["Buddhist", "Hindu"]}
+                    value="Buddhist"
+                    onChange={() => {}}
+                    error="Required field"
+                  />
+                  <Select
+                    label="Disabled select"
+                    options={["Option 1", "Option 2"]}
+                    value="Option 1"
+                    onChange={() => {}}
+                    disabled
+                    helper="Disabled state"
+                  />
+                  <div>
+                    <p className="mb-2 text-label-md text-ink">Sort Dropdown (Figma 86:19427)</p>
+                    <SortDropdown value={sortValue} onChange={setSortValue} />
+                    <p className="mt-2 text-body-xs text-ink-tertiary">Used in search & profile listings</p>
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <h3 className="mb-3 text-label-lg font-bold text-ink">2. Dropdown Option States (Figma 133:33314)</h3>
+                <div className="grid max-w-xl gap-3 rounded-md border border-line bg-surface-card p-4">
+                  <div className="space-y-1">
+                    <p className="text-body-xs text-ink-tertiary">State = Default</p>
+                    <ul className="list-none p-0 m-0">
+                      <DropdownOption label="Buddhist" state="Default" />
+                    </ul>
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-body-xs text-ink-tertiary">State = Hover</p>
+                    <ul className="list-none p-0 m-0">
+                      <DropdownOption label="Hindu" state="Hover" />
+                    </ul>
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-body-xs text-ink-tertiary">State = Selected</p>
+                    <ul className="list-none p-0 m-0">
+                      <DropdownOption label="Christian" state="Selected" />
+                    </ul>
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <h3 className="mb-3 text-label-lg font-bold text-ink">3. Dropdown Menu Variants (Figma 133:33402)</h3>
+                <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+                  <div>
+                    <span className="mb-2 inline-block text-body-xs font-semibold text-ink-secondary">
+                      Search = On, State = Default
+                    </span>
+                    <DropdownMenu
+                      search
+                      options={["Buddhist", "Hindu", "Christian", "Catholic", "Islam", "Other"]}
+                      selectedValue="Christian"
+                    />
+                  </div>
+
+                  <div>
+                    <span className="mb-2 inline-block text-body-xs font-semibold text-ink-secondary">
+                      Search = On, State = Filtered
+                    </span>
+                    <DropdownMenu
+                      search
+                      searchQuery="Chr"
+                      options={["Buddhist", "Hindu", "Christian", "Catholic", "Islam", "Other"]}
+                      selectedValue="Christian"
+                    />
+                  </div>
+
+                  <div>
+                    <span className="mb-2 inline-block text-body-xs font-semibold text-ink-secondary">
+                      Search = On, State = Empty
+                    </span>
+                    <DropdownMenu
+                      search
+                      searchQuery="xyz"
+                      options={["Buddhist", "Hindu", "Christian", "Catholic", "Islam", "Other"]}
+                    />
+                  </div>
+
+                  <div>
+                    <span className="mb-2 inline-block text-body-xs font-semibold text-ink-secondary">
+                      Search = Off, State = Default
+                    </span>
+                    <DropdownMenu
+                      search={false}
+                      options={["Female", "Male", "Other"]}
+                      selectedValue="Female"
+                    />
+                  </div>
+                </div>
+              </div>
             </div>
           </Section>
         </Card>
