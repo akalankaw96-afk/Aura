@@ -1,9 +1,8 @@
-'use client';
+import type { Metadata } from "next";
+import { RegisterFlow } from "@/components/auth/RegisterFlow";
 
-import React from 'react';
-import { RegistrationFlow } from '../../components/RegistrationFlow';
+export const metadata: Metadata = { title: "Create your free account | Vikasitha" };
 
 export default function RegisterPage() {
-  return <RegistrationFlow initialScreen="register" />;
+  return <RegisterFlow />;
 }
-
