@@ -48,7 +48,7 @@ import {
 } from '../services/api';
 import { Profile } from '../types';
 import { mockProfiles } from '../data/mockData';
-import { DecorativeHeartBackground } from './DecorativeHeartBackground';
+import { HeartPattern } from "@/components/ui/Decor";
 import { CheckoutModal } from './CheckoutModal';
 import { FoundMatchModal } from './FoundMatchModal';
 import { AccountClosureModal } from './AccountClosureModal';
@@ -383,7 +383,8 @@ export const MemberDashboard: React.FC = () => {
   };
 
   return (
-    <DecorativeHeartBackground showBottomHill={false} className="py-6 px-4 sm:px-6">
+    <div className="relative isolate min-h-screen bg-page-gradient py-6 px-4 sm:px-6">
+      <HeartPattern className="-z-10" />
       
       {/* Toast popup */}
       {toast && (
@@ -1398,7 +1399,7 @@ export const MemberDashboard: React.FC = () => {
         />
 
       </div>
-    </DecorativeHeartBackground>
+    </div>
   );
 };
 
