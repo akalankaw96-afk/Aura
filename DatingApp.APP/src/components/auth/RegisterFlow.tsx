@@ -286,7 +286,7 @@ function VerifyStep({ mobile, onBack, onNext }: { mobile: string; onBack: () => 
       setError(undefined);
       return;
     }
-    if (value === DEMO.otp) {
+    if (value === DEMO.otp || value === "123456") {
       setState("success");
       setError(undefined);
       toast.success("Mobile verified", `Your number ${formatPhone(mobile)} is confirmed.`);
@@ -342,6 +342,10 @@ function VerifyStep({ mobile, onBack, onNext }: { mobile: string; onBack: () => 
       <button type="button" onClick={onBack} className="-mt-2 text-body-sm font-semibold text-brand underline">
         Change number
       </button>
+
+      <div className="bg-rose-50 border border-rose-200 text-brand px-3.5 py-1.5 rounded-full text-center text-body-xs font-semibold">
+        Demo OTP: <strong className="font-mono text-ink">482913</strong> or <strong className="font-mono text-ink">123456</strong>
+      </div>
 
       {expired && (
         <Alert type="warning" title="Code expired" action={<button type="button" onClick={resend} className="font-bold text-brand hover:underline">Resend code</button>}>
