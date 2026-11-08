@@ -6,10 +6,16 @@
     "dev": "next dev -p 3001",
     "build": "next build",
     "start": "next start -p 3001",
-    "lint": "next lint"
+    "lint": "next lint",
+    "typecheck": "tsc --noEmit",
+    "check": "tsc --noEmit && next build"
   },
   "dependencies": {
+    "@fontsource/noto-sans-tamil": "^5.3.0",
+    "@fontsource/nunito": "^5.3.0",
+    "@fontsource/yaldevi": "^5.3.0",
     "clsx": "^2.1.1",
+    "iconsax-react": "^0.0.8",
     "lucide-react": "^0.475.0",
     "next": "^15.1.7",
     "react": "^19.0.0",

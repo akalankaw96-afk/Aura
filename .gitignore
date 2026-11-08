@@ -77,3 +77,5 @@ ehthumbs.db
 [Dd]esktop.ini
 $RECYCLE.BIN/
 
+# Local backup of the pre-Figma UI (see README)
+_backup_pre_figma/

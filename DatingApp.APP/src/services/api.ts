@@ -28,6 +28,31 @@ export interface SubscriptionInfo {
   retentionDiscountApplied?: boolean;
 }
 
+export interface SuccessStorySubmission {
+  id: string;
+  partnerProfileId: string;
+  partnerName: string;
+  partnerConfirmed: boolean;
+  engagementStatus: 'Engaged' | 'Married' | 'Wedding Planned';
+  rating: number; // 1 - 5
+  title: string;
+  story: string;
+  weddingDate: string;
+  location: string;
+  photoUrl: string;
+  consentToPublish: boolean;
+  status: 'PendingAdminApproval' | 'Published' | 'Private';
+  submittedAt: string;
+  hideProfilesOnSuccess: boolean;
+}
+
+export interface AccountClosureStatus {
+  status: 'active' | 'paused' | 'deactivated' | 'scheduled_for_deletion';
+  gracePeriodEndsAt?: string;
+  deletionReason?: string;
+  scheduledAt?: string;
+}
+
 export interface AuthSession {
   token: string;
   userId: string;
@@ -38,6 +63,7 @@ export interface AuthSession {
   profileId?: string | null;
   hasCompletedProfile: boolean;
   subscription?: SubscriptionInfo;
+  closureStatus?: AccountClosureStatus;
 }
 
 export interface CreateProfilePayload {
@@ -551,5 +577,104 @@ export const apiService = {
       return { valid: true, discountPercent: 25, message: '25% Elite VIP Matchmaker Discount Applied!' };
     }
     return { valid: false, discountPercent: 0, message: 'Invalid or expired promo code.' };
+  },
+
+  // Flow 5: "Found My Match" & Success Story Submission
+  submitSuccessStory(submission: SuccessStorySubmission): SuccessStorySubmission {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('aura_my_success_story', JSON.stringify(submission));
+      // If user chose to hide both profiles on success
+      if (submission.hideProfilesOnSuccess) {
+        this.pauseProfile(true);
+      }
+    }
+    return submission;
+  },
+
+  getMySuccessStory(): SuccessStorySubmission | null {
+    if (typeof window !== 'undefined') {
+      const stored = localStorage.getItem('aura_my_success_story');
+      if (stored) {
+        try {
+          return JSON.parse(stored);
+        } catch {}
+      }
+    }
+    return null;
+  },
+
+  // Flow 5: Account Closure, Pause, Deactivate & Deletion
+  pauseProfile(paused: boolean): AccountClosureStatus {
+    const status: AccountClosureStatus = {
+      status: paused ? 'paused' : 'active',
+    };
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('aura_closure_status', JSON.stringify(status));
+      const rawSess = localStorage.getItem('aura_session');
+      if (rawSess) {
+        try {
+          const sess = JSON.parse(rawSess);
+          sess.closureStatus = status;
+          localStorage.setItem('aura_session', JSON.stringify(sess));
+        } catch {}
+      }
+    }
+    return status;
+  },
+
+  deactivateAccount(): AccountClosureStatus {
+    const status: AccountClosureStatus = {
+      status: 'deactivated',
+    };
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('aura_closure_status', JSON.stringify(status));
+    }
+    return status;
+  },
+
+  scheduleAccountDeletion(reason: string, otpOrPassword: string, graceDays = 30): AccountClosureStatus {
+    const graceEnds = new Date();
+    graceEnds.setDate(graceEnds.getDate() + graceDays);
+
+    const status: AccountClosureStatus = {
+      status: 'scheduled_for_deletion',
+      gracePeriodEndsAt: graceEnds.toISOString(),
+      deletionReason: reason,
+      scheduledAt: new Date().toISOString(),
+    };
+
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('aura_closure_status', JSON.stringify(status));
+    }
+    return status;
+  },
+
+  restoreAccount(): AccountClosureStatus {
+    const status: AccountClosureStatus = {
+      status: 'active',
+    };
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('aura_closure_status');
+    }
+    return status;
+  },
+
+  getClosureStatus(): AccountClosureStatus {
+    if (typeof window !== 'undefined') {
+      const stored = localStorage.getItem('aura_closure_status');
+      if (stored) {
+        try {
+          return JSON.parse(stored);
+        } catch {}
+      }
+    }
+    return { status: 'active' };
+  },
+
+  logoutAllDevices(): void {
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('aura_token');
+      localStorage.removeItem('aura_session');
+    }
   },
 };

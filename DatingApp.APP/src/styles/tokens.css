@@ -1,0 +1,259 @@
+/* ==========================================================================
+   Vikasitha design tokens — a 1:1 copy of the Figma variables
+   Figma file: "AI-Learning-2" → 🎨 Foundations
+   Collections: Primitives · Color (Light / Dark) · Spacing · Radius ·
+                Layout (Desktop / Tablet / Mobile) · Typography
+   + Effect styles (Shadow/*, Focus/*) and Paint styles (Gradient/*)
+
+   ⚠️  Do not invent new values here. If a value is missing, add it to Figma
+       first, then copy it here with the SAME name (/ becomes -).
+   Tailwind reads these through tailwind.config.ts — use the Tailwind classes
+   in components, never raw hex values.
+   ========================================================================== */
+
+:root {
+  /* ── Primitives ─────────────────────────────────────────────────────── */
+  --rose-50: #fff0f4;
+  --rose-100: #ffe1ea;
+  --rose-200: #ffc7d6;
+  --rose-300: #ff9ab5;
+  --rose-400: #fa5f8a;
+  --rose-500: #f02a62;
+  --rose-600: #de0547;
+  --rose-700: #b8043b;
+  --rose-800: #8b1e3f;
+  --rose-900: #6e1733;
+  --rose-950: #3d0819;
+
+  --gray-0: #ffffff;
+  --gray-50: #f8f9fa;
+  --gray-100: #f1f3f5;
+  --gray-200: #e5e7eb;
+  --gray-300: #d1d5db;
+  --gray-400: #9ca3af;
+  --gray-500: #6b7280;
+  --gray-600: #4b5563;
+  --gray-700: #374151;
+  --gray-800: #292d32;
+  --gray-900: #1a1d21;
+  --gray-950: #0e1013;
+
+  --gold-50: #fff8e6;
+  --gold-100: #fdebc0;
+  --gold-300: #f5c451;
+  --gold-500: #d99a0b;
+  --gold-700: #9a6a05;
+  --gold-900: #5c3f03;
+
+  --green-50: #ecfdf3;
+  --green-100: #d1fadf;
+  --green-500: #12b76a;
+  --green-600: #039855;
+  --green-700: #027a48;
+
+  --amber-50: #fffaeb;
+  --amber-100: #fef0c7;
+  --amber-500: #f79009;
+  --amber-700: #b54708;
+
+  --red-50: #fef3f2;
+  --red-100: #fee4e2;
+  --red-500: #f04438;
+  --red-600: #d92d20;
+  --red-700: #b42318;
+
+  --blue-50: #eff8ff;
+  --blue-100: #d1e9ff;
+  --blue-500: #2e90fa;
+  --blue-700: #175cd3;
+
+  --alpha-white-14: rgba(255, 255, 255, 0.14);
+  --alpha-white-25: rgba(255, 255, 255, 0.25);
+  --alpha-white-35: rgba(255, 255, 255, 0.35);
+  --alpha-white-85: rgba(255, 255, 255, 0.85);
+  --alpha-white-92: rgba(255, 255, 255, 0.92);
+  --alpha-black-55: rgba(14, 16, 19, 0.55);
+
+  /* ── Color · Light (semantic) ───────────────────────────────────────── */
+  --color-bg-page: var(--gray-0);
+  --color-bg-subtle: var(--gray-50);
+  --color-bg-muted: var(--gray-100);
+  --color-bg-brand: var(--rose-600);
+  --color-bg-brand-hover: var(--rose-700);
+  --color-bg-brand-subtle: var(--rose-50);
+  --color-bg-brand-strong: var(--rose-800);
+  --color-bg-inverse: var(--gray-900);
+  --color-bg-disabled: var(--gray-100);
+  --color-bg-scrim: var(--alpha-black-55);
+
+  --color-surface-card: var(--gray-0);
+  --color-surface-raised: var(--gray-0);
+  --color-surface-glass: var(--alpha-white-14);
+  --color-surface-glass-strong: var(--alpha-white-92);
+
+  --color-text-primary: var(--gray-900);
+  --color-text-secondary: var(--gray-600);
+  --color-text-tertiary: var(--gray-500);
+  --color-text-disabled: var(--gray-400);
+  --color-text-brand: var(--rose-700);
+  --color-text-on-brand: var(--gray-0);
+  --color-text-on-brand-muted: var(--alpha-white-85);
+  --color-text-inverse: var(--gray-0);
+  --color-text-link: var(--rose-600);
+
+  --color-border-default: var(--gray-200);
+  --color-border-strong: var(--gray-300);
+  --color-border-brand: var(--rose-600);
+  --color-border-focus: var(--rose-300);
+  --color-border-error: var(--red-600);
+  --color-border-glass: var(--alpha-white-35);
+  --color-border-glass-subtle: var(--alpha-white-25);
+
+  --color-icon-default: var(--gray-800);
+  --color-icon-muted: var(--gray-500);
+  --color-icon-brand: var(--rose-600);
+  --color-icon-on-brand: var(--gray-0);
+
+  --color-status-success-bg: var(--green-50);
+  --color-status-success-fg: var(--green-700);
+  --color-status-warning-bg: var(--amber-50);
+  --color-status-warning-fg: var(--amber-700);
+  --color-status-error-bg: var(--red-50);
+  --color-status-error-fg: var(--red-700);
+  --color-status-info-bg: var(--blue-50);
+  --color-status-info-fg: var(--blue-700);
+  --color-status-premium-bg: var(--gold-50);
+  --color-status-premium-fg: var(--gold-700);
+
+  /* ── Spacing ────────────────────────────────────────────────────────── */
+  --spacing-0: 0px;
+  --spacing-2: 2px;
+  --spacing-4: 4px;
+  --spacing-8: 8px;
+  --spacing-12: 12px;
+  --spacing-16: 16px;
+  --spacing-20: 20px;
+  --spacing-24: 24px;
+  --spacing-32: 32px;
+  --spacing-40: 40px;
+  --spacing-48: 48px;
+  --spacing-64: 64px;
+  --spacing-80: 80px;
+  --spacing-96: 96px;
+  --spacing-128: 128px;
+
+  /* ── Radius ─────────────────────────────────────────────────────────── */
+  --radius-none: 0px;
+  --radius-xs: 4px;
+  --radius-sm: 8px;
+  --radius-md: 12px; /* inputs */
+  --radius-lg: 16px; /* cards */
+  --radius-xl: 24px; /* panels */
+  --radius-2xl: 32px;
+  --radius-full: 999px; /* buttons, chips, badges */
+
+  /* ── Layout · Desktop (Tablet / Mobile below) ───────────────────────── */
+  --layout-screen-width: 1440px;
+  --layout-container-max: 1280px;
+  --layout-page-margin: 80px;
+  --layout-grid-gutter: 24px;
+  --layout-grid-columns: 12;
+  --layout-section-gap: 96px;
+  --layout-card-gap: 24px;
+
+  /* ── Typography ─────────────────────────────────────────────────────── */
+  --font-family-base: "Nunito", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-family-sinhala: "Yaldevi", "Nunito", sans-serif;
+  --font-family-tamil: "Noto Sans Tamil", "Nunito", sans-serif;
+
+  /* ── Effects (Figma effect styles) ──────────────────────────────────── */
+  --shadow-xs: 0 1px 2px 0 rgba(16, 24, 40, 0.05);
+  --shadow-sm: 0 1px 3px 0 rgba(16, 24, 40, 0.1), 0 1px 2px 0 rgba(16, 24, 40, 0.06);
+  --shadow-md: 0 4px 8px -2px rgba(16, 24, 40, 0.1), 0 2px 4px -2px rgba(16, 24, 40, 0.06);
+  --shadow-lg: 0 12px 16px -4px rgba(16, 24, 40, 0.08), 0 4px 6px -2px rgba(16, 24, 40, 0.03);
+  --shadow-xl: 0 20px 24px -4px rgba(16, 24, 40, 0.08), 0 8px 8px -4px rgba(16, 24, 40, 0.03);
+  --shadow-brand-glow: 0 8px 24px 0 rgba(222, 5, 71, 0.28);
+  --focus-ring-brand: 0 0 0 4px var(--rose-100);
+  --focus-ring-error: 0 0 0 4px var(--red-100);
+
+  /* ── Gradients (Figma paint styles) ─────────────────────────────────── */
+  --gradient-brand: linear-gradient(135deg, var(--rose-800) 14.6%, var(--rose-600) 85.4%);
+  --gradient-brand-soft: linear-gradient(180deg, var(--rose-50) 0%, var(--gray-0) 100%);
+  --gradient-hero-overlay: linear-gradient(180deg, rgba(0, 0, 0, 0) 0%, rgba(139, 30, 63, 0.55) 55%, rgba(139, 30, 63, 0.92) 100%);
+  --gradient-story: linear-gradient(135deg, var(--rose-100) 0%, var(--gold-50) 50%, var(--rose-200) 100%);
+  --gradient-page: linear-gradient(175deg, #fff0f4 0%, #fff8e6 16%, #ffffff 30%, #fff0f4 44%, #fff8e6 58%, #ffe9ef 72%, #ffffff 86%, #fff0f4 100%);
+}
+
+/* ── Layout · Tablet ──────────────────────────────────────────────────── */
+@media (max-width: 1023px) {
+  :root {
+    --layout-screen-width: 768px;
+    --layout-container-max: 704px;
+    --layout-page-margin: 32px;
+    --layout-grid-gutter: 24px;
+    --layout-grid-columns: 8;
+    --layout-section-gap: 80px;
+    --layout-card-gap: 20px;
+  }
+}
+
+/* ── Layout · Mobile ──────────────────────────────────────────────────── */
+@media (max-width: 767px) {
+  :root {
+    --layout-screen-width: 390px;
+    --layout-container-max: 358px;
+    --layout-page-margin: 16px;
+    --layout-grid-gutter: 16px;
+    --layout-grid-columns: 4;
+    --layout-section-gap: 64px;
+    --layout-card-gap: 16px;
+  }
+}
+
+/* ── Color · Dark (Figma mode "Dark") ─────────────────────────────────── */
+[data-theme="dark"] {
+  --color-bg-page: var(--gray-950);
+  --color-bg-subtle: var(--gray-900);
+  --color-bg-muted: var(--gray-800);
+  --color-bg-brand: var(--rose-500);
+  --color-bg-brand-hover: var(--rose-400);
+  --color-bg-brand-subtle: var(--rose-950);
+  --color-bg-brand-strong: var(--rose-700);
+  --color-bg-inverse: var(--gray-0);
+  --color-bg-disabled: var(--gray-800);
+
+  --color-surface-card: var(--gray-900);
+  --color-surface-raised: var(--gray-800);
+
+  --color-text-primary: var(--gray-50);
+  --color-text-secondary: var(--gray-300);
+  --color-text-tertiary: var(--gray-400);
+  --color-text-disabled: var(--gray-600);
+  --color-text-brand: var(--rose-300);
+  --color-text-inverse: var(--gray-900);
+  --color-text-link: var(--rose-300);
+
+  --color-border-default: var(--gray-700);
+  --color-border-strong: var(--gray-600);
+  --color-border-brand: var(--rose-400);
+  --color-border-focus: var(--rose-400);
+  --color-border-error: var(--red-500);
+
+  --color-icon-default: var(--gray-100);
+  --color-icon-muted: var(--gray-400);
+  --color-icon-brand: var(--rose-400);
+
+  --color-status-success-bg: var(--green-700);
+  --color-status-success-fg: var(--green-100);
+  --color-status-warning-bg: var(--amber-700);
+  --color-status-warning-fg: var(--amber-100);
+  --color-status-error-bg: var(--red-700);
+  --color-status-error-fg: var(--red-100);
+  --color-status-info-bg: var(--blue-700);
+  --color-status-info-fg: var(--blue-100);
+  --color-status-premium-bg: var(--gold-900);
+  --color-status-premium-fg: var(--gold-100);
+
+  --gradient-page: linear-gradient(175deg, #1a0a10 0%, #0e1013 30%, #140b0f 60%, #0e1013 100%);
+  --gradient-brand-soft: linear-gradient(180deg, var(--rose-950) 0%, var(--gray-950) 100%);
+}

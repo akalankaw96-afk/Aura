@@ -1,9 +1,8 @@
-'use client';
+import type { Metadata } from "next";
+import { LoginScreen } from "@/components/auth/LoginScreen";
 
-import React from 'react';
-import { RegistrationFlow } from '../../components/RegistrationFlow';
+export const metadata: Metadata = { title: "Log in | Vikasitha" };
 
 export default function LoginPage() {
-  return <RegistrationFlow initialScreen="login" />;
+  return <LoginScreen />;
 }
-

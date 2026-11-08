@@ -36,13 +36,22 @@ import {
   CalendarDays,
   ShieldAlert,
   ArrowUpRight,
-  RefreshCw
+  RefreshCw,
+  Settings
 } from 'lucide-react';
-import { apiService, AuthSession, SubscriptionInfo } from '../services/api';
+import {
+  apiService,
+  AuthSession,
+  SubscriptionInfo,
+  AccountClosureStatus,
+  SuccessStorySubmission
+} from '../services/api';
 import { Profile } from '../types';
 import { mockProfiles } from '../data/mockData';
 import { DecorativeHeartBackground } from './DecorativeHeartBackground';
 import { CheckoutModal } from './CheckoutModal';
+import { FoundMatchModal } from './FoundMatchModal';
+import { AccountClosureModal } from './AccountClosureModal';
 
 interface MatchItem {
   id: string;
@@ -94,6 +103,10 @@ export const MemberDashboard: React.FC = () => {
 
   // Profile Privacy & Pause State (Flow 5)
   const [isPaused, setIsPaused] = useState(false);
+  const [isFoundMatchOpen, setIsFoundMatchOpen] = useState(false);
+  const [isAccountClosureOpen, setIsAccountClosureOpen] = useState(false);
+  const [closureStatus, setClosureStatus] = useState<AccountClosureStatus>({ status: 'active' });
+  const [mySuccessStory, setMySuccessStory] = useState<SuccessStorySubmission | null>(null);
 
   // Chat State (Flow 3)
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
@@ -161,6 +174,14 @@ export const MemberDashboard: React.FC = () => {
       } else {
         setSubscription(sub);
       }
+
+      // Load Flow 5 Status
+      const closure = apiService.getClosureStatus();
+      setClosureStatus(closure);
+      if (closure.status === 'paused') {
+        setIsPaused(true);
+      }
+      setMySuccessStory(apiService.getMySuccessStory());
     }
   }, []);
 
@@ -427,6 +448,15 @@ export const MemberDashboard: React.FC = () => {
 
           {/* Quick Action Controls */}
           <div className="flex items-center gap-2.5 flex-wrap justify-center sm:justify-end">
+            {/* Flow 5 "Found My Match" Button */}
+            <button
+              onClick={() => setIsFoundMatchOpen(true)}
+              className="px-4 py-2 rounded-full bg-gradient-to-r from-rose-600 to-[#801b34] hover:from-rose-700 hover:to-[#681429] text-white text-xs font-bold transition-all shadow-sm flex items-center gap-1.5 cursor-pointer transform hover:-translate-y-0.5"
+            >
+              <Heart className="w-3.5 h-3.5 fill-white" />
+              <span>Found My Match!</span>
+            </button>
+
             {/* Upgrade Button */}
             <button
               onClick={() => setIsCheckoutModalOpen(true)}
@@ -438,8 +468,10 @@ export const MemberDashboard: React.FC = () => {
 
             <button
               onClick={() => {
-                setIsPaused(!isPaused);
-                showToast(isPaused ? 'Profile resumed and active in search!' : 'Profile paused (hidden in search results, chats kept).');
+                const nextPaused = !isPaused;
+                setIsPaused(nextPaused);
+                apiService.pauseProfile(nextPaused);
+                showToast(nextPaused ? 'Profile paused (hidden in search results, chats kept).' : 'Profile resumed and active in search!');
               }}
               className={`px-3.5 py-2 rounded-full text-xs font-semibold border transition-all cursor-pointer ${
                 isPaused
@@ -450,14 +482,53 @@ export const MemberDashboard: React.FC = () => {
               {isPaused ? '⏸️ Paused' : 'Active in Search'}
             </button>
 
+            {/* Account Settings & Security Modal Trigger */}
+            <button
+              onClick={() => setIsAccountClosureOpen(true)}
+              className="p-2 rounded-full bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 transition-colors cursor-pointer"
+              title="Account Settings & Security"
+            >
+              <Settings className="w-4 h-4" />
+            </button>
+
             <Link
               href="/"
               className="px-4 py-2 rounded-full bg-[#801b34] text-white text-xs font-bold hover:bg-[#681429] transition-all shadow-xs"
             >
-              Browse Matches &rarr;
+              Browse &rarr;
             </Link>
           </div>
         </header>
+
+        {/* Flow 5 Success Story Active Banner (if user submitted a match) */}
+        {mySuccessStory && (
+          <div className="bg-gradient-to-r from-rose-50 via-amber-50/60 to-rose-50 border border-rose-200 rounded-3xl p-4 sm:p-5 mb-6 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-xs">
+            <div className="flex items-center gap-3.5">
+              <div className="w-12 h-12 rounded-2xl bg-[#801b34] text-white flex items-center justify-center font-bold shrink-0 shadow">
+                <Heart className="w-6 h-6 fill-white" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h3 className="font-bold font-serif text-gray-900 text-sm sm:text-base">
+                    Match Union Celebrated: {mySuccessStory.title}
+                  </h3>
+                  <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800">
+                    {mySuccessStory.status === 'Published' ? 'Published' : 'Editorial Review'}
+                  </span>
+                </div>
+                <p className="text-xs text-gray-600 mt-0.5">
+                  Partner: <strong>{mySuccessStory.partnerName}</strong> &bull; {mySuccessStory.weddingDate} &bull; {mySuccessStory.location}
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={() => setIsFoundMatchOpen(true)}
+              className="px-4 py-2 bg-white border border-rose-200 hover:bg-rose-50 text-[#801b34] text-xs font-bold rounded-xl cursor-pointer shrink-0"
+            >
+              View Story Details
+            </button>
+          </div>
+        )}
 
         {/* 4 Stat Overview Cards */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 mb-6">
@@ -1115,6 +1186,30 @@ export const MemberDashboard: React.FC = () => {
                     ))}
                   </div>
 
+                  {/* Flow 5 Celebration Hook inside Cancellation */}
+                  {cancelReason.includes('found my life partner') && (
+                    <div className="bg-rose-50 border border-rose-200 rounded-2xl p-3.5 text-xs text-rose-900 space-y-2">
+                      <div className="flex items-center gap-1.5 font-bold text-[#801b34]">
+                        <Heart className="w-4 h-4 fill-[#801b34]" />
+                        <span>Congratulations from the Aura Family! 💍</span>
+                      </div>
+                      <p className="text-[11px] text-gray-700 leading-relaxed">
+                        We are thrilled for your union! You can share your story and photos on our Success Stories showcase before closing your membership:
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsCancelModalOpen(false);
+                          setIsFoundMatchOpen(true);
+                        }}
+                        className="px-3.5 py-1.5 bg-[#801b34] text-white rounded-lg text-xs font-bold hover:bg-[#681429] cursor-pointer shadow-xs flex items-center gap-1.5"
+                      >
+                        <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+                        <span>Submit Love Story (Flow 5)</span>
+                      </button>
+                    </div>
+                  )}
+
                   <div className="flex justify-end gap-2 pt-3">
                     <button
                       type="button"
@@ -1265,6 +1360,40 @@ export const MemberDashboard: React.FC = () => {
             setSubscription(newSub);
             setIsCheckoutModalOpen(false);
             showToast(`Membership successfully activated: ${newSub.planName}!`);
+          }}
+        />
+
+        {/* Flow 5 "Found My Match" Celebration Modal */}
+        <FoundMatchModal
+          isOpen={isFoundMatchOpen}
+          onClose={() => setIsFoundMatchOpen(false)}
+          onSuccessSubmitted={(submission) => {
+            setMySuccessStory(submission);
+            if (submission.hideProfilesOnSuccess) {
+              setIsPaused(true);
+            }
+            showToast('🎉 Success story submitted! May your union be blessed.');
+          }}
+        />
+
+        {/* Flow 5 Account Closure, Pause, Deactivate & Deletion Modal */}
+        <AccountClosureModal
+          isOpen={isAccountClosureOpen}
+          subscription={subscription}
+          currentStatus={closureStatus}
+          onClose={() => setIsAccountClosureOpen(false)}
+          onLoggedOut={() => {
+            router.push('/');
+          }}
+          onStatusChanged={(newStatus) => {
+            setClosureStatus(newStatus);
+            if (newStatus.status === 'paused') {
+              setIsPaused(true);
+              showToast('Profile paused (hidden in search, chats kept).');
+            } else if (newStatus.status === 'active') {
+              setIsPaused(false);
+              showToast('Profile active and discoverable in search.');
+            }
           }}
         />
 
