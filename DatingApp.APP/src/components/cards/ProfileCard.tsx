@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
-import { ArrowRight2, Briefcase, Cake, Heart, NoteText, Ruler, ShieldTick, Star1, Verify } from "iconsax-react";
+import { ArrowRight2, Book1, Briefcase, Cake, Heart, Ruler, ShieldTick, Star1, Verify } from "iconsax-react";
 import { cn } from "@/lib/cn";
 import { Flag } from "@/components/ui/Flag";
 import type { FeaturedProfile } from "@/content/home";
@@ -10,13 +10,14 @@ import type { FeaturedProfile } from "@/content/home";
 /**
  * Figma: Profile Card (16:1057) as used in "04 Featured profiles".
  * 296 × 497 · padding 8 · radius lg · border default · Shadow/SM.
+ * Hover: border focus + Shadow/LG. One action: "View details" (Button Primary S, full width).
+ * The heart on the photo shortlists the profile.
  */
-export function ProfileCard({ profile, onInterest }: { profile: FeaturedProfile; onInterest?: (p: FeaturedProfile) => void }) {
+export function ProfileCard({ profile, onShortlist }: { profile: FeaturedProfile; onShortlist?: (p: FeaturedProfile, saved: boolean) => void }) {
   const [saved, setSaved] = useState(false);
-  const [sent, setSent] = useState(false);
 
   return (
-    <article className="flex flex-col rounded-lg border border-line bg-surface-card p-2 shadow-sm transition-shadow hover:shadow-lg">
+    <article className="flex flex-col rounded-lg border border-line bg-surface-card p-2 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-brand-focus hover:shadow-lg">
       {/* Photo 280 × 264 */}
       <div className="relative aspect-[280/264] overflow-hidden rounded-sm bg-surface-muted">
         {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -37,8 +38,11 @@ export function ProfileCard({ profile, onInterest }: { profile: FeaturedProfile;
               type="button"
               aria-label={saved ? `Remove ${profile.id} from shortlist` : `Shortlist ${profile.id}`}
               aria-pressed={saved}
-              onClick={() => setSaved((s) => !s)}
-              className="flex h-10 w-10 items-center justify-center rounded-full bg-surface-glass-strong text-brand transition-transform active:scale-95"
+              onClick={() => {
+                setSaved(!saved);
+                onShortlist?.(profile, !saved);
+              }}
+              className="flex h-10 w-10 items-center justify-center rounded-full bg-surface-glass-strong text-brand transition-transform hover:scale-105 active:scale-95"
             >
               <Heart size={20} color="currentColor" variant={saved ? "Bold" : "Linear"} />
             </button>
@@ -63,31 +67,18 @@ export function ProfileCard({ profile, onInterest }: { profile: FeaturedProfile;
           <Detail icon={<Cake size={18} color="currentColor" />} label="Age" value={`${profile.age} years`} />
           <Detail icon={<Ruler size={18} color="currentColor" />} label="Height" value={profile.height} />
           <Detail icon={<Briefcase size={18} color="currentColor" />} label="Profession" value={profile.profession} />
-          <Detail icon={<NoteText size={18} color="currentColor" />} label="Religion" value={profile.religion} />
+          <Detail icon={<Book1 size={18} color="currentColor" />} label="Religion" value={profile.religion} />
         </dl>
 
         <div className="h-px bg-line" />
 
-        <div className="flex gap-2">
-          <button
-            type="button"
-            onClick={() => {
-              setSent(true);
-              onInterest?.(profile);
-            }}
-            disabled={sent}
-            className="flex h-[42px] flex-1 items-center justify-center gap-2 rounded-full bg-brand-subtle px-4 text-button-sm text-brand-text transition-shadow hover:ring-1 hover:ring-inset hover:ring-brand disabled:cursor-default disabled:ring-0"
-          >
-            <Heart size={18} color="currentColor" variant={sent ? "Bold" : "Linear"} />
-            {sent ? "Interest sent" : "Send interest"}
-          </button>
-          <Link
-            href={`/register?profile=${profile.id}`}
-            className="flex h-[42px] items-center justify-center gap-2 rounded-full bg-brand-gradient px-4 text-button-sm text-ink-on-brand transition-shadow hover:shadow-glow"
-          >
-            View <ArrowRight2 size={18} color="currentColor" />
-          </Link>
-        </div>
+        {/* Figma: Actions → View profile (Button Primary S, 254 × 42) */}
+        <Link
+          href={`/register?profile=${profile.id}`}
+          className="group/btn flex h-[42px] w-full items-center justify-center gap-2 rounded-full bg-brand-gradient px-4 text-button-sm text-ink-on-brand transition-shadow hover:shadow-glow"
+        >
+          View details <ArrowRight2 size={18} color="currentColor" className="transition-transform group-hover/btn:translate-x-0.5" />
+        </Link>
       </div>
     </article>
   );

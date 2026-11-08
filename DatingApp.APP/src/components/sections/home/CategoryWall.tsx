@@ -61,7 +61,7 @@ export function CategoryWall() {
           <SectionHeader eyebrow={CATEGORIES.eyebrow} title={CATEGORIES.title} description={CATEGORIES.description} />
         </div>
 
-        <div className="group relative flex flex-col gap-3 py-2.5">
+        <div className="reveal group relative flex flex-col gap-3 py-2.5">
           {CATEGORIES.rows.map((row, r) => (
             <div key={r} className={cn("flex w-max animate-marquee gap-4 group-hover:[animation-play-state:paused]", ROW_STYLE[r])}>
               {[...row, ...row, ...row, ...row].map((c, k) => (

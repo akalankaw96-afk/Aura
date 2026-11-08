@@ -43,7 +43,7 @@ export function SignUp() {
     if (!/^7\d{8}$/.test(digits)) er.mobile = "Enter a valid Sri Lankan mobile number";
     setErrors(er);
     if (Object.keys(er).length) return;
-    saveDraft({ fullName: `${f.first.trim()} ${f.last.trim()}`, mobile: digits });
+    saveDraft({ firstName: f.first.trim(), lastName: f.last.trim(), fullName: `${f.first.trim()} ${f.last.trim()}`, email: f.email.trim(), mobile: digits });
     flashToast("success", "Great start!", "Create a password to finish your free account.");
     router.push("/register");
   };
@@ -51,7 +51,7 @@ export function SignUp() {
   return (
     <section id="sign-up" className="scroll-mt-28 py-16 lg:py-24">
       <div className="container-page">
-        <div className="relative isolate grid items-center gap-10 overflow-hidden rounded-2xl bg-brand-gradient p-6 sm:p-10 lg:grid-cols-[1fr_560px] lg:gap-0 lg:p-20">
+        <div className="reveal-zoom relative isolate grid items-center gap-10 overflow-hidden rounded-2xl bg-brand-gradient p-6 sm:p-10 lg:grid-cols-[1fr_560px] lg:gap-0 lg:p-20">
           {/* decor */}
           <div aria-hidden className="pointer-events-none absolute inset-0 -z-10">
             <span className="absolute -left-40 -top-[200px] h-[620px] w-[620px] rounded-full bg-[radial-gradient(circle,rgba(255,255,255,0.22),rgba(255,255,255,0)_70%)]" />
@@ -68,7 +68,7 @@ export function SignUp() {
             <p className="text-overline uppercase">{SIGN_UP.eyebrow}</p>
             <h2 className="text-h2 lg:text-display-lg">{SIGN_UP.title}</h2>
             <p className="text-body-md lg:text-body-lg">{SIGN_UP.body}</p>
-            <ul className="flex flex-col gap-5">
+            <ul className="reveal-stagger flex flex-col gap-5">
               {SIGN_UP.benefits.map((b) => (
                 <li key={b} className="flex items-center gap-2 text-body-md font-semibold">
                   <TickCircle size={20} color="currentColor" /> {b}

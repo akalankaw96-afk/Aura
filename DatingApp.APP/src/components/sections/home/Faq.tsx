@@ -23,7 +23,7 @@ export function Faq() {
           <HelpCard className="hidden lg:flex" />
         </div>
 
-        <div className="flex flex-col gap-4">
+        <div className="reveal-stagger flex flex-col gap-4">
           {FAQ.items.map((item, i) => {
             const isOpen = open === i;
             return (
@@ -66,7 +66,7 @@ function HelpCard({ className }: { className?: string }) {
       <Call size={28} color="currentColor" className="text-icon-brand" />
       <p className="text-h6 text-ink">{FAQ.help.title}</p>
       <p className="text-body-md text-ink-secondary">{FAQ.help.text}</p>
-      <a href={FAQ.help.href} className="flex h-[43px] items-center rounded-full bg-brand-subtle px-6 text-button-md text-brand-text transition-shadow hover:ring-1 hover:ring-inset hover:ring-brand">
+      <a href={FAQ.help.href} className="flex h-[43px] items-center rounded-full bg-brand-subtle px-6 text-button-md text-brand-text ring-1 ring-inset ring-brand">
         {FAQ.help.cta}
       </a>
     </div>

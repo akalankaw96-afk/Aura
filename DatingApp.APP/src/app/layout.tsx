@@ -14,6 +14,7 @@ import "@fontsource/noto-sans-tamil/700.css";
 import "./globals.css";
 
 import { ToastProvider } from "@/components/ui/Toast";
+import { PageLoader, RevealObserver } from "@/components/motion";
 
 export const metadata: Metadata = {
   title: "Vikasitha | Find a life partner your whole family can trust",
@@ -26,8 +27,8 @@ export const viewport: Viewport = {
   themeColor: "#de0547",
 };
 
-/** Sets data-theme before paint so dark mode does not flash. */
-const themeScript = `try{var t=localStorage.getItem("vk-theme");if(t==="dark")document.documentElement.setAttribute("data-theme","dark")}catch(e){}`;
+/** Before paint: marks JS as on (motion CSS) and sets data-theme so dark mode does not flash. */
+const themeScript = `document.documentElement.classList.add("js");try{var t=localStorage.getItem("vk-theme");if(t==="dark")document.documentElement.setAttribute("data-theme","dark")}catch(e){}`;
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
@@ -36,6 +37,8 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
       </head>
       <body>
+        <PageLoader />
+        <RevealObserver />
         <ToastProvider>{children}</ToastProvider>
       </body>
     </html>

@@ -16,9 +16,8 @@ To open a node, add `?node-id=` plus the ID with `:` changed to `-` (e.g. `15:93
 |---|---|---|
 | Button / Button Gradient | 15:930 / 15:964 | `ui/Button.tsx` |
 | Input (Type = Text) | 15:1111 | `ui/Input.tsx` + `ui/Field.tsx` |
-| Input (Type = Select, incl. State = Open) + Dropdown Menu + Dropdown Option | 15:1111 / 133:33402 / 133:33314 | `ui/Select.tsx` (custom listbox with search when > 4 options, `DropdownMenu`, `DropdownOption`) |
-| Sort Dropdown | 86:19427 | `ui/Select.tsx` (`SortDropdown`) |
-| Phone Field | 76:15025 | `ui/PhoneField.tsx` |
+| Input (Type = Select, incl. State = Open) + Dropdown Menu + Dropdown Option | 15:1111 / 133:33402 / 133:33314 | `ui/Select.tsx` (custom listbox with search when > 4 options) |
+| Phone Field + Country Picker + Country Option | 76:15025 / 140:21837 / 140:21707 | `ui/PhoneField.tsx` (`COUNTRIES` list, searchable picker with flags) |
 | Password Field | 76:15101 | `ui/PasswordField.tsx` |
 | OTP Input | 76:15147 | `ui/OtpInput.tsx` |
 | Checkbox | 76:15155 | `ui/Checkbox.tsx` |
@@ -33,11 +32,17 @@ To open a node, add `?node-id=` plus the ID with `:` changed to `-` (e.g. `15:93
 | Country Flag | 42:7464 | `ui/Flag.tsx` + `public/images/flags/*` |
 | Illustration / Avatar | 54:10576 | `ui/Brand.tsx` → `CoupleAvatar` |
 | Love Sticker / Pattern Heart Lines / Love Scene | 46:7153 / 49:7217 / 77:15140 | `ui/Decor.tsx` + `public/images/decor/*` |
+| Auth Header (Action = Create account / Log in / Avatar) | 142:21950 | `auth/AuthHeader.tsx` (via `<AuthShell action="…">`) |
 | Navbar / Navbar Mobile | 55:10818 / 70:48330 | `layout/Navbar.tsx` |
 | Footer | 17:1304 | `layout/Footer.tsx` |
 | Profile Card | 16:1057 | `cards/ProfileCard.tsx` |
-| Profile Card Glass / Profile Marquee | 26:1390 / 26:3656 | `cards/ProfileGlassCard.tsx`, marquee in `sections/home/Hero.tsx` |
-| Search Bar + Search Popover | 8:97883 / 97:21510 | `sections/home/Hero.tsx` (`HeroSearch`) |
+| Profile Photo Card (Style = Glass / Card × State = Default / Hover) | 150:21863 | `cards/ProfilePhotoCard.tsx` (`variant="glass" \| "card"`) — hero marquee uses Card |
+| Profile Marquee (auto-scroll) | 26:3656 | marquee in `sections/home/Hero.tsx` (uses Profile Photo Card) |
+| Profile Card Glass (legacy, kept) | 26:1390 | `cards/ProfileGlassCard.tsx` |
+| Search Bar + Search Popover (Looking for) | 8:97883 / 97:21510 | `sections/home/Hero.tsx` (`HeroSearch`) |
+| Search Popover (Type = Age / Age (error)) | 97:20213 / 139:21926 | `sections/home/AgeRangePopover.tsx` |
+| Number Field (Default / Focus / Error) | 139:21708 | `ui/NumberField.tsx` |
+| Range Slider | 86:19394 | `ui/RangeSlider.tsx` (thumb CSS in `globals.css` → `.range-thumb`) |
 
 ## Home (🏠 Home Page → Home — Desktop 1442 `8:112648`, Mobile 390 `71:10390`)
 | Figma frame | Code |
@@ -66,3 +71,15 @@ To open a node, add `?node-id=` plus the ID with `:` changed to `-` (e.g. `15:93
 
 ## Not built yet
 🔍 Search Results (grid / list), 📄 Info Pages (About, Terms, Privacy), profile detail and chat.
+
+## Motion (code only — Figma prototypes use Smart Animate)
+
+| What | Where |
+| --- | --- |
+| First-visit page loader (logo + heart beat) | `components/motion/PageLoader.tsx` (root layout) |
+| Scroll reveal — add `reveal`, `reveal-zoom` or `reveal-stagger` to any element | `components/motion/RevealObserver.tsx` + `globals.css` → Motion |
+| Hero entrance — add `enter` + `--enter-delay` | `globals.css` → Motion (starts when the loader leaves) |
+| Page fade between routes | `app/template.tsx` |
+| Success Stories sliding carousel (5 s, pauses on hover, swipe) | `sections/home/SuccessStories.tsx` |
+
+All motion respects `prefers-reduced-motion`.

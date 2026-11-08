@@ -2,7 +2,7 @@
 
 import React, { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { ArrowDown2, Global, Moon, Sun1 } from "iconsax-react";
+import { Global, Moon, Sun1 } from "iconsax-react";
 import { cn } from "@/lib/cn";
 
 /** Figma: Logo (Variant = Default) — 122 × 72 */
@@ -27,8 +27,10 @@ export function CoupleAvatar({ size = 64, type = "couple", className }: { size?:
 export type Surface = "default" | "glass";
 
 const surfaceShell: Record<Surface, string> = {
-  default: "border-line-strong bg-surface-card text-ink hover:bg-surface-subtle",
-  glass: "border-line-glass bg-surface-glass text-ink-on-brand backdrop-blur-[8px] hover:bg-line-glass-subtle",
+  // Figma: white 14 % fill, no border, dark text + icon
+  default: "bg-surface-glass text-ink hover:bg-brand-subtle",
+  // Figma: white 14 % fill, no border, white text, brand globe
+  glass: "bg-surface-glass text-ink-on-brand backdrop-blur-[8px] hover:bg-line-glass-subtle",
 };
 
 /* ── Figma: Language Switch ─────────────────────────────────────────── */
@@ -63,11 +65,10 @@ export function LanguageSwitch({ surface = "default" }: { surface?: Surface }) {
         onClick={() => setOpen((o) => !o)}
         aria-haspopup="listbox"
         aria-expanded={open}
-        className={cn("flex h-[41px] items-center gap-1.5 rounded-md border pl-3 pr-2.5 text-label-md transition-colors", surfaceShell[surface])}
+        className={cn("flex h-10 items-center gap-1.5 rounded-[24px] px-2.5 text-label-md transition-colors", surfaceShell[surface])}
       >
-        <Global size={18} color="currentColor" />
+        <Global size={18} color="currentColor" className={surface === "glass" ? "text-brand" : undefined} />
         {lang}
-        <ArrowDown2 size={14} color="currentColor" className="opacity-70" />
       </button>
       {open && (
         <ul role="listbox" className="absolute right-0 top-12 z-40 w-36 animate-fade-up overflow-hidden rounded-md border border-line bg-surface-card py-1 text-ink shadow-lg">
@@ -95,7 +96,10 @@ export function LanguageSwitch({ surface = "default" }: { surface?: Surface }) {
   );
 }
 
-/* ── Figma: Theme Toggle (light / dark) ─────────────────────────────── */
+/* ── Figma: Theme Toggle (Surface = Default / Glass, Mode = Light / Dark) ──
+   One 40px round button (no border): 32px inner circle with the current
+   mode icon (sun / moon). Default = gradient circle, white icon; Glass =
+   white 14 % shell, white circle, brand icon. Click switches the mode. */
 export function ThemeToggle({ surface = "default" }: { surface?: Surface }) {
   const [dark, setDark] = useState(false);
 
@@ -103,28 +107,32 @@ export function ThemeToggle({ surface = "default" }: { surface?: Surface }) {
     setDark(document.documentElement.getAttribute("data-theme") === "dark");
   }, []);
 
-  const set = (isDark: boolean) => {
-    setDark(isDark);
-    if (isDark) document.documentElement.setAttribute("data-theme", "dark");
+  const toggle = () => {
+    const next = !dark;
+    setDark(next);
+    if (next) document.documentElement.setAttribute("data-theme", "dark");
     else document.documentElement.removeAttribute("data-theme");
     try {
-      localStorage.setItem("vk-theme", isDark ? "dark" : "light");
+      localStorage.setItem("vk-theme", next ? "dark" : "light");
     } catch {
       /* storage blocked */
     }
   };
 
-  const option = (active: boolean) =>
-    cn("flex h-8 w-8 items-center justify-center rounded-sm transition-colors", active ? "bg-surface-card text-brand shadow-xs" : "opacity-80 hover:opacity-100");
-
+  const Icon = dark ? Moon : Sun1;
   return (
-    <div role="group" aria-label="Colour theme" className={cn("flex h-[41px] items-center gap-0.5 rounded-md border px-1", surfaceShell[surface])}>
-      <button type="button" aria-label="Light theme" aria-pressed={!dark} onClick={() => set(false)} className={option(!dark)}>
-        <Sun1 size={18} color="currentColor" />
-      </button>
-      <button type="button" aria-label="Dark theme" aria-pressed={dark} onClick={() => set(true)} className={option(dark)}>
-        <Moon size={18} color="currentColor" />
-      </button>
-    </div>
+    <button
+      type="button"
+      onClick={toggle}
+      aria-label={dark ? "Switch to light theme" : "Switch to dark theme"}
+      className={cn(
+        "flex h-10 w-10 shrink-0 items-center justify-center rounded-full p-1 transition-transform hover:scale-105 active:scale-95",
+        surface === "glass" ? "bg-surface-glass backdrop-blur-[8px]" : "bg-transparent"
+      )}
+    >
+      <span className={cn("flex h-8 w-8 items-center justify-center rounded-full", surface === "glass" ? "bg-white text-brand" : "bg-brand-gradient text-ink-on-brand")}>
+        <Icon size={18} color="currentColor" />
+      </span>
+    </button>
   );
 }

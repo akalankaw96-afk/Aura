@@ -41,15 +41,15 @@ export function HowItWorks() {
             <path d="M912 210 C 940 240, 960 270, 992 296" stroke="var(--rose-300)" strokeWidth="2" strokeDasharray="2 6" strokeLinecap="round" />
           </svg>
           {HOW_IT_WORKS.steps.map((s, i) => (
-            <Note key={s.n} step={s} className="absolute" style={{ left: NOTE_POS[i].x, top: NOTE_POS[i].y, transform: `rotate(${NOTE_POS[i].rot}deg)` }} />
+            <Note key={s.n} step={s} className="reveal absolute" style={{ left: NOTE_POS[i].x, top: NOTE_POS[i].y, transform: `rotate(${NOTE_POS[i].rot}deg)`, "--reveal-delay": `${i * 140}ms` } as React.CSSProperties} />
           ))}
           {STICKERS.map((st, i) => (
-            <LoveSticker key={i} variant={st.v} size={st.s} rotate={st.rot} className="absolute" style={{ left: st.x, top: st.y }} />
+            <LoveSticker key={i} variant={st.v} size={st.s} rotate={st.rot} className="reveal-zoom absolute" style={{ left: st.x, top: st.y, "--reveal-delay": `${300 + i * 120}ms` } as React.CSSProperties} />
           ))}
         </div>
 
         {/* Tablet / mobile: stacked notes, alternating tilt (Figma: Home — Mobile 390) */}
-        <ol className="mx-auto flex w-full max-w-[340px] flex-col gap-10 lg:hidden">
+        <ol className="reveal-stagger mx-auto flex w-full max-w-[340px] flex-col gap-10 lg:hidden">
           {HOW_IT_WORKS.steps.map((s, i) => (
             <li key={s.n} className={cn(i % 2 ? "self-end" : "self-start")}>
               <Note step={s} style={{ transform: `rotate(${i % 2 ? 3 : -3}deg)` }} />

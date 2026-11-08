@@ -23,17 +23,25 @@ export const DEMO = {
 
 export interface RegistrationDraft {
   mobile: string;
+  /** Account step chips: Myself / Son / Daughter … */
   profileFor: string;
+  // ── Profile step (Figma 04 Register — 3 Profile) ──
+  firstName: string;
+  lastName: string;
+  /** derived: first + last (kept for screens that show the full name) */
   fullName: string;
-  gender: string;
-  dob: string;
-  religion: string;
-  district: string;
+  displayNameFormat: string;
+  createdBy: string;
+  email: string;
   height: string;
-  education: string;
-  profession: string;
-  maritalStatus: string;
-  livingIn: string;
+  /** yyyy-mm-dd, built from the Year / Month / Day selects */
+  dob: string;
+  gender: string;
+  civilStatus: string;
+  religion: string;
+  ethnicity: string;
+  caste: string;
+  country: string;
   about: string;
   photo: string | null;
   plan: "free" | "gold" | "platinum";
@@ -45,16 +53,20 @@ const KEY = "vk_registration";
 export const emptyDraft: RegistrationDraft = {
   mobile: "",
   profileFor: "Myself",
+  firstName: "",
+  lastName: "",
   fullName: "",
-  gender: "",
-  dob: "",
-  religion: "",
-  district: "",
+  displayNameFormat: "",
+  createdBy: "",
+  email: "",
   height: "",
-  education: "",
-  profession: "",
-  maritalStatus: "",
-  livingIn: "Sri Lanka",
+  dob: "",
+  gender: "",
+  civilStatus: "",
+  religion: "",
+  ethnicity: "",
+  caste: "",
+  country: "Sri Lanka",
   about: "",
   photo: null,
   plan: "free",

@@ -15,14 +15,14 @@ export function Pricing() {
     <section id="pricing" className="scroll-mt-28 py-16 lg:py-24">
       <div className="container-page flex flex-col gap-12">
         <SectionHeader eyebrow={PRICING.eyebrow} title={PRICING.title} description={PRICING.description} />
-        <div className="mx-auto grid w-full max-w-[1216px] gap-6 md:grid-cols-3 md:gap-8">
+        <div className="reveal-stagger mx-auto grid w-full max-w-[1216px] gap-6 md:grid-cols-3 md:gap-8">
           {PRICING.plans.map((p) => {
             const gold = !!p.popular;
             return (
               <article
                 key={p.id}
                 className={cn(
-                  "flex flex-col gap-6 rounded-xl p-8",
+                  "flex flex-col gap-6 rounded-xl p-8 hover:-translate-y-1.5 hover:shadow-xl",
                   gold ? "order-first bg-brand-strong text-ink-on-brand shadow-xl md:order-none" : "border border-line bg-surface-card shadow-sm"
                 )}
               >

@@ -40,10 +40,10 @@ export function FeaturedProfiles() {
           </div>
         </div>
 
-        <div className="-mx-page-x flex min-w-0 snap-x snap-mandatory gap-4 overflow-x-auto px-page-x pb-2 scrollbar-none sm:mx-0 sm:grid sm:grid-cols-2 sm:gap-8 sm:overflow-visible sm:px-0 lg:grid-cols-4">
+        <div className="reveal-stagger -mx-page-x flex min-w-0 snap-x snap-mandatory gap-4 overflow-x-auto px-page-x pb-2 scrollbar-none sm:mx-0 sm:grid sm:grid-cols-2 sm:gap-8 sm:overflow-visible sm:px-0 lg:grid-cols-4">
           {list.map((p) => (
             <div key={p.id} className="w-[85%] shrink-0 snap-center sm:w-auto">
-              <ProfileCard profile={p} onInterest={() => toast.success("Interest sent", `${p.id} will be notified. We’ll tell you when they reply.`)} />
+              <ProfileCard profile={p} onShortlist={(pr, saved) => (saved ? toast.success("Added to shortlist", `${pr.id} is saved to your shortlist.`) : toast.info("Removed from shortlist", `${pr.id} was removed.`))} />
             </div>
           ))}
         </div>
