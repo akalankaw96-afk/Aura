@@ -7,6 +7,7 @@ import { Navbar } from "@/components/layout/Navbar";
 import { Chip } from "@/components/ui/Chip";
 import { AgeRangePopover, formatAgeRange, type AgeRange } from "./AgeRangePopover";
 import { useToast } from "@/components/ui/Toast";
+import { useLanguage } from "@/context/LanguageContext";
 import { ProfilePhotoCard } from "@/components/cards/ProfilePhotoCard";
 import { HERO, MARQUEE_PROFILES } from "@/content/home";
 
@@ -18,6 +19,7 @@ import { HERO, MARQUEE_PROFILES } from "@/content/home";
  *  - All / Brides / Grooms chips + auto-scrolling Profile Marquee
  */
 export function Hero() {
+  const { t } = useLanguage();
   const [filter, setFilter] = useState<"all" | "bride" | "groom">("all");
   const list = useMemo(() => MARQUEE_PROFILES.filter((p) => filter === "all" || p.gender === filter), [filter]);
 
@@ -32,8 +34,8 @@ export function Hero() {
 
       <div className="container-page flex flex-col items-center gap-8 pb-10 pt-12 text-center lg:pb-[42px] lg:pt-[112px]">
         <div className="flex flex-col items-center gap-4">
-          <h1 className="enter max-w-[960px] text-[36px] font-extrabold leading-[1.2] tracking-[-0.02em] md:text-display-lg lg:text-display-xl">{HERO.title}</h1>
-          <p style={{ "--enter-delay": "120ms" } as React.CSSProperties} className="enter max-w-[720px] text-body-md text-ink-on-brand-muted md:text-body-xl">{HERO.description}</p>
+          <h1 className="enter max-w-[960px] text-[36px] font-extrabold leading-[1.2] tracking-[-0.02em] md:text-display-lg lg:text-display-xl">{t.hero.title}</h1>
+          <p style={{ "--enter-delay": "120ms" } as React.CSSProperties} className="enter max-w-[720px] text-body-md text-ink-on-brand-muted md:text-body-xl">{t.hero.description}</p>
         </div>
         <div className="enter flex w-full justify-center" style={{ "--enter-delay": "240ms" } as React.CSSProperties}>
           <HeroSearch />
@@ -45,9 +47,9 @@ export function Hero() {
         <div role="tablist" aria-label="Show" className="enter flex gap-2" style={{ "--enter-delay": "380ms" } as React.CSSProperties}>
           {(
             [
-              ["all", "All", "/brand/couple.png"],
-              ["bride", "Brides", "/brand/bride.png"],
-              ["groom", "Grooms", "/brand/groom.png"],
+              ["all", t.hero.all, "/brand/couple.png"],
+              ["bride", t.hero.brides, "/brand/bride.png"],
+              ["groom", t.hero.grooms, "/brand/groom.png"],
             ] as const
           ).map(([value, label, avatar]) => (
             <Chip key={value} role="tab" aria-selected={filter === value} selected={filter === value} avatar={avatar} onClick={() => setFilter(value)}>
@@ -86,6 +88,7 @@ export function Marquee({ children }: { children: React.ReactNode }) {
 
 export function HeroSearch() {
   const toast = useToast();
+  const { t, lang } = useLanguage();
   const [lookingFor, setLookingFor] = useState<"Bride" | "Groom">("Bride");
   const [age, setAge] = useState<AgeRange>({ min: 25, max: 32 });
   const [open, setOpen] = useState<null | "for" | "age">(null);
@@ -109,7 +112,8 @@ export function HeroSearch() {
 
   const search = () => {
     setOpen(null);
-    toast.info(`Searching ${lookingFor.toLowerCase()}s aged ${ageLabel}`, "The search results page is the next screen to build.");
+    const roleName = lookingFor === "Bride" ? t.hero.bride : t.hero.groom;
+    toast.info(`${roleName} • ${t.hero.age}: ${ageLabel}`, lang === "si" ? "සෙවුම් ප්‍රතිඵල පිටුව ළඟදීම බලාපොරොත්තු වන්න." : "The search results page is the next screen to build.");
   };
 
   // Figma: Search Bar (Layout = 2 fields) — the open segment is rounded only on its
@@ -121,6 +125,8 @@ export function HeroSearch() {
       active ? "bg-brand-subtle" : "hover:bg-surface-subtle"
     );
 
+  const lookingForLabel = lookingFor === "Bride" ? t.hero.bride : t.hero.groom;
+
   return (
     <div ref={ref} className="relative z-20 w-full max-w-[600px] text-left md:w-auto">
       <div className="flex flex-col gap-2 rounded-xl bg-surface-card p-3 shadow-xl md:flex-row md:items-center md:gap-0 md:rounded-full md:p-2">
@@ -128,8 +134,8 @@ export function HeroSearch() {
         <button type="button" aria-haspopup="listbox" aria-expanded={open === "for"} onClick={() => setOpen(open === "for" ? null : "for")} className={segment(open === "for", "left")}>
           <Heart size={24} color="currentColor" className="shrink-0 text-icon-brand" />
           <span className="flex flex-1 flex-col">
-            <span className="text-label-sm text-ink-tertiary">Looking for</span>
-            <span className="text-body-md font-semibold">{lookingFor}</span>
+            <span className="text-label-sm text-ink-tertiary">{t.hero.lookingFor}</span>
+            <span className="text-body-md font-semibold">{lookingForLabel}</span>
           </span>
           <ArrowDown2 size={24} color="currentColor" className={cn("shrink-0 text-icon-brand transition-transform", open === "for" && "rotate-180")} />
         </button>
@@ -138,7 +144,7 @@ export function HeroSearch() {
         <button type="button" aria-haspopup="dialog" aria-expanded={open === "age"} onClick={() => setOpen(open === "age" ? null : "age")} className={segment(open === "age", "right")}>
           <User size={24} color="currentColor" className="shrink-0 text-icon-brand" />
           <span className="flex flex-1 flex-col">
-            <span className="text-label-sm text-ink-tertiary">Age</span>
+            <span className="text-label-sm text-ink-tertiary">{t.hero.age}</span>
             <span className="text-body-md font-semibold">{ageLabel}</span>
           </span>
           <ArrowDown2 size={24} color="currentColor" className={cn("shrink-0 text-icon-brand transition-transform", open === "age" && "rotate-180")} />
@@ -149,21 +155,21 @@ export function HeroSearch() {
           className="flex h-[54px] items-center justify-center gap-2 rounded-full bg-brand-gradient px-8 text-button-md text-ink-on-brand transition-shadow hover:shadow-glow"
         >
           <SearchNormal1 size={20} color="currentColor" />
-          Search
+          {t.hero.search}
         </button>
       </div>
 
       {open === "for" && (
         /* Figma: Search Popover (Type = Looking for) — 300 wide, padding 16, gap 12, radius lg */
         <div className="absolute left-0 top-[calc(100%+8px)] flex w-full animate-pop-in flex-col gap-3 rounded-lg border border-line bg-surface-card p-4 shadow-xl md:w-[300px]">
-          <p id="looking-for-title" className="text-label-md text-ink-tertiary">I’m looking for</p>
+          <p id="looking-for-title" className="text-label-md text-ink-tertiary">{t.hero.lookingFor}</p>
           <div role="radiogroup" aria-labelledby="looking-for-title" className="flex flex-col gap-3">
             {(
               [
-                ["Bride", "Female profiles", "/brand/bride.png", "bg-rose-100"],
-                ["Groom", "Male profiles", "/brand/groom.png", "bg-gold-100"],
+                ["Bride", t.hero.bride, lang === "si" ? "කාන්තා පැතිකඩ" : "Female profiles", "/brand/bride.png", "bg-rose-100"],
+                ["Groom", t.hero.groom, lang === "si" ? "පිරිමි පැතිකඩ" : "Male profiles", "/brand/groom.png", "bg-gold-100"],
               ] as const
-            ).map(([v, sub, img, tint]) => {
+            ).map(([v, label, sub, img, tint]) => {
               const on = lookingFor === v;
               return (
                 <button
@@ -183,7 +189,7 @@ export function HeroSearch() {
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={img} alt="" className={cn("h-12 w-12 shrink-0 rounded-full", tint)} />
                   <span className="flex flex-1 flex-col">
-                    <span className={cn("text-body-md font-semibold", on ? "text-brand-text" : "text-ink")}>{v}</span>
+                    <span className={cn("text-body-md font-semibold", on ? "text-brand-text" : "text-ink")}>{label}</span>
                     <span className="text-caption text-ink-tertiary">{sub}</span>
                   </span>
                   <span

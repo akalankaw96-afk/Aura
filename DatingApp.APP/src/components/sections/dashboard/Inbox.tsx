@@ -7,6 +7,7 @@ import { cn } from "@/lib/cn";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { useToast } from "@/components/ui/Toast";
+import { useLanguage } from "@/context/LanguageContext";
 import { MESSAGES, REQUESTS } from "@/content/dashboard";
 
 /**
@@ -23,13 +24,13 @@ export function Inbox() {
   );
 }
 
-function Panel({ id, title, count, link, children }: { id: string; title: string; count: string; link: string; children: React.ReactNode }) {
+function Panel({ id, title, count, link, href, children }: { id: string; title: string; count: string; link: string; href: string; children: React.ReactNode }) {
   return (
     <section id={id} aria-label={title} className="reveal flex min-w-0 scroll-mt-28 flex-col gap-2 rounded-xl border border-line bg-surface-card p-4 shadow-sm sm:p-6">
       <div className="flex flex-wrap items-center gap-2 pb-2">
         <h2 className="text-h5 text-ink">{title}</h2>
         <Badge tone="brand">{count}</Badge>
-        <Link href="/dashboard" className="ml-auto flex items-center gap-1 whitespace-nowrap text-link-sm text-brand-link underline">
+        <Link href={href} className="ml-auto flex items-center gap-1 whitespace-nowrap text-link-sm text-brand-link hover:underline">
           {link} <ArrowRight2 size={16} color="currentColor" />
         </Link>
       </div>
@@ -40,13 +41,14 @@ function Panel({ id, title, count, link, children }: { id: string; title: string
 
 function Requests() {
   const toast = useToast();
+  const { t, lang } = useLanguage();
   const [state, setState] = useState<Record<string, "accepted" | "declined">>({});
-  const list = REQUESTS.filter((r) => state[r.id] !== "declined");
+  const list = REQUESTS.filter((r) => r.tab === "received" && state[r.id] !== "declined");
   const pending = list.filter((r) => !state[r.id]).length;
 
   return (
-    <Panel id="requests" title="New requests" count={`${pending} new`} link="View all requests">
-      {list.length === 0 && <p className="py-6 text-center text-body-sm text-ink-tertiary">You’re all caught up.</p>}
+    <Panel id="requests" title={t.dashboard.newRequests} count={`${pending} ${lang === "si" ? "නව" : "new"}`} link={t.dashboard.viewAllRequests} href="/requests">
+      {list.length === 0 && <p className="py-6 text-center text-body-sm text-ink-tertiary">{lang === "si" ? "සියලු යෝජනා පරීක්ෂා කර ඇත." : "You’re all caught up."}</p>}
       <ul className="flex flex-col">
         {list.map((r, i) => (
           <li key={r.id} className={cn("flex flex-wrap items-center gap-3 py-3 sm:flex-nowrap", i < list.length - 1 && "border-b border-line")}>
@@ -61,7 +63,7 @@ function Requests() {
             </div>
             {state[r.id] === "accepted" ? (
               <span className="flex items-center gap-1 text-label-md text-success-fg">
-                <TickCircle size={18} color="currentColor" variant="Bold" /> Accepted
+                <TickCircle size={18} color="currentColor" variant="Bold" /> {lang === "si" ? "පිළිගන්නා ලදී" : "Accepted"}
               </span>
             ) : (
               <div className="flex gap-2 max-sm:w-full max-sm:pl-[60px]">
@@ -70,19 +72,19 @@ function Requests() {
                   variant="outline"
                   onClick={() => {
                     setState((s) => ({ ...s, [r.id]: "declined" }));
-                    toast.info("Request declined", `${r.name} won’t be notified.`);
+                    toast.info(lang === "si" ? "යෝජනාව ප්‍රතික්ෂේප විය" : "Request declined", lang === "si" ? `${r.name} වෙත දැනුම් නොදේ.` : `${r.name} won’t be notified.`);
                   }}
                 >
-                  Decline
+                  {t.dashboard.decline}
                 </Button>
                 <Button
                   size="sm"
                   onClick={() => {
                     setState((s) => ({ ...s, [r.id]: "accepted" }));
-                    toast.success("Interest accepted", `You can now message ${r.name}. Photos and contacts are unlocked.`);
+                    toast.success(lang === "si" ? "කැමැත්ත පිළිගන්නා ලදී" : "Interest accepted", lang === "si" ? `දැන් ඔබට ${r.name} සමඟ කතාබස් කළ හැක.` : `You can now message ${r.name}. Photos and contacts are unlocked.`);
                   }}
                 >
-                  Accept
+                  {t.dashboard.accept}
                 </Button>
               </div>
             )}
@@ -94,11 +96,12 @@ function Requests() {
 }
 
 function Messages() {
+  const { t, lang } = useLanguage();
   const [read, setRead] = useState<string[]>([]);
   const unread = MESSAGES.reduce((n, m) => n + (read.includes(m.id) ? 0 : m.unread), 0);
 
   return (
-    <Panel id="messages" title="New messages" count={`${unread} unread`} link="Open inbox">
+    <Panel id="messages" title={t.dashboard.newMessages} count={`${unread} ${lang === "si" ? "නොකියවූ" : "unread"}`} link={t.dashboard.openInbox} href="/messages">
       <ul className="flex flex-col">
         {MESSAGES.map((m, i) => {
           const isUnread = !read.includes(m.id) && m.unread > 0;

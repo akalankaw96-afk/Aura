@@ -1,3 +1,5 @@
+"use client";
+
 import React from "react";
 import Link from "next/link";
 import {
@@ -22,6 +24,7 @@ import {
 } from "iconsax-react";
 import { cn } from "@/lib/cn";
 import { SectionHeader } from "@/components/ui/SectionHeader";
+import { useLanguage } from "@/context/LanguageContext";
 import { CATEGORIES, type CategoryIcon } from "@/content/home";
 
 /**
@@ -54,18 +57,26 @@ const ICONS: Record<CategoryIcon, typeof Book> = {
 const ROW_STYLE = ["[animation-duration:70s]", "[animation-direction:reverse] [animation-duration:80s]", "[animation-duration:90s]"];
 
 export function CategoryWall() {
+  const { t } = useLanguage();
+
   return (
     <section id="categories" className="scroll-mt-28 overflow-hidden py-16 lg:py-24">
       <div className="flex flex-col gap-12">
         <div className="container-page">
-          <SectionHeader eyebrow={CATEGORIES.eyebrow} title={CATEGORIES.title} description={CATEGORIES.description} />
+          <SectionHeader eyebrow={t.categories.eyebrow} title={t.categories.title} description={t.categories.description} />
         </div>
 
         <div className="reveal group relative flex flex-col gap-3 py-2.5">
           {CATEGORIES.rows.map((row, r) => (
             <div key={r} className={cn("flex w-max animate-marquee gap-4 group-hover:[animation-play-state:paused]", ROW_STYLE[r])}>
               {[...row, ...row, ...row, ...row].map((c, k) => (
-                <Brick key={k} {...c} hidden={k >= row.length * 2} />
+                <Brick
+                  key={k}
+                  {...c}
+                  displayLabel={t.categories.labels[c.label] || c.label}
+                  proposalsText={t.categories.proposals}
+                  hidden={k >= row.length * 2}
+                />
               ))}
             </div>
           ))}
@@ -75,14 +86,28 @@ export function CategoryWall() {
         </div>
 
         <Link href="/register" className="mx-auto flex h-14 items-center rounded-full bg-brand-gradient px-8 text-button-lg text-ink-on-brand transition-shadow hover:shadow-glow md:hidden">
-          {CATEGORIES.cta}
+          {t.categories.exploreAll}
         </Link>
       </div>
     </section>
   );
 }
 
-function Brick({ label, count, icon, hidden }: { label: string; count: string; icon: CategoryIcon; hidden?: boolean }) {
+function Brick({
+  label,
+  displayLabel,
+  count,
+  proposalsText,
+  icon,
+  hidden,
+}: {
+  label: string;
+  displayLabel: string;
+  count: string;
+  proposalsText: string;
+  icon: CategoryIcon;
+  hidden?: boolean;
+}) {
   const Icon = ICONS[icon];
   return (
     <Link
@@ -95,8 +120,8 @@ function Brick({ label, count, icon, hidden }: { label: string; count: string; i
         <Icon size={24} color="currentColor" />
       </span>
       <span className="flex min-w-0 flex-col gap-0.5">
-        <span className="truncate text-body-md font-semibold text-ink">{label}</span>
-        <span className="text-caption text-ink-tertiary">{count} proposals</span>
+        <span className="truncate text-body-md font-semibold text-ink">{displayLabel}</span>
+        <span className="text-caption text-ink-tertiary">{count} {proposalsText}</span>
       </span>
     </Link>
   );

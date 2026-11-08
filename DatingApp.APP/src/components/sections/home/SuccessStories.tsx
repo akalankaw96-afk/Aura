@@ -1,9 +1,10 @@
 "use client";
 
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ArrowLeft, ArrowRight2, Location, Verify } from "iconsax-react";
 import { cn } from "@/lib/cn";
 import { SectionHeader } from "@/components/ui/SectionHeader";
+import { useLanguage } from "@/context/LanguageContext";
 import { STORIES } from "@/content/home";
 
 /**
@@ -27,7 +28,15 @@ const STAGE_H = 420;
 const PHOTO_W = 360;
 
 export function SuccessStories() {
-  const items = STORIES.items;
+  const { t } = useLanguage();
+  const items = useMemo(() => {
+    return t.stories.items.map((item, idx) => ({
+      ...item,
+      initials: STORIES.items[idx]?.initials || "VK",
+      photo: STORIES.items[idx]?.photo || "/images/stories/story-main.jpg",
+    }));
+  }, [t.stories.items]);
+
   const n = items.length;
   const [i, setI] = useState(0);
   const [paused, setPaused] = useState(false);
@@ -38,8 +47,8 @@ export function SuccessStories() {
 
   useEffect(() => {
     if (paused) return;
-    const t = window.setTimeout(() => go(i + 1), INTERVAL);
-    return () => window.clearTimeout(t);
+    const timer = window.setTimeout(() => go(i + 1), INTERVAL);
+    return () => window.clearTimeout(timer);
   }, [i, paused, go]);
 
   useEffect(() => {
@@ -50,7 +59,7 @@ export function SuccessStories() {
   const half = Math.floor(n / 2);
   const offsetOf = (k: number, active: number) => ((k - active + n + half) % n) - half;
 
-  const story = items[i];
+  const story = items[i] || items[0];
   const swipe = {
     onTouchStart: (e: React.TouchEvent) => (touchX.current = e.touches[0].clientX),
     onTouchEnd: (e: React.TouchEvent) => {
@@ -65,7 +74,7 @@ export function SuccessStories() {
     <section
       id="stories"
       aria-roledescription="carousel"
-      aria-label="Success stories"
+      aria-label={t.stories.title}
       className="scroll-mt-28 overflow-hidden py-16 lg:py-24"
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
@@ -74,7 +83,7 @@ export function SuccessStories() {
     >
       <div className="flex flex-col gap-12">
         <div className="container-page">
-          <SectionHeader eyebrow={STORIES.eyebrow} title={STORIES.title} description={STORIES.description} />
+          <SectionHeader eyebrow={t.stories.eyebrow} title={t.stories.title} description={t.stories.description} />
         </div>
 
         {/* Desktop: sliding slot carousel */}
@@ -207,7 +216,17 @@ export function SuccessStories() {
   );
 }
 
-type Story = (typeof STORIES.items)[number];
+type Story = {
+  badge: string;
+  headline: string;
+  quote: string;
+  names: string;
+  meta: string;
+  initials: string;
+  photo: string;
+  caption: string;
+  captionMeta: string;
+};
 
 function StoryText({ story }: { story: Story }) {
   return (

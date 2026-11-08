@@ -20,13 +20,11 @@ export default function DashboardPage() {
       <main>
         <div className="container-page flex flex-col gap-6 pb-12 pt-6 lg:pt-8">
           <DashboardHero />
-          <SearchCard />
           <StatsRow />
+          <Inbox />
+          <SearchCard />
         </div>
         <BestMatches />
-        <div className="container-page pb-16 pt-12 lg:pb-24">
-          <Inbox />
-        </div>
       </main>
       <Footer />
     </div>

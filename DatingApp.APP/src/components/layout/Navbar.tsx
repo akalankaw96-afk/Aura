@@ -6,8 +6,8 @@ import { usePathname } from "next/navigation";
 import { ArrowDown2, CloseCircle, Logout, Notification, Setting2, TextalignJustifycenter, User } from "iconsax-react";
 import { cn } from "@/lib/cn";
 import { LanguageSwitch, Logo, ThemeToggle } from "@/components/ui/Brand";
-import { NAV_LINKS } from "@/content/home";
-import { MEMBER, MEMBER_LINKS } from "@/content/dashboard";
+import { useLanguage } from "@/context/LanguageContext";
+import { MEMBER } from "@/content/dashboard";
 
 /**
  * Figma: Navbar (Style = Light / Style3 / Transparent) + Navbar Mobile.
@@ -31,6 +31,7 @@ const CTA: Record<NavbarVariant, { label: string; href: string }> = {
 export function Navbar({ variant = "light" }: { variant?: NavbarVariant }) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
+  const { t } = useLanguage();
 
   useEffect(() => {
     document.body.style.overflow = open ? "hidden" : "";
@@ -41,8 +42,24 @@ export function Navbar({ variant = "light" }: { variant?: NavbarVariant }) {
 
   const glass = variant === "glass";
   const member = variant === "member";
-  const cta = CTA[variant];
-  const links = member ? MEMBER_LINKS : NAV_LINKS;
+  const cta = member
+    ? { label: t.nav.logout, href: "/" }
+    : { label: t.nav.createOrLogin, href: "/login" };
+
+  const links = member
+    ? [
+        { label: t.nav.dashboard, href: "/dashboard" },
+        { label: t.nav.requests, href: "/requests" },
+        { label: t.nav.messages, href: "/messages" },
+        { label: t.nav.plans, href: "/dashboard#pricing" },
+      ]
+    : [
+        { label: t.nav.home, href: "/" },
+        { label: t.nav.brides, href: "/#featured" },
+        { label: t.nav.grooms, href: "/#featured" },
+        { label: t.nav.howItWorks, href: "/#how-it-works" },
+        { label: t.nav.pricing, href: "/#pricing" },
+      ];
 
   return (
     <header
@@ -154,6 +171,7 @@ function NotificationButton() {
 /** Figma: Navbar (Style = Member) → Account — avatar 36 + first name + chevron; opens a small menu */
 function AccountMenu() {
   const [open, setOpen] = useState(false);
+  const { t, lang } = useLanguage();
   const ref = React.useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -170,9 +188,9 @@ function AccountMenu() {
   }, [open]);
 
   const items = [
-    { label: "My profile", href: "/register", Icon: User },
-    { label: "Settings", href: "/dashboard", Icon: Setting2 },
-    { label: "Log out", href: "/", Icon: Logout },
+    { label: lang === "si" ? "මගේ පැතිකඩ" : "My profile", href: "/register", Icon: User },
+    { label: lang === "si" ? "සැකසුම්" : "Settings", href: "/dashboard", Icon: Setting2 },
+    { label: t.nav.logout, href: "/", Icon: Logout },
   ];
 
   return (

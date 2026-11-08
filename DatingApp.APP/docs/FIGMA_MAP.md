@@ -69,8 +69,15 @@ To open a node, add `?node-id=` plus the ID with `:` changed to `-` (e.g. `15:93
 | 7 Review & go live | 06, 06a–06f | `auth/ReviewStatus.tsx` · `/register/status` |
 | 8 Upgrade plan | 07, 07a–07b | `auth/PlansScreen.tsx` · `/plans` |
 
+## Member Dashboard (📊 Member Dashboard `167:12645`)
+| Frame | Code / route |
+|---|---|
+| Dashboard — Desktop 1441 `165:27877` | `app/dashboard/page.tsx` · `/dashboard` |
+| Requests — Desktop 1440 `171:15511` | `app/requests/page.tsx` · `/requests` |
+| Messages — Desktop 1440 `172:15691` | `app/messages/page.tsx` · `/messages` |
+
 ## Not built yet
-🔍 Search Results (grid / list), 📄 Info Pages (About, Terms, Privacy), profile detail and chat.
+🔍 Search Results (grid / list), 📄 Info Pages (About, Terms, Privacy), profile detail modal.
 
 ## Motion (code only — Figma prototypes use Smart Animate)
 

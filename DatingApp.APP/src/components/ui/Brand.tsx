@@ -4,6 +4,7 @@ import React, { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { Global, Moon, Sun1 } from "iconsax-react";
 import { cn } from "@/lib/cn";
+import { useLanguage } from "@/context/LanguageContext";
 
 /** Figma: Logo (Variant = Default) — 122 × 72 */
 export function Logo({ height = 72, className }: { height?: number; className?: string }) {
@@ -35,14 +36,13 @@ const surfaceShell: Record<Surface, string> = {
 
 /* ── Figma: Language Switch ─────────────────────────────────────────── */
 const LANGS = [
-  { code: "EN", label: "English", lang: "en" },
-  { code: "සිං", label: "සිංහල", lang: "si" },
-  { code: "தமி", label: "தமிழ்", lang: "ta" },
+  { code: "EN", label: "English", lang: "en" as const },
+  { code: "සිං", label: "සිංහල", lang: "si" as const },
 ];
 
 export function LanguageSwitch({ surface = "default" }: { surface?: Surface }) {
   const [open, setOpen] = useState(false);
-  const [lang, setLang] = useState("EN");
+  const { lang, setLanguage } = useLanguage();
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -58,6 +58,8 @@ export function LanguageSwitch({ surface = "default" }: { surface?: Surface }) {
     };
   }, [open]);
 
+  const activeLabel = lang === "si" ? "සිං" : "EN";
+
   return (
     <div ref={ref} className="relative">
       <button
@@ -65,10 +67,11 @@ export function LanguageSwitch({ surface = "default" }: { surface?: Surface }) {
         onClick={() => setOpen((o) => !o)}
         aria-haspopup="listbox"
         aria-expanded={open}
+        aria-label="Change language"
         className={cn("flex h-10 items-center gap-1.5 rounded-[24px] px-2.5 text-label-md transition-colors", surfaceShell[surface])}
       >
         <Global size={18} color="currentColor" className={surface === "glass" ? "text-brand" : undefined} />
-        {lang}
+        {activeLabel}
       </button>
       {open && (
         <ul role="listbox" className="absolute right-0 top-12 z-40 w-36 animate-fade-up overflow-hidden rounded-md border border-line bg-surface-card py-1 text-ink shadow-lg">
@@ -77,14 +80,13 @@ export function LanguageSwitch({ surface = "default" }: { surface?: Surface }) {
               <button
                 type="button"
                 role="option"
-                aria-selected={lang === l.code}
+                aria-selected={lang === l.lang}
                 lang={l.lang}
                 onClick={() => {
-                  setLang(l.code);
+                  setLanguage(l.lang);
                   setOpen(false);
-                  document.documentElement.lang = l.lang;
                 }}
-                className={cn("w-full px-3 py-2 text-left text-body-sm hover:bg-brand-subtle", lang === l.code && "font-bold text-brand-text")}
+                className={cn("w-full px-3 py-2 text-left text-body-sm hover:bg-brand-subtle", lang === l.lang && "font-bold text-brand-text")}
               >
                 {l.label}
               </button>

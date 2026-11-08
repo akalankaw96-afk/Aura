@@ -6,20 +6,25 @@ import { AddCircle, Lovely, TickCircle } from "iconsax-react";
 import { cn } from "@/lib/cn";
 import { DASH_HERO, MEMBER } from "@/content/dashboard";
 import { HERO } from "@/content/home";
+import { useLanguage } from "@/context/LanguageContext";
 
 /**
  * Figma: Dashboard → Hero — 1280 wide, padding 48, gap 40, radius 2xl.
  * Hero photo + black 62 % + brand gradient (left → right), welcome copy + CTAs,
  * and a glass "Profile strength" card (340 wide).
  */
-function greeting(h: number) {
-  return h < 12 ? "Good morning" : h < 17 ? "Good afternoon" : "Good evening";
-}
-
 export function DashboardHero() {
-  // time of day is only known in the browser → start neutral to avoid a hydration mismatch
+  const { t, lang } = useLanguage();
   const [hello, setHello] = useState("Welcome");
-  useEffect(() => setHello(greeting(new Date().getHours())), []);
+
+  useEffect(() => {
+    const h = new Date().getHours();
+    if (lang === "si") {
+      setHello(h < 12 ? t.dashboard.goodMorning : h < 17 ? t.dashboard.goodAfternoon : t.dashboard.goodEvening);
+    } else {
+      setHello(h < 12 ? "Good morning" : h < 17 ? "Good afternoon" : "Good evening");
+    }
+  }, [lang, t]);
 
   return (
     <section aria-label="Welcome" className="relative isolate overflow-hidden rounded-2xl bg-rose-950 text-ink-on-brand">
@@ -31,20 +36,20 @@ export function DashboardHero() {
       <div className="flex flex-col gap-8 p-6 sm:p-10 lg:flex-row lg:items-center lg:gap-10 lg:p-12">
         <div className="flex flex-1 flex-col gap-4">
           <span className="enter inline-flex w-fit items-center gap-1.5 rounded-full border border-line-glass bg-surface-glass py-1.5 pl-2.5 pr-3 text-label-sm backdrop-blur-[8px]">
-            <Lovely size={16} color="currentColor" /> {DASH_HERO.eyebrow}
+            <Lovely size={16} color="currentColor" /> {t.dashboard.eyebrow}
           </span>
           <h1 className="enter text-h2 md:text-display-lg" style={{ "--enter-delay": "80ms" } as React.CSSProperties}>
             {hello}, {MEMBER.firstName}
           </h1>
           <p className="enter text-body-md text-ink-on-brand-muted md:text-body-lg" style={{ "--enter-delay": "160ms" } as React.CSSProperties}>
-            {DASH_HERO.subtitle}
+            {lang === "si" ? `අද දිනයේ නව ගැළපීම් 12ක් සහ යෝජනා 3ක් ඔබ වෙනුවෙන් සූදානම්ව ඇත.` : DASH_HERO.subtitle}
           </p>
           <div className="enter flex flex-wrap gap-3 pt-2" style={{ "--enter-delay": "240ms" } as React.CSSProperties}>
             <Link href={DASH_HERO.primary.href} className="flex h-11 items-center rounded-full bg-brand-gradient px-6 text-button-md text-ink-on-brand transition-shadow hover:shadow-glow">
-              {DASH_HERO.primary.label}
+              {t.dashboard.seeMatches}
             </Link>
             <Link href={DASH_HERO.secondary.href} className="flex h-11 items-center rounded-full bg-brand-subtle px-6 text-button-md text-brand-text ring-1 ring-inset ring-brand">
-              {DASH_HERO.secondary.label}
+              {t.dashboard.completeProfile}
             </Link>
           </div>
         </div>
@@ -57,11 +62,19 @@ export function DashboardHero() {
 
 /** Figma: Hero → Profile strength — glass card, 340 wide, padding 20, gap 16, radius xl */
 function ProfileStrength() {
+  const { t, lang } = useLanguage();
   const [w, setW] = useState(0);
   useEffect(() => {
-    const t = window.setTimeout(() => setW(MEMBER.strength), 500);
-    return () => window.clearTimeout(t);
+    const tTimer = window.setTimeout(() => setW(MEMBER.strength), 500);
+    return () => window.clearTimeout(tTimer);
   }, []);
+
+  const todoLabels: Record<string, string> = {
+    "Personal details": lang === "si" ? "පුද්ගලික තොරතුරු" : "Personal details",
+    "Family & partner preferences": lang === "si" ? "පවුලේ තොරතුරු සහ කැමැත්ත" : "Family & partner preferences",
+    "Upload photo (verified)": lang === "si" ? "සත්‍යාපිත ඡායාරූපය" : "Upload photo (verified)",
+    "Add horoscope for better matches": lang === "si" ? "කේන්දර සටහන එක් කරන්න" : "Add horoscope for better matches",
+  };
 
   return (
     <aside
@@ -74,12 +87,12 @@ function ProfileStrength() {
         <img src={MEMBER.photo} alt="" className="h-14 w-14 rounded-full border-2 border-white object-cover" />
         <div className="flex flex-col gap-0.5">
           <p className="text-h6">{MEMBER.fullName}</p>
-          <p className="text-caption text-ink-on-brand-muted">{MEMBER.id} · Verified</p>
+          <p className="text-caption text-ink-on-brand-muted">{MEMBER.id} · {t.featured.verified}</p>
         </div>
       </div>
       <div className="flex flex-col gap-2">
         <div className="flex justify-between text-label-md">
-          <span>Profile strength</span>
+          <span>{t.dashboard.profileStrength}</span>
           <span>{MEMBER.strength}%</span>
         </div>
         <div className="h-2 overflow-hidden rounded-full bg-[rgba(255,255,255,0.2)]" role="progressbar" aria-valuenow={MEMBER.strength} aria-valuemin={0} aria-valuemax={100}>
@@ -87,14 +100,14 @@ function ProfileStrength() {
         </div>
       </div>
       <ul className="flex flex-col gap-2">
-        {MEMBER.todos.map((t) => (
-          <li key={t.label} className={cn("flex items-center gap-2 text-body-sm", t.done ? "text-ink-on-brand" : "text-ink-on-brand-muted")}>
-            {t.done ? <TickCircle size={16} color="currentColor" variant="Bold" className="text-gold-300" /> : <AddCircle size={16} color="currentColor" />}
-            {t.done ? (
-              t.label
+        {MEMBER.todos.map((item) => (
+          <li key={item.label} className={cn("flex items-center gap-2 text-body-sm", item.done ? "text-ink-on-brand" : "text-ink-on-brand-muted")}>
+            {item.done ? <TickCircle size={16} color="currentColor" variant="Bold" className="text-gold-300" /> : <AddCircle size={16} color="currentColor" />}
+            {item.done ? (
+              todoLabels[item.label] || item.label
             ) : (
               <Link href="/register" className="hover:text-ink-on-brand hover:underline">
-                {t.label}
+                {todoLabels[item.label] || item.label}
               </Link>
             )}
           </li>
