@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Heart, ShieldCheck, Menu, X, UserCheck, PhoneCall, Sparkles, LogOut, User } from 'lucide-react';
+import Link from 'next/link';
+import { Heart, ShieldCheck, Menu, X, UserCheck, PhoneCall, Sparkles, LogOut, User, LayoutDashboard } from 'lucide-react';
 import { AuthSession } from '../services/api';
 
 interface NavbarProps {
@@ -62,6 +63,12 @@ export const Navbar: React.FC<NavbarProps> = ({
             <a href="#faq" className="hover:text-[#801b34] transition-colors">
               Help & FAQ
             </a>
+            {currentUser && (
+              <Link href="/dashboard" className="text-[#801b34] font-bold hover:underline flex items-center gap-1 transition-colors">
+                <LayoutDashboard className="w-3.5 h-3.5" />
+                <span>Dashboard</span>
+              </Link>
+            )}
           </nav>
 
           {/* Right Action Buttons */}
@@ -89,12 +96,20 @@ export const Navbar: React.FC<NavbarProps> = ({
                       <p className="text-[11px] text-gray-400 uppercase font-semibold">Signed In</p>
                       <p className="text-xs font-bold text-gray-900 truncate">{currentUser.email || currentUser.phoneNumber}</p>
                     </div>
+                    <Link
+                      href="/dashboard"
+                      onClick={() => setUserDropdownOpen(false)}
+                      className="w-full text-left px-4 py-2 text-xs font-semibold text-gray-700 hover:bg-rose-50 flex items-center gap-2 cursor-pointer transition-colors"
+                    >
+                      <LayoutDashboard className="w-3.5 h-3.5 text-[#801b34]" />
+                      <span>My Dashboard</span>
+                    </Link>
                     <button
                       onClick={() => {
                         setUserDropdownOpen(false);
                         onSignOut && onSignOut();
                       }}
-                      className="w-full text-left px-4 py-2 text-xs font-semibold text-rose-700 hover:bg-rose-50 flex items-center gap-2 cursor-pointer"
+                      className="w-full text-left px-4 py-2 text-xs font-semibold text-rose-700 hover:bg-rose-50 flex items-center gap-2 cursor-pointer transition-colors"
                     >
                       <LogOut className="w-3.5 h-3.5" />
                       <span>Sign Out</span>

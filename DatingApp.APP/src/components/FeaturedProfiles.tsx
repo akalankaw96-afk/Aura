@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { Profile } from '../types';
-import { ShieldCheck, Heart, MapPin, GraduationCap, Briefcase, ChevronRight, Sparkles, Check } from 'lucide-react';
+import { ShieldCheck, Heart, MapPin, GraduationCap, Briefcase, ChevronRight, Sparkles, Check, Search } from 'lucide-react';
 import { FloatingHeartsOverlay } from './DecorativeHeartBackground';
 
 interface FeaturedProfilesProps {
@@ -93,8 +93,25 @@ export const FeaturedProfiles: React.FC<FeaturedProfilesProps> = ({
           </div>
         </div>
 
-        {/* Profiles Grid (4 columns on lg, 2 on md, 1 on mobile) */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        {/* Profiles Grid or No Results / Widen Filters (Flow 2) */}
+        {filteredProfiles.length === 0 ? (
+          <div className="text-center py-16 bg-white rounded-3xl border border-dashed border-rose-200 p-8 max-w-lg mx-auto shadow-xs">
+            <div className="w-14 h-14 rounded-full bg-rose-50 text-[#801b34] flex items-center justify-center mx-auto mb-3">
+              <Search className="w-6 h-6" />
+            </div>
+            <h3 className="text-lg font-bold text-gray-900 font-serif">No profiles found</h3>
+            <p className="text-xs text-gray-500 mt-1 mb-5 leading-relaxed">
+              No verified candidates currently match this filter. Try widening your criteria to view more compatible matches.
+            </p>
+            <button
+              onClick={() => onFilterChange('All')}
+              className="px-6 py-2.5 rounded-full bg-[#801b34] text-white text-xs font-bold shadow-md hover:bg-[#681429] transition-all cursor-pointer"
+            >
+              Widen Filters & Show All
+            </button>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
           {filteredProfiles.map((profile) => {
             const isFav = !!favorites[profile.id];
             const isConnected = !!connectedMap[profile.id];
@@ -222,6 +239,7 @@ export const FeaturedProfiles: React.FC<FeaturedProfilesProps> = ({
             );
           })}
         </div>
+        )}
 
         {/* View More Profiles Centered Button */}
         <div className="mt-12 text-center">

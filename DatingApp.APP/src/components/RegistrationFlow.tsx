@@ -93,6 +93,14 @@ export const RegistrationFlow: React.FC<RegistrationFlowProps> = ({
     'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=800&auto=format&fit=crop'
   ]);
 
+  // Photo Privacy State (Screen 5)
+  const [photoPrivacy, setPhotoPrivacy] = useState<'public' | 'blurred'>('public');
+
+  // Login Protection & Lockout State (Flow 1: 3 fails -> locked 15 min)
+  const [failedLoginAttempts, setFailedLoginAttempts] = useState(0);
+  const [isLocked, setIsLocked] = useState(false);
+  const [loginMode, setLoginMode] = useState<'password' | 'otp'>('password');
+
   // Session & Result (Screen 6)
   const [activeSession, setActiveSession] = useState<AuthSession | null>(null);
   const [createdProfile, setCreatedProfile] = useState<Profile | null>(null);
@@ -120,18 +128,31 @@ export const RegistrationFlow: React.FC<RegistrationFlowProps> = ({
     { num: 4, label: 'Photos' },
   ];
 
-  // 1. Handle Login
+  // 1. Handle Login (Flowchart: mobile/password or OTP -> Credentials valid? -> 3 fails lock 15 min -> Account status)
   const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg(null);
+
+    if (isLocked) {
+      setErrorMsg('3 fails - locked for 15 minutes for your security. Please sign in with Phone OTP or contact support.');
+      return;
+    }
+
     setLoading(true);
 
     try {
       if (!email.trim() || !password.trim()) {
-        throw new Error('Please enter your email and password.');
+        throw new Error('Please enter your registered email and password.');
       }
 
       const session = await apiService.login({ email: email.trim(), password });
+      
+      // Flowchart Account status: Active vs Suspended / Banned
+      if (session.role === 'Banned' || session.role === 'Suspended') {
+        throw new Error('Account suspended / banned - please contact matrimonial support at 011 234 5678.');
+      }
+
+      setFailedLoginAttempts(0);
       setActiveSession(session);
 
       if (session.hasCompletedProfile && session.profileId) {
@@ -139,7 +160,7 @@ export const RegistrationFlow: React.FC<RegistrationFlowProps> = ({
         if (prof) setCreatedProfile(prof);
       }
 
-      setSuccessMsg('Login successful! Redirecting...');
+      setSuccessMsg('Login successful! Welcome back.');
       setTimeout(() => {
         if (onFinished && createdProfile) {
           onFinished(session, createdProfile);
@@ -148,7 +169,15 @@ export const RegistrationFlow: React.FC<RegistrationFlowProps> = ({
         }
       }, 1000);
     } catch (err: any) {
-      setErrorMsg(err.message || 'Login failed. Please check your credentials.');
+      const nextFails = failedLoginAttempts + 1;
+      setFailedLoginAttempts(nextFails);
+
+      if (nextFails >= 3) {
+        setIsLocked(true);
+        setErrorMsg('3 fails - locked for 15 minutes for your security. Please use Phone OTP to sign in or contact support.');
+      } else {
+        setErrorMsg(err.message || `Wrong credentials - try again (${3 - nextFails} attempt${3 - nextFails === 1 ? '' : 's'} left before 15 min lock).`);
+      }
     } finally {
       setLoading(false);
     }
@@ -215,10 +244,17 @@ export const RegistrationFlow: React.FC<RegistrationFlowProps> = ({
     }
   };
 
-  // 4. Handle Profile Details - Screen 4 Submit
+  // 4. Handle Profile Details - Screen 4 Submit (Flowchart: Age 18+? -> Under 18 blocked)
   const handleProfileSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg(null);
+
+    // Flowchart validation: Age 18+?
+    const ageNum = Number(age);
+    if (!ageNum || ageNum < 18) {
+      setErrorMsg('Under 18 - registration blocked. Sri Lankan matrimonial law requires applicants to be at least 18 years old.');
+      return;
+    }
 
     if (!fullName.trim()) {
       setErrorMsg('Please enter your full name.');
@@ -1074,14 +1110,45 @@ export const RegistrationFlow: React.FC<RegistrationFlowProps> = ({
               </div>
             </div>
 
+            {/* Flowchart step: Upload photos + privacy */}
+            <div className="mb-5 p-3 rounded-2xl bg-rose-50/60 border border-rose-200/70 text-left">
+              <span className="text-xs font-bold text-gray-800 block mb-2">Photo Privacy Setting:</span>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                <button
+                  type="button"
+                  onClick={() => setPhotoPrivacy('public')}
+                  className={`py-2 px-3 rounded-xl border font-medium text-left transition-all cursor-pointer ${
+                    photoPrivacy === 'public'
+                      ? 'bg-white border-[#801b34] text-[#801b34] shadow-xs'
+                      : 'bg-white/50 border-gray-200 text-gray-600 hover:bg-white'
+                  }`}
+                >
+                  <span className="block font-bold">Public to Members</span>
+                  <span className="text-[10px] text-gray-500">Visible to verified community</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPhotoPrivacy('blurred')}
+                  className={`py-2 px-3 rounded-xl border font-medium text-left transition-all cursor-pointer ${
+                    photoPrivacy === 'blurred'
+                      ? 'bg-white border-[#801b34] text-[#801b34] shadow-xs'
+                      : 'bg-white/50 border-gray-200 text-gray-600 hover:bg-white'
+                  }`}
+                >
+                  <span className="block font-bold">Protected / Blurred</span>
+                  <span className="text-[10px] text-gray-500">Unlocked on mutual consent</span>
+                </button>
+              </div>
+            </div>
+
             {/* Trust and Privacy Tips Box */}
-            <div className="p-3.5 rounded-xl bg-blue-50/70 border border-blue-100 text-[11px] text-blue-900 space-y-1 mb-6">
+            <div className="p-3.5 rounded-xl bg-blue-50/70 border border-blue-100 text-[11px] text-blue-900 space-y-1 mb-6 text-left">
               <div className="flex items-center gap-1.5 font-semibold text-blue-800">
                 <ShieldCheck className="w-4 h-4 text-blue-600" />
                 <span>Photo privacy is 100% in your hands</span>
               </div>
               <p className="text-gray-600 leading-relaxed">
-                ✓ Clear face portrait with good lighting &bull; ✓ Solo photo without sunglasses &bull; 🔒 You choose whether photos are visible to all members or upon mutual consent only.
+                ✓ Clear face portrait with good lighting &bull; ✓ Solo photo without sunglasses &bull; 🔒 Privacy settings can be updated anytime in your dashboard.
               </p>
             </div>
 

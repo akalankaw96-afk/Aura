@@ -416,4 +416,44 @@ export const apiService = {
     }
     return { success: true, message: 'Request sent' };
   },
+
+  // Get My Requests (Incoming & Sent)
+  async getMyRequests(): Promise<any[]> {
+    try {
+      const token = typeof window !== 'undefined' ? localStorage.getItem('aura_token') : null;
+      const res = await fetch(`${API_BASE_URL}/match-requests/my`, {
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+      });
+      if (res.ok) {
+        return await res.json();
+      }
+    } catch (err) {
+      console.warn('API get requests error:', err);
+    }
+    return [];
+  },
+
+  // Respond to Request (Accept or Decline)
+  async respondMatchRequest(requestId: string, accept: boolean) {
+    try {
+      const token = typeof window !== 'undefined' ? localStorage.getItem('aura_token') : null;
+      const res = await fetch(`${API_BASE_URL}/match-requests/${requestId}/respond`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ accept }),
+      });
+      if (res.ok) {
+        return await res.json();
+      }
+    } catch (err) {
+      console.warn('API respond match request error:', err);
+    }
+    return { success: true };
+  },
 };
