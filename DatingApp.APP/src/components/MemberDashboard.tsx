@@ -27,12 +27,22 @@ import {
   ChevronRight,
   MoreVertical,
   VolumeX,
-  UserX
+  UserX,
+  CreditCard,
+  Crown,
+  Receipt,
+  FileCheck,
+  Percent,
+  CalendarDays,
+  ShieldAlert,
+  ArrowUpRight,
+  RefreshCw
 } from 'lucide-react';
-import { apiService, AuthSession } from '../services/api';
+import { apiService, AuthSession, SubscriptionInfo } from '../services/api';
 import { Profile } from '../types';
 import { mockProfiles } from '../data/mockData';
 import { DecorativeHeartBackground } from './DecorativeHeartBackground';
+import { CheckoutModal } from './CheckoutModal';
 
 interface MatchItem {
   id: string;
@@ -66,8 +76,17 @@ export const MemberDashboard: React.FC = () => {
   // Active Session & Profile State
   const [session, setSession] = useState<AuthSession | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
-  const [activeTab, setActiveTab] = useState<'received' | 'sent' | 'matches' | 'chat'>('received');
+  const [activeTab, setActiveTab] = useState<'received' | 'sent' | 'matches' | 'chat' | 'billing'>('received');
   
+  // Subscription & Billing State (Flow 4)
+  const [subscription, setSubscription] = useState<SubscriptionInfo | null>(null);
+  const [isCheckoutModalOpen, setIsCheckoutModalOpen] = useState(false);
+  const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
+  const [cancelStep, setCancelStep] = useState<'survey' | 'retention' | 'confirm'>('survey');
+  const [cancelReason, setCancelReason] = useState('Found a match');
+  const [customCancelReason, setCustomCancelReason] = useState('');
+  const [refundRequested, setRefundRequested] = useState(false);
+
   // Requests & Matches State
   const [receivedRequests, setReceivedRequests] = useState<MatchItem[]>([]);
   const [sentRequests, setSentRequests] = useState<MatchItem[]>([]);
@@ -102,8 +121,6 @@ export const MemberDashboard: React.FC = () => {
         try {
           const sess: AuthSession = JSON.parse(stored);
           setSession(sess);
-
-          // Seed default received and sent requests based on mockProfiles
           initializeSampleRequests(sess);
         } catch {
           // ignore
@@ -111,6 +128,7 @@ export const MemberDashboard: React.FC = () => {
       } else {
         // Fallback demo session if accessing directly
         const demoSess: AuthSession = {
+          token: 'demo-token-12345',
           userId: 'usr-demo-1',
           fullName: 'Dr. Kasun Jayawardena',
           email: 'kasun.j@auramatrimony.lk',
@@ -120,6 +138,28 @@ export const MemberDashboard: React.FC = () => {
         };
         setSession(demoSess);
         initializeSampleRequests(demoSess);
+      }
+
+      // Load active subscription (Flow 4)
+      const sub = apiService.getSubscription();
+      // If user is new demo, give them active premium to experience full features
+      if (sub.planId === 'free' && !localStorage.getItem('aura_subscription')) {
+        const defaultSub: SubscriptionInfo = {
+          planId: 'premium',
+          planName: 'Premium Matrimonial',
+          durationMonths: 3,
+          startDate: new Date().toISOString(),
+          expiresAt: new Date(Date.now() + 85 * 24 * 60 * 60 * 1000).toISOString(),
+          status: 'active',
+          autoRenew: true,
+          amountLkr: 3900,
+          paymentMethod: 'Credit/Debit Card (ending 8821)',
+          transactionId: 'TXN-773912',
+        };
+        apiService.activateSubscription(defaultSub);
+        setSubscription(defaultSub);
+      } else {
+        setSubscription(sub);
       }
     }
   }, []);
@@ -168,13 +208,9 @@ export const MemberDashboard: React.FC = () => {
         senderProfileId: userSess.profileId || 'self',
         senderName: userSess.fullName,
         senderProfession: 'Software Architect',
-        senderPhotoUrl: '',
+        senderPhotoUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=800&auto=format&fit=crop',
         receiverProfileId: candidates[0].id,
         receiverName: candidates[0].name,
-        senderAge: candidates[0].age,
-        senderLocation: candidates[0].location,
-        senderProfession: candidates[0].profession,
-        senderPhotoUrl: candidates[0].photoUrl,
         status: 'Pending',
         note: 'Respectful connect request sent from Colombo 07.',
         createdAt: 'Yesterday',
@@ -359,10 +395,28 @@ export const MemberDashboard: React.FC = () => {
                   <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
                   VERIFIED
                 </span>
-                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-900 text-[11px] font-bold">
-                  <Sparkles className="w-3 h-3 text-amber-600" />
-                  VIP MEMBER
-                </span>
+                
+                {/* Dynamic Flow 4 Plan Badge */}
+                {subscription?.status === 'pending_verification' ? (
+                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-blue-100 text-blue-900 text-[11px] font-bold">
+                    <Clock className="w-3 h-3 text-blue-600" />
+                    SLIP VERIFICATION PENDING
+                  </span>
+                ) : subscription?.planId === 'vip' ? (
+                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-900 text-[11px] font-bold border border-amber-300">
+                    <Crown className="w-3 h-3 text-amber-600" />
+                    ELITE VIP MEMBER
+                  </span>
+                ) : subscription?.planId === 'premium' ? (
+                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-rose-100 text-[#801b34] text-[11px] font-bold border border-rose-200">
+                    <Sparkles className="w-3 h-3 text-[#801b34]" />
+                    PREMIUM MEMBER
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-gray-100 text-gray-700 text-[11px] font-bold">
+                    BASIC EXPLORER
+                  </span>
+                )}
               </div>
 
               <p className="text-xs sm:text-sm text-gray-600 mt-1">
@@ -372,24 +426,33 @@ export const MemberDashboard: React.FC = () => {
           </div>
 
           {/* Quick Action Controls */}
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2.5 flex-wrap justify-center sm:justify-end">
+            {/* Upgrade Button */}
+            <button
+              onClick={() => setIsCheckoutModalOpen(true)}
+              className="px-4 py-2 rounded-full bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white text-xs font-bold transition-all shadow-sm flex items-center gap-1.5 cursor-pointer"
+            >
+              <Crown className="w-3.5 h-3.5" />
+              <span>{subscription?.planId === 'vip' ? 'Manage Plan' : 'Upgrade Plan'}</span>
+            </button>
+
             <button
               onClick={() => {
                 setIsPaused(!isPaused);
                 showToast(isPaused ? 'Profile resumed and active in search!' : 'Profile paused (hidden in search results, chats kept).');
               }}
-              className={`px-4 py-2 rounded-full text-xs font-semibold border transition-all cursor-pointer ${
+              className={`px-3.5 py-2 rounded-full text-xs font-semibold border transition-all cursor-pointer ${
                 isPaused
                   ? 'bg-amber-50 text-amber-800 border-amber-300'
                   : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'
               }`}
             >
-              {isPaused ? '⏸️ Profile Paused (Click to Resume)' : 'Active in Search'}
+              {isPaused ? '⏸️ Paused' : 'Active in Search'}
             </button>
 
             <Link
               href="/"
-              className="px-5 py-2 rounded-full bg-[#801b34] text-white text-xs font-bold hover:bg-[#681429] transition-all shadow-xs"
+              className="px-4 py-2 rounded-full bg-[#801b34] text-white text-xs font-bold hover:bg-[#681429] transition-all shadow-xs"
             >
               Browse Matches &rarr;
             </Link>
@@ -459,6 +522,19 @@ export const MemberDashboard: React.FC = () => {
           >
             <Clock className="w-4 h-4" />
             <span>Sent Interests ({sentRequests.length})</span>
+          </button>
+
+          {/* Flow 4: Membership & Billing Tab */}
+          <button
+            onClick={() => setActiveTab('billing')}
+            className={`flex-1 py-2.5 text-xs sm:text-sm font-bold rounded-xl transition-all cursor-pointer flex items-center justify-center gap-2 ${
+              activeTab === 'billing'
+                ? 'bg-[#801b34] text-white shadow-sm'
+                : 'text-gray-600 hover:text-gray-900'
+            }`}
+          >
+            <CreditCard className="w-4 h-4" />
+            <span>Plans & Billing</span>
           </button>
         </div>
 
@@ -774,7 +850,426 @@ export const MemberDashboard: React.FC = () => {
           </div>
         )}
 
+        {/* ======================================================== */}
+        {/* TAB 4: MEMBERSHIP & BILLING (FLOW 4: PLANS & RENEWALS) */}
+        {/* ======================================================== */}
+        {activeTab === 'billing' && (
+          <div className="space-y-6">
+            
+            {/* 1. Main Subscription Status Card */}
+            <div className="bg-white rounded-3xl p-6 sm:p-8 shadow-sm border border-rose-100 relative overflow-hidden">
+              <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6 pb-6 border-b border-gray-100">
+                <div className="space-y-1.5">
+                  <div className="flex items-center gap-2.5">
+                    <span className="text-xs uppercase font-extrabold tracking-wider text-gray-400">
+                      Current Subscription
+                    </span>
+                    <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold ${
+                      subscription?.status === 'active'
+                        ? 'bg-emerald-100 text-emerald-800'
+                        : subscription?.status === 'pending_verification'
+                        ? 'bg-amber-100 text-amber-800'
+                        : 'bg-gray-100 text-gray-700'
+                    }`}>
+                      {subscription?.status === 'active' ? '● Active' : subscription?.status === 'pending_verification' ? '● Verification Pending' : '● Cancelled'}
+                    </span>
+                  </div>
+
+                  <h2 className="text-2xl font-bold font-serif text-gray-900 flex items-center gap-2">
+                    <span>{subscription?.planName || 'Basic Explorer'}</span>
+                    {subscription?.planId === 'vip' ? (
+                      <Crown className="w-5 h-5 text-amber-500" />
+                    ) : (
+                      <Sparkles className="w-5 h-5 text-[#801b34]" />
+                    )}
+                  </h2>
+
+                  <p className="text-xs text-gray-600">
+                    {subscription?.planId === 'free'
+                      ? 'You are currently on the Free Basic plan. Upgrade to unlock direct messaging & contact details.'
+                      : `Billed ${subscription?.paymentMethod} &bull; Ref: ${subscription?.transactionId}`}
+                  </p>
+                </div>
+
+                {/* Primary Action Buttons */}
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={() => setIsCheckoutModalOpen(true)}
+                    className="px-5 py-2.5 bg-[#801b34] hover:bg-[#681429] text-white text-xs font-bold rounded-xl transition-all shadow cursor-pointer flex items-center gap-1.5"
+                  >
+                    <Crown className="w-4 h-4 text-amber-300" />
+                    <span>{subscription?.planId === 'vip' ? 'Extend Plan' : 'Upgrade Membership'}</span>
+                  </button>
+
+                  {subscription?.planId !== 'free' && (
+                    <button
+                      onClick={() => {
+                        setCancelStep('survey');
+                        setIsCancelModalOpen(true);
+                      }}
+                      className="px-4 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-semibold rounded-xl transition-colors cursor-pointer"
+                    >
+                      Cancel Membership
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Subscription Details Grid */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-6">
+                <div className="p-4 rounded-2xl bg-rose-50/50 border border-rose-100/70">
+                  <div className="flex items-center gap-2 text-gray-500 text-xs mb-1">
+                    <CalendarDays className="w-4 h-4 text-[#801b34]" />
+                    <span>Valid Until</span>
+                  </div>
+                  <div className="text-sm font-bold text-gray-900">
+                    {subscription?.expiresAt ? new Date(subscription.expiresAt).toLocaleDateString() : 'Lifetime'}
+                  </div>
+                  <span className="text-[11px] text-[#801b34] font-medium block mt-0.5">
+                    {subscription?.status === 'active' ? 'Full Member Privileges' : 'Lapsed / Reverts to Free'}
+                  </span>
+                </div>
+
+                <div className="p-4 rounded-2xl bg-amber-50/50 border border-amber-100/70">
+                  <div className="flex items-center gap-2 text-gray-500 text-xs mb-1">
+                    <Bell className="w-4 h-4 text-amber-700" />
+                    <span>Flow 4 Expiry Reminders</span>
+                  </div>
+                  <div className="text-sm font-bold text-gray-900">
+                    SMS & Email Active
+                  </div>
+                  <span className="text-[11px] text-gray-600 block mt-0.5">
+                    Alerts dispatched 7 days & 1 day before
+                  </span>
+                </div>
+
+                <div className="p-4 rounded-2xl bg-gray-50 border border-gray-200/70">
+                  <div className="flex items-center justify-between text-gray-500 text-xs mb-1">
+                    <span className="flex items-center gap-2">
+                      <RefreshCw className="w-4 h-4 text-gray-700" />
+                      <span>Auto-Renewal</span>
+                    </span>
+                    <button
+                      onClick={() => {
+                        if (subscription) {
+                          const updated = apiService.updateAutoRenew(!subscription.autoRenew);
+                          setSubscription(updated);
+                          showToast(updated.autoRenew ? 'Auto-renew turned ON.' : 'Auto-renew turned OFF.');
+                        }
+                      }}
+                      className={`text-[11px] font-bold px-2 py-0.5 rounded cursor-pointer ${
+                        subscription?.autoRenew
+                          ? 'bg-emerald-100 text-emerald-800'
+                          : 'bg-gray-200 text-gray-700'
+                      }`}
+                    >
+                      {subscription?.autoRenew ? 'ENABLED' : 'DISABLED'}
+                    </button>
+                  </div>
+                  <div className="text-xs text-gray-600 mt-1">
+                    {subscription?.autoRenew
+                      ? 'Seamless renewal enabled with saved payment method.'
+                      : 'Account gracefully reverts to Free Basic on expiry date (data kept).'}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* 2. Plan Comparison Card */}
+            <div className="bg-white rounded-3xl p-6 sm:p-8 shadow-sm border border-rose-100">
+              <h3 className="text-lg font-bold font-serif text-gray-900 mb-4">
+                Membership Tier Privileges
+              </h3>
+
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs text-left">
+                  <thead>
+                    <tr className="border-b border-gray-200 text-gray-500">
+                      <th className="py-3 pr-4 font-semibold">Feature / Privilege</th>
+                      <th className="py-3 px-4 font-semibold text-center">Basic Explorer</th>
+                      <th className="py-3 px-4 font-semibold text-center text-[#801b34]">Premium</th>
+                      <th className="py-3 pl-4 font-semibold text-center text-amber-700">Elite VIP</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    <tr>
+                      <td className="py-3 pr-4 font-medium text-gray-800">Browse verified profiles</td>
+                      <td className="py-3 px-4 text-center">✓</td>
+                      <td className="py-3 px-4 text-center text-emerald-600 font-bold">✓</td>
+                      <td className="py-3 pl-4 text-center text-emerald-600 font-bold">✓</td>
+                    </tr>
+                    <tr>
+                      <td className="py-3 pr-4 font-medium text-gray-800">Direct Chat & Unlimited Messaging</td>
+                      <td className="py-3 px-4 text-center text-gray-300">—</td>
+                      <td className="py-3 px-4 text-center text-emerald-600 font-bold">✓</td>
+                      <td className="py-3 pl-4 text-center text-emerald-600 font-bold">✓</td>
+                    </tr>
+                    <tr>
+                      <td className="py-3 pr-4 font-medium text-gray-800">View Verified Phone & Family Numbers</td>
+                      <td className="py-3 px-4 text-center text-gray-300">—</td>
+                      <td className="py-3 px-4 text-center text-emerald-600 font-bold">✓</td>
+                      <td className="py-3 pl-4 text-center text-emerald-600 font-bold">✓</td>
+                    </tr>
+                    <tr>
+                      <td className="py-3 pr-4 font-medium text-gray-800">Horoscope Matching (Porondam)</td>
+                      <td className="py-3 px-4 text-center text-gray-300">—</td>
+                      <td className="py-3 px-4 text-center text-emerald-600 font-bold">✓</td>
+                      <td className="py-3 pl-4 text-center text-emerald-600 font-bold">✓</td>
+                    </tr>
+                    <tr>
+                      <td className="py-3 pr-4 font-medium text-gray-800">Personal Matrimonial Matchmaker Advisor</td>
+                      <td className="py-3 px-4 text-center text-gray-300">—</td>
+                      <td className="py-3 px-4 text-center text-gray-300">—</td>
+                      <td className="py-3 pl-4 text-center text-amber-600 font-bold">✓ Dedicated</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* 3. Transaction History */}
+            <div className="bg-white rounded-3xl p-6 shadow-sm border border-rose-100 text-xs">
+              <h3 className="font-bold font-serif text-gray-900 text-base mb-3">
+                Billing Receipts & Invoices
+              </h3>
+              <div className="border border-gray-200/80 rounded-2xl overflow-hidden divide-y divide-gray-100">
+                <div className="p-4 flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <span className="font-bold text-gray-900 block">{subscription?.planName || 'Plan Purchase'}</span>
+                    <span className="text-[11px] text-gray-500 font-mono">
+                      Ref: {subscription?.transactionId} &bull; {subscription?.paymentMethod}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-4">
+                    <span className="font-bold text-gray-900">
+                      LKR {subscription?.amountLkr ? subscription.amountLkr.toLocaleString() : '3,900'}
+                    </span>
+                    <button
+                      onClick={() => window.print()}
+                      className="text-xs text-[#801b34] hover:underline font-semibold flex items-center gap-1 cursor-pointer"
+                    >
+                      <Receipt className="w-3.5 h-3.5" />
+                      <span>Download Receipt</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        )}
+
+        {/* ======================================================== */}
+        {/* FLOW 4: CANCELLATION & RETENTION SURVEY MODAL           */}
+        {/* ======================================================== */}
+        {isCancelModalOpen && (
+          <div className="fixed inset-0 z-50 overflow-y-auto bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+            <div className="relative w-full max-w-lg bg-white rounded-3xl shadow-2xl p-6 sm:p-7 border border-rose-100">
+              
+              {/* Header */}
+              <div className="flex items-center justify-between pb-4 border-b border-gray-100">
+                <h3 className="font-bold font-serif text-gray-900 text-lg">
+                  {cancelStep === 'survey' ? 'Cancellation Survey' : cancelStep === 'retention' ? 'Exclusive Stay Offer' : 'Confirm Cancellation'}
+                </h3>
+                <button
+                  onClick={() => setIsCancelModalOpen(false)}
+                  className="w-7 h-7 rounded-full hover:bg-gray-100 flex items-center justify-center text-gray-500 cursor-pointer"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* STEP 1: SURVEY REASON */}
+              {cancelStep === 'survey' && (
+                <div className="py-4 space-y-4">
+                  <p className="text-xs text-gray-600 leading-relaxed">
+                    We are continuously refining Aura Matrimony to best serve families. Please let us know the main reason for your cancellation:
+                  </p>
+
+                  <div className="space-y-2">
+                    {[
+                      'I found my life partner on Aura Matrimony! 🎉',
+                      'Subscription fee is too high right now',
+                      'Taking a temporary break from matchmaking',
+                      'Not enough matching candidates in my profession/community',
+                      'Other personal reasons',
+                    ].map((reason) => (
+                      <label
+                        key={reason}
+                        className={`flex items-center gap-3 p-3 rounded-xl border text-xs cursor-pointer transition-all ${
+                          cancelReason === reason
+                            ? 'border-[#801b34] bg-rose-50 text-gray-900 font-semibold'
+                            : 'border-gray-200 hover:border-gray-300 text-gray-700'
+                        }`}
+                      >
+                        <input
+                          type="radio"
+                          name="cancelReason"
+                          value={reason}
+                          checked={cancelReason === reason}
+                          onChange={(e) => setCancelReason(e.target.value)}
+                          className="text-[#801b34] focus:ring-0"
+                        />
+                        <span>{reason}</span>
+                      </label>
+                    ))}
+                  </div>
+
+                  <div className="flex justify-end gap-2 pt-3">
+                    <button
+                      type="button"
+                      onClick={() => setIsCancelModalOpen(false)}
+                      className="px-4 py-2 rounded-xl text-xs font-semibold text-gray-600 hover:bg-gray-100 cursor-pointer"
+                    >
+                      Keep Subscription
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (cancelReason.includes('found my life partner')) {
+                          // Flow 5 hook
+                          setCancelStep('confirm');
+                        } else {
+                          setCancelStep('retention');
+                        }
+                      }}
+                      className="px-5 py-2 rounded-xl text-xs font-bold bg-[#801b34] hover:bg-[#681429] text-white cursor-pointer"
+                    >
+                      Continue &rarr;
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* STEP 2: RETENTION OFFER (Flow 4 - "Accept retention offer?") */}
+              {cancelStep === 'retention' && (
+                <div className="py-4 space-y-4 text-center">
+                  <div className="w-14 h-14 rounded-full bg-amber-100 text-amber-700 flex items-center justify-center mx-auto">
+                    <Sparkles className="w-7 h-7" />
+                  </div>
+
+                  <div>
+                    <span className="text-[10px] font-extrabold uppercase tracking-wider text-amber-800 bg-amber-100 px-3 py-1 rounded-full">
+                      Special 30% Retention Offer
+                    </span>
+                    <h4 className="text-xl font-bold font-serif text-gray-900 mt-2">
+                      Stay with Aura for 30% Off
+                    </h4>
+                    <p className="text-xs text-gray-600 mt-1 max-w-sm mx-auto leading-relaxed">
+                      We want to support your sincere journey to marriage. Keep your Premium privileges for the next 3 months at just <strong>LKR 2,730</strong> (save LKR 1,170).
+                    </p>
+                  </div>
+
+                  <div className="bg-rose-50 border border-rose-100 rounded-2xl p-3 text-xs text-left space-y-1">
+                    <div className="font-semibold text-gray-900">What you keep:</div>
+                    <ul className="text-[11px] text-gray-600 space-y-1">
+                      <li>• Unlimited chat & verified phone contact sharing</li>
+                      <li>• 5x boosted profile placement in matches</li>
+                      <li>• Complete horoscope & Porondam compatibility reports</li>
+                    </ul>
+                  </div>
+
+                  <div className="flex flex-col sm:flex-row gap-2 pt-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        apiService.cancelSubscription(cancelReason, true);
+                        if (subscription) {
+                          setSubscription({ ...subscription, retentionDiscountApplied: true });
+                        }
+                        setIsCancelModalOpen(false);
+                        showToast('Offer accepted! 30% discount applied to your renewal.');
+                      }}
+                      className="flex-1 py-3 px-4 bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs rounded-xl shadow cursor-pointer"
+                    >
+                      Accept 30% Off & Stay
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setCancelStep('confirm')}
+                      className="flex-1 py-3 px-4 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold text-xs rounded-xl cursor-pointer"
+                    >
+                      Decline & Cancel
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* STEP 3: CONFIRM CANCELLATION & POLICY REFUND */}
+              {cancelStep === 'confirm' && (
+                <div className="py-4 space-y-4 text-xs text-gray-600">
+                  <div className="p-4 bg-gray-50 rounded-2xl border border-gray-200 space-y-2">
+                    <div className="font-bold text-gray-900">Summary of Cancellation:</div>
+                    <ul className="space-y-1 text-[11px]">
+                      <li>• Auto-renew is turned <strong>OFF</strong> immediately.</li>
+                      <li>• Your member privileges remain active until <strong>{subscription?.expiresAt ? new Date(subscription.expiresAt).toLocaleDateString() : 'period end'}</strong>.</li>
+                      <li>• <strong>No data loss:</strong> Profile and previous chats remain saved when reverting to Free Basic.</li>
+                    </ul>
+                  </div>
+
+                  {/* Flow 4: Request refund check */}
+                  <label className="flex items-start gap-2.5 p-3 rounded-xl border border-gray-200 hover:bg-gray-50 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={refundRequested}
+                      onChange={(e) => setRefundRequested(e.target.checked)}
+                      className="rounded text-[#801b34] mt-0.5 focus:ring-0"
+                    />
+                    <div className="text-[11px]">
+                      <span className="font-bold text-gray-800 block">Request Finance Policy Refund</span>
+                      <span className="text-gray-500">
+                        Check if eligible under Aura&apos;s 7-day money-back satisfaction guarantee. Finance team will review your ticket within 2 business days.
+                      </span>
+                    </div>
+                  </label>
+
+                  <div className="flex justify-end gap-2 pt-2">
+                    <button
+                      type="button"
+                      onClick={() => setIsCancelModalOpen(false)}
+                      className="px-4 py-2.5 rounded-xl font-bold text-gray-700 hover:bg-gray-100 cursor-pointer"
+                    >
+                      Keep Subscription
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const updated = apiService.cancelSubscription(cancelReason, false, refundRequested);
+                        setSubscription(updated);
+                        setIsCancelModalOpen(false);
+                        showToast(
+                          refundRequested
+                            ? 'Subscription cancelled and refund request submitted to Finance.'
+                            : 'Auto-renewal cancelled. Plan active until end of billing cycle.'
+                        );
+                      }}
+                      className="px-5 py-2.5 bg-rose-700 hover:bg-rose-800 text-white font-bold rounded-xl cursor-pointer shadow"
+                    >
+                      Confirm Cancellation
+                    </button>
+                  </div>
+                </div>
+              )}
+
+            </div>
+          </div>
+        )}
+
+        {/* Flow 4 Checkout Modal */}
+        <CheckoutModal
+          isOpen={isCheckoutModalOpen}
+          initialPlanId={subscription?.planId === 'free' ? 'premium' : subscription?.planId}
+          onClose={() => setIsCheckoutModalOpen(false)}
+          onSuccess={(newSub) => {
+            setSubscription(newSub);
+            setIsCheckoutModalOpen(false);
+            showToast(`Membership successfully activated: ${newSub.planName}!`);
+          }}
+        />
+
       </div>
     </DecorativeHeartBackground>
   );
 };
+

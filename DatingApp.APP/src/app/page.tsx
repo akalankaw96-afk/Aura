@@ -13,9 +13,10 @@ import { CtaRegisterBanner } from '../components/CtaRegisterBanner';
 import { Footer } from '../components/Footer';
 import { ProfileDetailModal } from '../components/ProfileDetailModal';
 import { AuthOnboardingModal } from '../components/AuthOnboardingModal';
+import { CheckoutModal } from '../components/CheckoutModal';
 import { mockProfiles } from '../data/mockData';
 import { Profile } from '../types';
-import { apiService, AuthSession } from '../services/api';
+import { apiService, AuthSession, SubscriptionInfo } from '../services/api';
 import { Sparkles, X, CheckCircle2 } from 'lucide-react';
 
 export default function HomePage() {
@@ -29,6 +30,10 @@ export default function HomePage() {
   const [currentUser, setCurrentUser] = useState<AuthSession | null>(null);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [targetConnectProfile, setTargetConnectProfile] = useState<Profile | null>(null);
+
+  // Flow 4: Checkout & Membership Modal State
+  const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
+  const [selectedPlanForCheckout, setSelectedPlanForCheckout] = useState('premium');
 
   // Restore authenticated session from localStorage on mount
   useEffect(() => {
@@ -146,8 +151,13 @@ export default function HomePage() {
   };
 
   const handleSelectPlan = (planId: string) => {
-    showToast(`Selected membership plan: ${planId.toUpperCase()}. Opening profile setup...`);
-    setIsAuthModalOpen(true);
+    if (planId === 'free') {
+      showToast('Selected Basic Explorer plan. Opening profile registration...');
+      setIsAuthModalOpen(true);
+    } else {
+      setSelectedPlanForCheckout(planId);
+      setIsCheckoutOpen(true);
+    }
   };
 
   const handleCategorySelect = (category: string) => {
@@ -263,6 +273,21 @@ export default function HomePage() {
           setTargetConnectProfile(null);
         }}
         onCompleted={handleOnboardingCompleted}
+      />
+
+      {/* Flow 4: Checkout & Payment Modal */}
+      <CheckoutModal
+        isOpen={isCheckoutOpen}
+        initialPlanId={selectedPlanForCheckout}
+        onClose={() => setIsCheckoutOpen(false)}
+        onSuccess={(sub: SubscriptionInfo) => {
+          setIsCheckoutOpen(false);
+          showToast(`Congratulations! You have successfully upgraded to ${sub.planName}!`);
+          if (currentUser) {
+            const updated = { ...currentUser, subscription: sub };
+            setCurrentUser(updated);
+          }
+        }}
       />
     </div>
   );

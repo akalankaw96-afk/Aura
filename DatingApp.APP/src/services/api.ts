@@ -12,6 +12,22 @@ export interface HomeContentResponse {
   totalWeddingsCount: number;
 }
 
+export interface SubscriptionInfo {
+  planId: 'free' | 'premium' | 'vip';
+  planName: string;
+  durationMonths: number;
+  startDate: string;
+  expiresAt: string;
+  status: 'active' | 'pending_verification' | 'cancelled' | 'expired';
+  autoRenew: boolean;
+  amountLkr: number;
+  paymentMethod: string;
+  transactionId: string;
+  bankSlipUrl?: string;
+  bankSlipRef?: string;
+  retentionDiscountApplied?: boolean;
+}
+
 export interface AuthSession {
   token: string;
   userId: string;
@@ -21,6 +37,7 @@ export interface AuthSession {
   role: string;
   profileId?: string | null;
   hasCompletedProfile: boolean;
+  subscription?: SubscriptionInfo;
 }
 
 export interface CreateProfilePayload {
@@ -455,5 +472,84 @@ export const apiService = {
       console.warn('API respond match request error:', err);
     }
     return { success: true };
+  },
+
+  // Flow 4: Subscriptions & Billing
+  getSubscription(): SubscriptionInfo {
+    if (typeof window !== 'undefined') {
+      const stored = localStorage.getItem('aura_subscription');
+      if (stored) {
+        try {
+          return JSON.parse(stored);
+        } catch {}
+      }
+    }
+    // Default free plan
+    return {
+      planId: 'free',
+      planName: 'Basic Explorer',
+      durationMonths: 0,
+      startDate: new Date().toISOString(),
+      expiresAt: '2099-12-31T23:59:59Z',
+      status: 'active',
+      autoRenew: false,
+      amountLkr: 0,
+      paymentMethod: 'None',
+      transactionId: 'TXN-FREE',
+    };
+  },
+
+  activateSubscription(sub: SubscriptionInfo): SubscriptionInfo {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('aura_subscription', JSON.stringify(sub));
+      const rawSess = localStorage.getItem('aura_session');
+      if (rawSess) {
+        try {
+          const sess = JSON.parse(rawSess);
+          sess.subscription = sub;
+          localStorage.setItem('aura_session', JSON.stringify(sess));
+        } catch {}
+      }
+    }
+    return sub;
+  },
+
+  updateAutoRenew(enabled: boolean): SubscriptionInfo {
+    const current = this.getSubscription();
+    current.autoRenew = enabled;
+    return this.activateSubscription(current);
+  },
+
+  cancelSubscription(reason: string, acceptRetention: boolean, refundRequested?: boolean): SubscriptionInfo {
+    const current = this.getSubscription();
+    if (acceptRetention) {
+      current.retentionDiscountApplied = true;
+      current.autoRenew = true;
+      return this.activateSubscription(current);
+    }
+    current.autoRenew = false;
+    current.status = 'cancelled';
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('aura_cancel_survey', JSON.stringify({
+        reason,
+        cancelledAt: new Date().toISOString(),
+        refundRequested: !!refundRequested,
+      }));
+    }
+    return this.activateSubscription(current);
+  },
+
+  verifyPromoCode(code: string): { valid: boolean; discountPercent: number; message: string } {
+    const clean = code.trim().toUpperCase();
+    if (clean === 'AURA30' || clean === 'WELCOME30') {
+      return { valid: true, discountPercent: 30, message: '30% Special Introductory Discount Applied!' };
+    }
+    if (clean === 'PROMO50' || clean === 'MATCH50') {
+      return { valid: true, discountPercent: 50, message: '50% Half-Price Festival Discount Applied!' };
+    }
+    if (clean === 'VIP2025' || clean === 'VIP2026') {
+      return { valid: true, discountPercent: 25, message: '25% Elite VIP Matchmaker Discount Applied!' };
+    }
+    return { valid: false, discountPercent: 0, message: 'Invalid or expired promo code.' };
   },
 };
