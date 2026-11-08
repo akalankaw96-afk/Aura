@@ -93,6 +93,32 @@ function SearchPageContent() {
   const [searchKeyword, setSearchKeyword] = useState<string>("");
   const [activeModalProfile, setActiveModalProfile] = useState<ProposalDetail | null>(null);
 
+  // Live Database Connectivity State
+  const [dbStatus, setDbStatus] = useState<"checking" | "connected" | "offline">("checking");
+  const [liveDbProfiles, setLiveDbProfiles] = useState<Profile[]>([]);
+
+  useEffect(() => {
+    let isMounted = true;
+    fetch("http://localhost:5000/api/profiles", { cache: "no-store" })
+      .then(async (res) => {
+        if (res.ok) {
+          const data: Profile[] = await res.json();
+          if (isMounted) {
+            setDbStatus("connected");
+            setLiveDbProfiles(data);
+          }
+        } else {
+          if (isMounted) setDbStatus("offline");
+        }
+      })
+      .catch(() => {
+        if (isMounted) setDbStatus("offline");
+      });
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
   // Sync category parameter if provided
   useEffect(() => {
     if (initialCategory) {
@@ -115,10 +141,41 @@ function SearchPageContent() {
     }
   }, [initialCategory]);
 
-  // Master Pool of Candidates combining Featured, Mock, and Marquee data
+  // Master Pool of Candidates combining Live SQL Server DB, Featured, Mock, and Marquee data
   const candidatePool: CandidateProposal[] = useMemo(() => {
     const list: CandidateProposal[] = [];
     const seenIds = new Set<string>();
+
+    // 0. If Live SQL Server profiles are returned from the API, add them first!
+    if (liveDbProfiles && liveDbProfiles.length > 0) {
+      for (const p of liveDbProfiles) {
+        const code = p.code || p.id;
+        if (!seenIds.has(code)) {
+          seenIds.add(code);
+          const isBride = p.gender === "female";
+          const cCode = (p.country?.toLowerCase() === "australia" ? "au" : p.country?.toLowerCase() === "united kingdom" ? "gb" : "lk") as CountryCode;
+          list.push({
+            id: code,
+            name: p.name,
+            gender: isBride ? "bride" : "groom",
+            age: p.age,
+            height: p.height,
+            profession: p.profession,
+            religion: p.religion,
+            location: `${p.location}, ${p.country}`,
+            country: cCode,
+            photo: p.photoUrl,
+            horoscope: p.horoscopeAvailable,
+            bio: p.bio,
+            education: p.education,
+            aboutFamily: p.aboutFamily,
+            professionCategory: p.professionCategory,
+            rasi: p.horoscopeAvailable ? "Simha" : undefined,
+            nakshatra: p.horoscopeAvailable ? "Makha" : undefined,
+          });
+        }
+      }
+    }
 
     // 1. Add Featured Profiles
     for (const p of FEATURED.profiles) {
@@ -361,9 +418,22 @@ function SearchPageContent() {
               </Chip>
             </div>
 
-            <div className="inline-flex items-center gap-2 rounded-full border border-line bg-surface-card px-4 py-1.5 text-label-md text-ink-secondary shadow-sm">
-              <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-              <span>Showing <strong>{filteredProfiles.length}</strong> verified proposals</span>
+            <div className="flex flex-wrap items-center gap-3">
+              {dbStatus === "connected" ? (
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-3 py-1.5 text-xs font-semibold text-emerald-700 dark:text-emerald-400 shadow-sm">
+                  <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+                  SQL Server: AuraMatrimonyDb (Live)
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-500/20 bg-amber-500/10 px-3 py-1.5 text-xs font-semibold text-amber-700 dark:text-amber-400 shadow-sm" title="API server is stopped. Showing resilient local fallback dataset.">
+                  <span className="h-2 w-2 rounded-full bg-amber-500" />
+                  API Offline: Fallback Dataset
+                </span>
+              )}
+
+              <div className="inline-flex items-center gap-2 rounded-full border border-line bg-surface-card px-4 py-1.5 text-label-md text-ink-secondary shadow-sm">
+                <span>Showing <strong>{filteredProfiles.length}</strong> verified proposals</span>
+              </div>
             </div>
           </div>
         </div>

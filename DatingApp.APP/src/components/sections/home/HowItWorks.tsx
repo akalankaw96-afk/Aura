@@ -1,9 +1,11 @@
+"use client";
+
 import React from "react";
 import { Lovely, SearchNormal1, UserAdd, Verify } from "iconsax-react";
 import { cn } from "@/lib/cn";
 import { SectionHeader } from "@/components/ui/SectionHeader";
 import { LoveSticker } from "@/components/ui/Decor";
-import { HOW_IT_WORKS } from "@/content/home";
+import { useLanguage } from "@/context/LanguageContext";
 
 /**
  * Figma: How It Works Notes (1440 × 842) — four pinned notes on a board
@@ -28,10 +30,47 @@ const STICKERS = [
 ] as const;
 
 export function HowItWorks() {
+  const { t, lang } = useLanguage();
+
+  const steps = [
+    {
+      n: "01",
+      title: t.howItWorks.step1Title,
+      text: t.howItWorks.step1Desc,
+      pill: lang === "si" ? "විනාඩි 2කින්" : "About 2 minutes",
+      tone: "rose" as const,
+      icon: "user-add" as const,
+    },
+    {
+      n: "02",
+      title: t.howItWorks.step2Title,
+      text: t.howItWorks.step2Desc,
+      pill: lang === "si" ? "සත්‍යාපනය" : "ID + phone check",
+      tone: "gold" as const,
+      icon: "verify" as const,
+    },
+    {
+      n: "03",
+      title: t.howItWorks.step3Title,
+      text: t.howItWorks.step3Desc,
+      pill: lang === "si" ? "නොමිලේ" : "Free to send",
+      tone: "rose" as const,
+      icon: "search" as const,
+    },
+    {
+      n: "04",
+      title: t.howItWorks.step4Title,
+      text: t.howItWorks.step4Desc,
+      pill: lang === "si" ? "පෝරුවට සූදානම්" : "Plan the poruwa",
+      tone: "gold" as const,
+      icon: "lovely" as const,
+    },
+  ];
+
   return (
     <section id="how-it-works" className="scroll-mt-28 py-16 lg:py-24">
       <div className="container-page flex flex-col gap-12">
-        <SectionHeader eyebrow={HOW_IT_WORKS.eyebrow} title={HOW_IT_WORKS.title} description={HOW_IT_WORKS.description} />
+        <SectionHeader eyebrow={t.howItWorks.eyebrow} title={t.howItWorks.title} description={t.howItWorks.description} />
 
         {/* Desktop board: exact Figma coordinates inside a 1280 × 498 canvas */}
         <div className="relative mx-auto hidden h-[498px] w-[1280px] max-w-full lg:block">
@@ -40,17 +79,17 @@ export function HowItWorks() {
             <path d="M600 330 C 620 280, 640 220, 690 170" stroke="var(--rose-300)" strokeWidth="2" strokeDasharray="2 6" strokeLinecap="round" />
             <path d="M912 210 C 940 240, 960 270, 992 296" stroke="var(--rose-300)" strokeWidth="2" strokeDasharray="2 6" strokeLinecap="round" />
           </svg>
-          {HOW_IT_WORKS.steps.map((s, i) => (
-            <Note key={s.n} step={s} className="absolute" style={{ left: NOTE_POS[i].x, top: NOTE_POS[i].y, transform: `rotate(${NOTE_POS[i].rot}deg)` }} />
+          {steps.map((s, i) => (
+            <Note key={s.n} step={s} className="reveal absolute" style={{ left: NOTE_POS[i].x, top: NOTE_POS[i].y, transform: `rotate(${NOTE_POS[i].rot}deg)`, "--reveal-delay": `${i * 140}ms` } as React.CSSProperties} />
           ))}
           {STICKERS.map((st, i) => (
-            <LoveSticker key={i} variant={st.v} size={st.s} rotate={st.rot} className="absolute" style={{ left: st.x, top: st.y }} />
+            <LoveSticker key={i} variant={st.v} size={st.s} rotate={st.rot} className="reveal-zoom absolute" style={{ left: st.x, top: st.y, "--reveal-delay": `${300 + i * 120}ms` } as React.CSSProperties} />
           ))}
         </div>
 
         {/* Tablet / mobile: stacked notes, alternating tilt (Figma: Home — Mobile 390) */}
-        <ol className="mx-auto flex w-full max-w-[340px] flex-col gap-10 lg:hidden">
-          {HOW_IT_WORKS.steps.map((s, i) => (
+        <ol className="reveal-stagger mx-auto flex w-full max-w-[340px] flex-col gap-10 lg:hidden">
+          {steps.map((s, i) => (
             <li key={s.n} className={cn(i % 2 ? "self-end" : "self-start")}>
               <Note step={s} style={{ transform: `rotate(${i % 2 ? 3 : -3}deg)` }} />
             </li>
@@ -61,7 +100,14 @@ export function HowItWorks() {
   );
 }
 
-type Step = (typeof HOW_IT_WORKS.steps)[number];
+type Step = {
+  n: string;
+  title: string;
+  text: string;
+  pill: string;
+  tone: "rose" | "gold";
+  icon: "user-add" | "verify" | "search" | "lovely";
+};
 
 /** Figma: Note — 270 × 264, white card, radius xl, pin + tinted panel. */
 function Note({ step, className, style }: { step: Step; className?: string; style?: React.CSSProperties }) {

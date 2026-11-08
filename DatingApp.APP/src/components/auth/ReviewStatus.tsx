@@ -82,10 +82,10 @@ export function ReviewStatus() {
     toast.warning("Changes needed", "Our safety team flagged 3 fields on your profile.");
   };
 
-  const name = draft?.fullName?.split(" ")[0] || "Nethmi";
+  const name = draft?.firstName || draft?.fullName?.split(" ")[0] || "Nethmi";
 
   return (
-    <AuthShell>
+    <AuthShell action="avatar">
       <Stepper step={5} className="max-w-[680px]" />
       <Card className="w-full max-w-[680px] p-5 sm:p-8">
         {view === "submitted" && <Submitted onBrowse={() => router.push("/")} />}
@@ -211,7 +211,7 @@ function ChangesNeeded({ onFix }: { onFix: () => void }) {
         {FLAGGED.map((f) => (
           <StatusRow key={f.key} Icon={f.Icon} iconTone="error" title={f.label} sub={f.reason} badge="Rejected" tone="error" onClick={onFix} />
         ))}
-        <StatusRow Icon={TickCircle} iconTone="success" title="Basic, family & education" sub="All other details look good" badge="Approved" tone="success" />
+        <StatusRow Icon={TickCircle} iconTone="success" title="Name, background & residence" sub="All other details look good" badge="Approved" tone="success" />
       </div>
       <Button fullWidth onClick={onFix} rightIcon={<ArrowRight2 size={18} color="currentColor" />}>
         Edit &amp; resubmit

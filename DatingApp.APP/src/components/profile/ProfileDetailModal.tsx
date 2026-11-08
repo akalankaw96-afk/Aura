@@ -329,3 +329,4 @@ export function ProfileDetailModal({ profile, onClose, onConnect }: ProfileDetai
     </div>
   );
 }
+

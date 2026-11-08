@@ -30,7 +30,7 @@ const variants: Record<ButtonVariant, string> = {
   primary:
     "bg-brand-gradient text-white hover:shadow-glow active:brightness-95 disabled:bg-none disabled:bg-surface-muted disabled:text-ink-disabled disabled:shadow-none",
   secondary:
-    "bg-brand-subtle text-brand hover:ring-1 hover:ring-inset hover:ring-brand disabled:bg-surface-muted disabled:text-ink-disabled disabled:ring-0",
+    "bg-brand-subtle text-brand-text ring-1 ring-inset ring-brand disabled:bg-surface-muted disabled:text-ink-disabled disabled:ring-0",
   outline:
     "bg-surface-card text-ink ring-1 ring-inset ring-line-strong hover:bg-surface-subtle disabled:text-ink-disabled disabled:ring-line",
   ghost: "bg-transparent text-brand hover:bg-brand-subtle disabled:text-ink-disabled",

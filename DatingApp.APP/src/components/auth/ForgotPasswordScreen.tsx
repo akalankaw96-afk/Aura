@@ -103,14 +103,7 @@ export function ForgotPasswordScreen() {
   return (
     <AuthShell
       showTrust
-      right={
-        <>
-          <span className="hidden text-body-md text-ink-secondary sm:inline">New here?</span>
-          <Link href="/register" className="flex h-[43px] items-center rounded-full border border-line-strong bg-surface-card px-4 text-button-sm text-ink hover:bg-surface-subtle">
-            Create free account
-          </Link>
-        </>
-      }
+      action="create-account"
     >
       <Card className="w-full max-w-[520px] p-6 sm:p-10">
         {step === "mobile" ? (

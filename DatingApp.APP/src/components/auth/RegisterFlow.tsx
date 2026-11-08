@@ -6,18 +6,14 @@ import { useRouter } from "next/navigation";
 import {
   ArrowLeft,
   ArrowRight2,
-  Briefcase,
   Calendar,
   Edit2,
   Gallery,
   GalleryAdd,
   InfoCircle,
-  Location,
   MessageText1,
-  Profile2User,
   TickCircle,
   Trash,
-  User,
 } from "iconsax-react";
 import {
   Alert,
@@ -26,7 +22,6 @@ import {
   Card,
   CardTitle,
   Checkbox,
-  Chip,
   Input,
   OtpInput,
   PasswordField,
@@ -40,7 +35,7 @@ import {
   useToast,
 } from "@/components/ui";
 import { cn } from "@/lib/cn";
-import { ageFrom, containsContactDetails, loadDraft, saveDraft, type RegistrationDraft } from "@/lib/demo";
+import { ageFrom, containsContactDetails, emptyDraft, loadDraft, saveDraft, type RegistrationDraft } from "@/lib/demo";
 import { AuthShell } from "./AuthShell";
 import { DemoTips } from "./DemoTips";
 import { DEMO, formatPhone } from "./shared";
@@ -63,7 +58,9 @@ export function RegisterFlow({ initialStep = 1, embedded, onComplete }: Register
   const router = useRouter();
   const toast = useToast();
   const [step, setStep] = useState<RegisterStep>(initialStep);
-  const [draft, setDraft] = useState<RegistrationDraft>(() => loadDraft());
+  // start empty so server and browser render the same HTML, then load the saved draft
+  const [draft, setDraft] = useState<RegistrationDraft>(emptyDraft);
+  useEffect(() => setDraft(loadDraft()), []);
   const update = (patch: Partial<RegistrationDraft>) => setDraft(saveDraft(patch));
 
   const go = (s: RegisterStep) => {
@@ -85,14 +82,7 @@ export function RegisterFlow({ initialStep = 1, embedded, onComplete }: Register
   return (
     <AuthShell
       embedded={embedded}
-      right={
-        <>
-          <span className="hidden text-body-md text-ink-secondary sm:inline">Already a member?</span>
-          <Link href="/login" className="flex h-[43px] items-center rounded-full border border-line-strong bg-surface-card px-4 text-button-sm text-ink hover:bg-surface-subtle">
-            Log in
-          </Link>
-        </>
-      }
+      action="login"
     >
       <Stepper step={step} className="max-w-[680px]" />
       <Card className="w-full max-w-[680px] p-5 sm:p-8">
@@ -112,7 +102,6 @@ export function RegisterFlow({ initialStep = 1, embedded, onComplete }: Register
 
 /* ───────────────────────── Step 1 · Account (02, 02a–02e) ───────────────────────── */
 
-const PROFILE_FOR = ["Myself", "Son", "Daughter", "Brother", "Sister", "Relative"];
 
 function AccountStep({ draft, update, onNext }: { draft: RegistrationDraft; update: (p: Partial<RegistrationDraft>) => void; onNext: () => void }) {
   const toast = useToast();
@@ -167,17 +156,6 @@ function AccountStep({ draft, update, onNext }: { draft: RegistrationDraft; upda
           {formatPhone(mobile)} already has a Vikasitha account.
         </Alert>
       )}
-
-      <div className="flex flex-col gap-2">
-        <p className="text-body-sm font-semibold text-ink">This profile is for</p>
-        <div className="flex flex-wrap gap-2">
-          {PROFILE_FOR.map((p) => (
-            <Chip key={p} size="sm" selected={draft.profileFor === p} onClick={() => update({ profileFor: p })}>
-              {p}
-            </Chip>
-          ))}
-        </div>
-      </div>
 
       <PhoneField
         value={mobile}
@@ -406,30 +384,31 @@ function VerifyStep({ mobile, onBack, onNext }: { mobile: string; onBack: () => 
 /* ───────────────────────── Step 3 · Profile (04, 04a–04c) ───────────────────────── */
 
 const OPTIONS = {
-  gender: ["Female", "Male"],
+  displayNameFormat: ["First name only", "Last name only", "Full name", "First name and first letter of last name", "First letter of first name and full last name"],
+  createdBy: ["Self", "Parent", "Sibling", "Relative", "Friend"],
+  height: ["4' 10\"", "4' 11\"", "5' 0\"", "5' 1\"", "5' 2\"", "5' 3\"", "5' 4\"", "5' 5\"", "5' 6\"", "5' 7\"", "5' 8\"", "5' 9\"", "5' 10\"", "5' 11\"", "6' 0\"", "6' 1\"", "6' 2\""],
+  gender: ["Male", "Female"],
+  civilStatus: ["Never married", "Divorced", "Widowed", "Separated"],
   religion: ["Buddhist", "Hindu", "Christian", "Catholic", "Islam", "Other"],
-  district: ["Colombo", "Gampaha", "Kandy", "Galle", "Matara", "Kurunegala", "Jaffna", "Batticaloa", "Anuradhapura", "Ratnapura", "Badulla", "Other"],
-  height: ["4' 10\"", "5' 0\"", "5' 2\"", "5' 4\"", "5' 6\"", "5' 8\"", "5' 10\"", "6' 0\"", "6' 2\""],
-  education: ["O/L", "A/L", "Diploma", "Bachelor’s degree", "Master’s degree", "Doctorate", "Professional qualification"],
-  profession: ["Doctor", "Engineer", "IT professional", "Accountant", "Lawyer", "Teacher", "Business owner", "Government officer", "Other"],
-  marital: ["Never married", "Divorced", "Widowed"],
-  livingIn: ["Sri Lanka", "Australia", "United Kingdom", "Canada", "UAE", "Other"],
+  ethnicity: ["Sinhalese", "Tamil", "Muslim", "Burgher", "Malay", "Other"],
+  country: ["Sri Lanka", "Australia", "United Kingdom", "Canada", "USA", "Qatar", "UAE", "Italy", "New Zealand", "Other"],
 };
 
-type ProfileKey = "fullName" | "gender" | "dob" | "religion" | "district" | "height" | "education" | "profession" | "maritalStatus" | "livingIn";
-const REQUIRED: ProfileKey[] = ["fullName", "gender", "dob", "religion", "district", "education", "profession", "maritalStatus", "livingIn"];
+type ProfileKey = "firstName" | "lastName" | "displayNameFormat" | "createdBy" | "email" | "height" | "dob" | "gender" | "civilStatus" | "religion" | "ethnicity" | "caste" | "country";
+const REQUIRED: ProfileKey[] = ["firstName", "lastName", "displayNameFormat", "createdBy", "height", "dob", "gender", "civilStatus", "religion", "ethnicity", "country"];
 
 function ProfileStep({ draft, update, onBack, onNext }: { draft: RegistrationDraft; update: (p: Partial<RegistrationDraft>) => void; onBack: () => void; onNext: () => void }) {
   const toast = useToast();
   const [errors, setErrors] = useState<Partial<Record<ProfileKey | "about", string>>>({});
   const [showMissing, setShowMissing] = useState(false);
-  const [horoscope, setHoroscope] = useState(false);
   const age = ageFrom(draft.dob);
   const underage = age !== null && age < 18;
   const aboutError = containsContactDetails(draft.about) ? "Please remove phone numbers or emails — members connect safely through Vikasitha" : undefined;
 
   const setValue = (k: ProfileKey, v: string) => {
-    update({ [k]: v } as Partial<RegistrationDraft>);
+    const patch: Partial<RegistrationDraft> = { [k]: v };
+    if (k === "firstName" || k === "lastName") patch.fullName = `${k === "firstName" ? v : draft.firstName} ${k === "lastName" ? v : draft.lastName}`.trim();
+    update(patch);
     setErrors((er) => ({ ...er, [k]: undefined }));
   };
   const set = (k: ProfileKey) => (e: React.ChangeEvent<HTMLInputElement>) => setValue(k, e.target.value);
@@ -441,11 +420,11 @@ function ProfileStep({ draft, update, onBack, onNext }: { draft: RegistrationDra
     REQUIRED.forEach((k) => {
       if (!String(draft[k] ?? "").trim()) er[k] = "Required";
     });
-    if (draft.fullName && draft.fullName.trim().length < 3) er.fullName = "Enter your full name";
+    if (draft.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(draft.email)) er.email = "Enter a valid email address";
     if (underage) er.dob = "You must be at least 18 years old";
     if (aboutError) er.about = aboutError;
     setErrors(er);
-    setShowMissing(Object.keys(er).some((k) => er[k as ProfileKey] === "Required"));
+    setShowMissing(Object.values(er).includes("Required"));
     if (Object.keys(er).length) {
       if (!underage) document.querySelector('[aria-invalid="true"]')?.scrollIntoView({ behavior: "smooth", block: "center" });
       return;
@@ -469,10 +448,14 @@ function ProfileStep({ draft, update, onBack, onNext }: { draft: RegistrationDra
       )}
 
       <div className="grid gap-4 sm:grid-cols-2">
-        <Input label="Full name" placeholder="e.g. Nethmi Perera" icon={<User size={20} color="currentColor" />} value={draft.fullName} onChange={set("fullName")} error={errors.fullName} autoComplete="name" />
-        <Select label="Gender" placeholder="Select" options={OPTIONS.gender} value={draft.gender} onChange={pick("gender")} error={errors.gender} icon={<Profile2User size={20} color="currentColor" />} />
+        <Input label="First name" placeholder="e.g. Sanjeewa" value={draft.firstName} onChange={set("firstName")} error={errors.firstName} autoComplete="given-name" />
+        <Input label="Last name" placeholder="e.g. Silva" value={draft.lastName} onChange={set("lastName")} error={errors.lastName} autoComplete="family-name" />
+        <Select label="Display name format" options={OPTIONS.displayNameFormat} value={draft.displayNameFormat} onChange={pick("displayNameFormat")} error={errors.displayNameFormat} />
+        <Select label="Account created by" options={OPTIONS.createdBy} value={draft.createdBy} onChange={pick("createdBy")} error={errors.createdBy} />
+        <Input label="Email" type="email" placeholder="you@example.com" value={draft.email} onChange={set("email")} error={errors.email} autoComplete="email" />
+        <Select label="Height" options={OPTIONS.height} value={draft.height} onChange={pick("height")} error={errors.height} />
         <Input
-          label="Date of birth"
+          label="Birthdate"
           type="date"
           icon={<Calendar size={20} color="currentColor" />}
           value={draft.dob}
@@ -481,13 +464,12 @@ function ProfileStep({ draft, update, onBack, onNext }: { draft: RegistrationDra
           error={errors.dob ?? (underage ? "You must be at least 18 years old" : undefined)}
           helper={age !== null && !underage ? `${age} years` : undefined}
         />
-        <Select label="Religion" placeholder="Select" options={OPTIONS.religion} value={draft.religion} onChange={pick("religion")} error={errors.religion} />
-        <Select label="District" placeholder="Select" options={OPTIONS.district} value={draft.district} onChange={pick("district")} error={errors.district} icon={<Location size={20} color="currentColor" />} />
-        <Select label="Height" hint="Optional" placeholder="Select" options={OPTIONS.height} value={draft.height} onChange={pick("height")} />
-        <Select label="Education" placeholder="Select" options={OPTIONS.education} value={draft.education} onChange={pick("education")} error={errors.education} />
-        <Select label="Profession" placeholder="Select" options={OPTIONS.profession} value={draft.profession} onChange={pick("profession")} error={errors.profession} icon={<Briefcase size={20} color="currentColor" />} />
-        <Select label="Marital status" placeholder="Select" options={OPTIONS.marital} value={draft.maritalStatus} onChange={pick("maritalStatus")} error={errors.maritalStatus} />
-        <Select label="Living in" placeholder="Select" options={OPTIONS.livingIn} value={draft.livingIn} onChange={pick("livingIn")} error={errors.livingIn} />
+        <Select label="Gender" options={OPTIONS.gender} value={draft.gender} onChange={pick("gender")} error={errors.gender} />
+        <Select label="Civil status" options={OPTIONS.civilStatus} value={draft.civilStatus} onChange={pick("civilStatus")} error={errors.civilStatus} />
+        <Select label="Religion" options={OPTIONS.religion} value={draft.religion} onChange={pick("religion")} error={errors.religion} />
+        <Select label="Ethnicity" options={OPTIONS.ethnicity} value={draft.ethnicity} onChange={pick("ethnicity")} error={errors.ethnicity} />
+        <Input label="Caste" placeholder="e.g. Govigama" value={draft.caste} onChange={set("caste")} />
+        <Select label="Country of residence" options={OPTIONS.country} value={draft.country} onChange={pick("country")} error={errors.country} />
       </div>
 
       <Textarea
@@ -500,7 +482,6 @@ function ProfileStep({ draft, update, onBack, onNext }: { draft: RegistrationDra
         helper="Tip: profiles with a short, warm description get more replies. Don’t add phone numbers here."
         error={errors.about ?? aboutError}
       />
-      <Checkbox checked={horoscope} onChange={setHoroscope}>I have a horoscope to share (you can upload it later)</Checkbox>
 
       <div className="flex gap-3">
         <Button variant="outline" onClick={onBack} leftIcon={<ArrowLeft size={18} color="currentColor" />} className="shrink-0">
@@ -521,17 +502,21 @@ function ProfileStep({ draft, update, onBack, onNext }: { draft: RegistrationDra
             label: "Fill sample profile",
             onClick: () => {
               update({
-                fullName: "Nethmi Perera",
-                gender: "Female",
-                dob: "1997-05-12",
+                firstName: "Sanjeewa",
+                lastName: "Silva",
+                fullName: "Sanjeewa Silva",
+                displayNameFormat: "First name and first letter of last name",
+                createdBy: "Self",
+                email: "sanjeewa@example.com",
+                height: "5' 8\"",
+                dob: "1994-05-12",
+                gender: "Male",
+                civilStatus: "Never married",
                 religion: "Buddhist",
-                district: "Kandy",
-                height: "5' 4\"",
-                education: "Bachelor’s degree",
-                profession: "Doctor",
-                maritalStatus: "Never married",
-                livingIn: "Sri Lanka",
-                about: "I’m a doctor working in Kandy, close to my family. I love travelling, reading and cooking Sri Lankan food. Looking for a kind, educated partner who values family.",
+                ethnicity: "Sinhalese",
+                caste: "",
+                country: "Sri Lanka",
+                about: "I’m an engineer working in Colombo, close to my family. I love travelling and cricket. Looking for a kind, educated partner who values family.",
               });
               setErrors({});
               setShowMissing(false);
@@ -616,11 +601,19 @@ function PhotosStep({ draft, update, onBack, onFinish }: { draft: RegistrationDr
         </Alert>
       )}
 
-      <div className="grid gap-3 sm:grid-cols-[1.1fr_1fr]">
-        <PhotoSlot main src={draft.photo} onPick={() => pick(-1)} onRemove={() => update({ photo: null })} />
-        <div className="grid grid-cols-2 gap-3">
+      {/* Figma: Photo slots — row 260 high, gap 12: Main photo 200 × 260 + More photos 2 × 2 of 146 × 124 */}
+      <div className="flex flex-col gap-3 sm:h-[260px] sm:flex-row">
+        <PhotoSlot main src={draft.photo} onPick={() => pick(-1)} onRemove={() => update({ photo: null })} className="aspect-[200/260] w-full sm:aspect-auto sm:h-full sm:w-[200px] sm:shrink-0" />
+        <div className="grid grid-cols-2 grid-rows-2 gap-3 sm:w-[304px] sm:shrink-0">
           {extra.map((src, i) => (
-            <PhotoSlot key={i} src={src} label={i === 0 ? "Add photo" : "Optional"} onPick={() => pick(i)} onRemove={() => setExtra((x) => x.map((v, j) => (j === i ? null : v)))} />
+            <PhotoSlot
+              key={i}
+              src={src}
+              label={i === 0 ? "Add photo" : "Optional"}
+              onPick={() => pick(i)}
+              onRemove={() => setExtra((x) => x.map((v, j) => (j === i ? null : v)))}
+              className="h-[124px] w-full"
+            />
           ))}
         </div>
       </div>
@@ -657,22 +650,23 @@ function PhotosStep({ draft, update, onBack, onFinish }: { draft: RegistrationDr
   );
 }
 
-function PhotoSlot({ src, main, label = "Add photo", onPick, onRemove }: { src: string | null; main?: boolean; label?: string; onPick: () => void; onRemove: () => void }) {
+/** Figma: Main photo (filled: Badge + 32px Edit button, padding 10) / Empty slot (radius lg, brand-subtle, 1.5px dashed rose-300). Size comes from `className`. */
+function PhotoSlot({ src, main, label = "Add photo", onPick, onRemove, className }: { src: string | null; main?: boolean; label?: string; onPick: () => void; onRemove: () => void; className?: string }) {
   if (src) {
     return (
-      <div className={cn("group relative overflow-hidden rounded-lg border border-line bg-surface-muted", main ? "aspect-[4/5]" : "aspect-square")}>
+      <div className={cn("group relative overflow-hidden rounded-lg bg-surface-muted", className)}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src={src} alt={main ? "Main photo" : "Photo"} className="h-full w-full object-cover" />
         {main && (
-          <span className="absolute left-3 top-3">
+          <span className="absolute left-2.5 top-2.5">
             <Badge tone="success">Main photo</Badge>
           </span>
         )}
-        <div className="absolute bottom-3 left-3 flex gap-2">
-          <button type="button" onClick={onPick} aria-label="Change photo" className="flex h-9 w-9 items-center justify-center rounded-full bg-surface-glass-strong text-ink shadow-sm hover:bg-surface-card">
+        <div className="absolute bottom-2.5 left-2.5 flex gap-2">
+          <button type="button" onClick={onPick} aria-label="Change photo" className="flex h-8 w-8 items-center justify-center rounded-full bg-surface-glass-strong text-brand shadow-sm hover:bg-surface-card">
             <Edit2 size={16} color="currentColor" />
           </button>
-          <button type="button" onClick={onRemove} aria-label="Remove photo" className="flex h-9 w-9 items-center justify-center rounded-full bg-surface-glass-strong text-error-fg shadow-sm hover:bg-surface-card">
+          <button type="button" onClick={onRemove} aria-label="Remove photo" className="flex h-8 w-8 items-center justify-center rounded-full bg-surface-glass-strong text-error-fg shadow-sm hover:bg-surface-card">
             <Trash size={16} color="currentColor" />
           </button>
         </div>
@@ -684,11 +678,12 @@ function PhotoSlot({ src, main, label = "Add photo", onPick, onRemove }: { src: 
       type="button"
       onClick={onPick}
       className={cn(
-        "flex flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed border-brand-focus bg-brand-subtle text-body-sm font-semibold text-brand transition-colors hover:border-brand hover:bg-surface-card",
-        main ? "aspect-[4/5]" : "aspect-square"
+        "flex flex-col items-center justify-center gap-1.5 rounded-lg border-[1.5px] border-dashed border-brand-focus bg-brand-subtle px-2 text-center text-brand transition-colors hover:border-brand hover:bg-surface-card",
+        main ? "text-body-sm font-semibold" : "text-label-sm",
+        className
       )}
     >
-      {main ? <Gallery size={32} color="currentColor" /> : <GalleryAdd size={22} color="currentColor" />}
+      {main ? <Gallery size={28} color="currentColor" /> : <GalleryAdd size={22} color="currentColor" />}
       {main ? "Add your main photo" : label}
       {main && <span className="text-body-xs font-normal text-ink-tertiary">JPG or PNG, up to 5 MB</span>}
     </button>

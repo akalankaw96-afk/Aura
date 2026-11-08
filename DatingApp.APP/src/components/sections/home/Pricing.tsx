@@ -1,8 +1,11 @@
+"use client";
+
 import React from "react";
 import Link from "next/link";
 import { Crown1, TickCircle } from "iconsax-react";
 import { cn } from "@/lib/cn";
 import { SectionHeader } from "@/components/ui/SectionHeader";
+import { useLanguage } from "@/context/LanguageContext";
 import { PRICING } from "@/content/home";
 
 /**
@@ -11,32 +14,69 @@ import { PRICING } from "@/content/home";
  * Mobile: Gold first (Figma: Home — Mobile 390).
  */
 export function Pricing() {
+  const { t, lang } = useLanguage();
+
   return (
     <section id="pricing" className="scroll-mt-28 py-16 lg:py-24">
       <div className="container-page flex flex-col gap-12">
-        <SectionHeader eyebrow={PRICING.eyebrow} title={PRICING.title} description={PRICING.description} />
-        <div className="mx-auto grid w-full max-w-[1216px] gap-6 md:grid-cols-3 md:gap-8">
+        <SectionHeader eyebrow={t.pricing.eyebrow} title={t.pricing.title} description={t.pricing.subtitle} />
+        <div className="reveal-stagger mx-auto grid w-full max-w-[1216px] gap-6 md:grid-cols-3 md:gap-8">
           {PRICING.plans.map((p) => {
             const gold = !!p.popular;
+            const name = p.id === "free" ? t.pricing.free : p.id === "gold" ? t.pricing.gold : t.pricing.platinum;
+            const desc =
+              lang === "si"
+                ? p.id === "free"
+                  ? "පැතිකඩ සාදා යෝජනා සෙවීම අරඹන්න"
+                  : p.id === "gold"
+                  ? "විවාහයක් අපේක්ෂා කරන පවුල් සඳහා"
+                  : "අපගේ විශේෂඥ සහයෝගය සමඟින්"
+                : p.description;
+
+            const features =
+              lang === "si"
+                ? p.id === "free"
+                  ? ["පැතිකඩක් සාදා පළ කරන්න", "සියලුම යෝජනා පිරික්සන්න", "මසකට කැමැත්ත 5ක් නොමිලේ", "ආරක්ෂාව සහ පෞද්ගලිකත්ව පාලනය"]
+                  : p.id === "gold"
+                  ? ["සීමාරහිත කැමැත්ත ප්‍රකාශ කිරීම්", "එකඟ වූ පසු දුරකථන අංක ලබාගැනීම", "කේන්දර සටහන් පරීක්ෂාව", "සෙවුම් ප්‍රතිඵලවල ප්‍රමුඛතාවය"]
+                  : ["රන් සැලසුමේ සියල්ල", "පුද්ගලික මැච්මේකර් සහය", "සතිපතා තෝරාගත් ගැළපීම්", "ප්‍රමුඛතා සත්‍යාපනය"]
+                : p.features;
+
+            const period =
+              lang === "si"
+                ? p.id === "free"
+                  ? "/ සදහටම"
+                  : "/ මසකට"
+                : p.period;
+
+            const ctaText =
+              lang === "si"
+                ? p.id === "free"
+                  ? "නොමිලේ අරඹන්න"
+                  : p.id === "gold"
+                  ? "රන් සැලසුම තෝරන්න"
+                  : "ප්ලැටිනම් තෝරන්න"
+                : p.cta;
+
             return (
               <article
                 key={p.id}
                 className={cn(
-                  "flex flex-col gap-6 rounded-xl p-8",
+                  "flex flex-col gap-6 rounded-xl p-8 hover:-translate-y-1.5 hover:shadow-xl",
                   gold ? "order-first bg-brand-strong text-ink-on-brand shadow-xl md:order-none" : "border border-line bg-surface-card shadow-sm"
                 )}
               >
                 <div className="flex items-center justify-between">
-                  <h3 className="text-h5">{p.name}</h3>
+                  <h3 className="text-h5">{name}</h3>
                   {gold && (
                     <span className="inline-flex h-[22px] items-center gap-1 rounded-full bg-premium-bg px-2 text-label-sm text-premium-fg">
-                      <Crown1 size={14} color="currentColor" /> Most popular
+                      <Crown1 size={14} color="currentColor" /> {lang === "si" ? "වඩාත් ජනප්‍රියයි" : "Most popular"}
                     </span>
                   )}
                 </div>
-                <p className={cn("text-body-md", gold ? "text-ink-on-brand" : "text-ink-secondary")}>{p.description}</p>
+                <p className={cn("text-body-md", gold ? "text-ink-on-brand" : "text-ink-secondary")}>{desc}</p>
                 <ul className="flex flex-col gap-3">
-                  {p.features.map((f) => (
+                  {features.map((f) => (
                     <li key={f} className={cn("flex items-center gap-2 text-body-md", gold ? "text-ink-on-brand" : "text-ink")}>
                       <TickCircle size={20} color="currentColor" className={gold ? "text-ink-on-brand" : "text-success-fg"} />
                       {f}
@@ -46,7 +86,7 @@ export function Pricing() {
                 <div className={cn("h-px", gold ? "bg-brand" : "bg-line")} />
                 <p className="flex items-baseline gap-1">
                   <span className="text-h1">{p.price}</span>
-                  <span className={cn("text-body-md", gold ? "text-ink-on-brand" : "text-ink-secondary")}>{p.period}</span>
+                  <span className={cn("text-body-md", gold ? "text-ink-on-brand" : "text-ink-secondary")}>{period}</span>
                 </p>
                 <Link
                   href={p.href}
@@ -55,7 +95,7 @@ export function Pricing() {
                     gold ? "bg-brand-subtle text-brand-text hover:shadow-lg" : "bg-brand-gradient text-ink-on-brand hover:shadow-glow"
                   )}
                 >
-                  {p.cta}
+                  {ctaText}
                 </Link>
               </article>
             );

@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { ArrowRight2, Profile2User, User } from "iconsax-react";
+import { ArrowRight2, User } from "iconsax-react";
 import {
   Alert,
   Badge,
@@ -10,21 +10,25 @@ import {
   Checkbox,
   Chip,
   CoupleAvatar,
-  DropdownMenu,
-  DropdownOption,
   Input,
   LanguageSwitch,
+  ThemeToggle,
   Logo,
   OtpInput,
   PasswordField,
   PhoneField,
   Select,
-  SortDropdown,
   Stepper,
   Textarea,
   ToastCard,
   useToast,
+  NumberField,
+  RangeSlider,
 } from "@/components/ui";
+import { Navbar } from "@/components/layout/Navbar";
+import { AgeRangePopover, formatAgeRange, type AgeRange } from "@/components/sections/home/AgeRangePopover";
+
+const DISTRICTS = ["Colombo", "Gampaha", "Kalutara", "Kandy", "Matale", "Nuwara Eliya", "Galle", "Matara", "Hambantota", "Jaffna", "Kurunegala", "Anuradhapura", "Badulla", "Ratnapura", "Trincomalee", "Batticaloa"];
 
 /**
  * /components — living preview of the UI kit, mirroring the Figma
@@ -51,7 +55,7 @@ function Row({ label, children }: { label: string; children: React.ReactNode }) 
   );
 }
 
-const NAV = ["Buttons", "Inputs", "Dropdowns", "Phone & Password", "OTP", "Selection", "Badges", "Feedback", "Stepper", "Brand"];
+const NAV = ["Buttons", "Inputs", "Dropdown", "Number & Range", "Phone & Password", "OTP", "Selection", "Badges", "Feedback", "Stepper", "Navbar", "Brand"];
 
 export default function ComponentsPage() {
   const toast = useToast();
@@ -63,7 +67,11 @@ export default function ComponentsPage() {
   const [about, setAbout] = useState("I’m a doctor working in Kandy, close to my family.");
   const [step, setStep] = useState(2);
   const [religion, setReligion] = useState("Christian");
-  const [sortValue, setSortValue] = useState("Newest first");
+  const [district, setDistrict] = useState("");
+  const [gender, setGender] = useState("");
+  const [minAge, setMinAge] = useState("25");
+  const [range, setRange] = useState<[number, number]>([25, 32]);
+  const [ageRange, setAgeRange] = useState<AgeRange>({ min: 25, max: 32 });
 
   return (
     <div className="min-h-screen overflow-x-hidden bg-surface-subtle">
@@ -113,9 +121,6 @@ export default function ComponentsPage() {
               <Input label="Full name" placeholder="Enter your full name" icon={<User size={20} color="currentColor" />} helper="Helper text" />
               <Input label="Full name" defaultValue="Nethmi Perera" icon={<User size={20} color="currentColor" />} error="Please enter your full name" />
               <Input label="Full name" placeholder="Enter your full name" icon={<User size={20} color="currentColor" />} disabled helper="Disabled" />
-              <Select label="Religion" placeholder="Select" options={["Buddhist", "Hindu", "Christian", "Catholic", "Islam", "Other"]} value={religion} onChange={setReligion} helper="More than 4 options → search appears" />
-              <Select label="Gender" placeholder="Select" options={["Female", "Male"]} value="" onChange={() => {}} helper="4 or fewer → no search" />
-              <Select label="Religion" options={["Buddhist", "Hindu"]} value="Buddhist" onChange={() => {}} error="Required" />
             </div>
             <div className="mt-6 grid gap-6 md:grid-cols-2">
               <Textarea label="About you" hint="Optional" value={about} onChange={setAbout} helper="Tip: profiles with a short, warm description get more replies." />
@@ -125,124 +130,36 @@ export default function ComponentsPage() {
         </Card>
 
         <Card className="p-6">
-          <Section id="dropdowns" title="Dropdowns & Select" figma="Input (Type = Select) [15:1111/133:34238], Dropdown Menu [133:33402], Dropdown Option [133:33314], Sort Dropdown [86:19427]">
-            <div className="space-y-8">
-              <div>
-                <h3 className="mb-3 text-label-lg font-bold text-ink">1. Interactive Controls</h3>
-                <div className="grid gap-6 md:grid-cols-3">
-                  <Select
-                    label="Religion"
-                    placeholder="Select"
-                    icon={<Profile2User size={20} color="currentColor" />}
-                    options={["Buddhist", "Hindu", "Christian", "Catholic", "Islam", "Other"]}
-                    value={religion}
-                    onChange={setReligion}
-                    helper="More than 4 options → search appears"
-                  />
-                  <Select
-                    label="Gender"
-                    placeholder="Select"
-                    options={["Female", "Male"]}
-                    value=""
-                    onChange={() => {}}
-                    helper="4 or fewer → no search"
-                  />
-                  <Select
-                    label="Religion"
-                    options={["Buddhist", "Hindu"]}
-                    value="Buddhist"
-                    onChange={() => {}}
-                    error="Required field"
-                  />
-                  <Select
-                    label="Disabled select"
-                    options={["Option 1", "Option 2"]}
-                    value="Option 1"
-                    onChange={() => {}}
-                    disabled
-                    helper="Disabled state"
-                  />
-                  <div>
-                    <p className="mb-2 text-label-md text-ink">Sort Dropdown (Figma 86:19427)</p>
-                    <SortDropdown value={sortValue} onChange={setSortValue} />
-                    <p className="mt-2 text-body-xs text-ink-tertiary">Used in search & profile listings</p>
-                  </div>
+          <Section id="dropdown" title="Dropdown" figma="Input (Type = Select) · Dropdown Menu · Dropdown Option">
+            <div className="grid gap-6 md:grid-cols-3">
+              <Select label="Religion" placeholder="Select" options={["Buddhist", "Hindu", "Christian", "Catholic", "Islam", "Other"]} value={religion} onChange={setReligion} helper="More than 4 options → search appears" />
+              <Select label="District" placeholder="Select" options={DISTRICTS} value={district} onChange={setDistrict} helper="Long list scrolls after 6 rows" />
+              <Select label="Gender" placeholder="Select" options={["Female", "Male"]} value={gender} onChange={setGender} helper="4 or fewer → no search" />
+              <Select label="Marital status" placeholder="Select" options={["Never married", "Divorced", "Widowed"]} value="" onChange={() => {}} error="Required" />
+              <Select label="Religion" options={["Buddhist", "Hindu"]} value="Buddhist" onChange={() => {}} disabled helper="Disabled" />
+            </div>
+            <p className="mt-4 text-body-sm text-ink-tertiary">Keyboard: ↑ ↓ to move · Enter to select · Esc to close · type to filter.</p>
+          </Section>
+        </Card>
+
+        <Card className="p-6">
+          <Section id="number-range" title="Number & Range" figma="Number Field · Range Slider · Search Popover (Type = Age)">
+            <div className="grid gap-8 lg:grid-cols-[1fr_380px]">
+              <div className="flex flex-col gap-6">
+                <div className="grid gap-4 sm:grid-cols-3">
+                  <NumberField label="Min age" suffix="yrs" value={minAge} onChange={setMinAge} helper="18 – 70" />
+                  <NumberField label="Max age" suffix="yrs" value="20" onChange={() => {}} error="Must be 25 or more" />
+                  <NumberField label="Height" suffix="cm" value="165" onChange={() => {}} />
                 </div>
-              </div>
-
-              <div>
-                <h3 className="mb-3 text-label-lg font-bold text-ink">2. Dropdown Option States (Figma 133:33314)</h3>
-                <div className="grid max-w-xl gap-3 rounded-md border border-line bg-surface-card p-4">
-                  <div className="space-y-1">
-                    <p className="text-body-xs text-ink-tertiary">State = Default</p>
-                    <ul className="list-none p-0 m-0">
-                      <DropdownOption label="Buddhist" state="Default" />
-                    </ul>
-                  </div>
-                  <div className="space-y-1">
-                    <p className="text-body-xs text-ink-tertiary">State = Hover</p>
-                    <ul className="list-none p-0 m-0">
-                      <DropdownOption label="Hindu" state="Hover" />
-                    </ul>
-                  </div>
-                  <div className="space-y-1">
-                    <p className="text-body-xs text-ink-tertiary">State = Selected</p>
-                    <ul className="list-none p-0 m-0">
-                      <DropdownOption label="Christian" state="Selected" />
-                    </ul>
-                  </div>
+                <div>
+                  <p className="mb-3 text-label-md text-ink">
+                    Range Slider <span className="text-brand-text">{range[0]} – {range[1]}</span>
+                  </p>
+                  <RangeSlider min={18} max={70} value={range} onChange={setRange} labels={["18", "70"]} />
                 </div>
+                <p className="text-body-sm text-ink-tertiary">Age popover (right): type an age, drag the slider or pick a popular range. Max below Min shows the error state and disables Apply.</p>
               </div>
-
-              <div>
-                <h3 className="mb-3 text-label-lg font-bold text-ink">3. Dropdown Menu Variants (Figma 133:33402)</h3>
-                <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-                  <div>
-                    <span className="mb-2 inline-block text-body-xs font-semibold text-ink-secondary">
-                      Search = On, State = Default
-                    </span>
-                    <DropdownMenu
-                      search
-                      options={["Buddhist", "Hindu", "Christian", "Catholic", "Islam", "Other"]}
-                      selectedValue="Christian"
-                    />
-                  </div>
-
-                  <div>
-                    <span className="mb-2 inline-block text-body-xs font-semibold text-ink-secondary">
-                      Search = On, State = Filtered
-                    </span>
-                    <DropdownMenu
-                      search
-                      searchQuery="Chr"
-                      options={["Buddhist", "Hindu", "Christian", "Catholic", "Islam", "Other"]}
-                      selectedValue="Christian"
-                    />
-                  </div>
-
-                  <div>
-                    <span className="mb-2 inline-block text-body-xs font-semibold text-ink-secondary">
-                      Search = On, State = Empty
-                    </span>
-                    <DropdownMenu
-                      search
-                      searchQuery="xyz"
-                      options={["Buddhist", "Hindu", "Christian", "Catholic", "Islam", "Other"]}
-                    />
-                  </div>
-
-                  <div>
-                    <span className="mb-2 inline-block text-body-xs font-semibold text-ink-secondary">
-                      Search = Off, State = Default
-                    </span>
-                    <DropdownMenu
-                      search={false}
-                      options={["Female", "Male", "Other"]}
-                      selectedValue="Female"
-                    />
-                  </div>
-                </div>
-              </div>
+              <AgeRangePopover value={ageRange} onApply={(v) => { setAgeRange(v); toast.success("Age range applied", formatAgeRange(v)); }} />
             </div>
           </Section>
         </Card>
@@ -354,6 +271,19 @@ export default function ComponentsPage() {
           </Section>
         </Card>
 
+        <Card className="overflow-hidden p-6">
+          <Section id="navbar" title="Navbar" figma="Navbar (Style = Light / Style3 / Transparent)">
+            <div className="flex flex-col gap-6">
+              <p className="text-label-md text-ink-tertiary">Light</p>
+              <div className="relative overflow-hidden rounded-md border border-line [&_header]:static"><Navbar variant="light" /></div>
+              <p className="text-label-md text-ink-tertiary">Style 3 (minimal)</p>
+              <div className="relative overflow-hidden rounded-md border border-line [&_header]:static"><Navbar variant="minimal" /></div>
+              <p className="text-label-md text-ink-tertiary">Transparent (on the hero photo)</p>
+              <div className="relative overflow-hidden rounded-md bg-[url('/images/hero/hero-couple.jpg')] bg-cover bg-center [&_header]:static"><Navbar variant="glass" /></div>
+            </div>
+          </Section>
+        </Card>
+
         <Card className="p-6">
           <Section id="brand" title="Brand" figma="Logo, Illustration / Avatar, Language Switch">
             <Row label="Logo">
@@ -364,8 +294,13 @@ export default function ComponentsPage() {
               <CoupleAvatar size={72} type="bride" />
               <CoupleAvatar size={72} type="groom" />
             </Row>
-            <Row label="Language">
+            <Row label="Language / Theme">
               <LanguageSwitch />
+              <ThemeToggle />
+              <div className="flex items-center gap-3 rounded-md bg-brand-strong p-3">
+                <LanguageSwitch surface="glass" />
+                <ThemeToggle surface="glass" />
+              </div>
             </Row>
           </Section>
         </Card>

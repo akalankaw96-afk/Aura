@@ -47,11 +47,7 @@ export function PlansScreen() {
   return (
     <AuthShell
       wide
-      right={
-        <Link href="/register/status" className="flex h-[43px] items-center rounded-full border border-line-strong bg-surface-card px-4 text-button-sm text-ink hover:bg-surface-subtle">
-          Maybe later
-        </Link>
-      }
+      action="avatar"
     >
       <div className="w-full">
         <Link href="/register/status" className="inline-flex items-center gap-1 text-link-sm text-brand-link underline">

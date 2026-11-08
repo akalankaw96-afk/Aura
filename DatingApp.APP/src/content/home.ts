@@ -17,7 +17,6 @@ export const NAV_LINKS = [
 
 /* ── 01 Hero ─────────────────────────────────────────────────────────── */
 export const HERO = {
-  trustPill: "Sri Lanka’s trusted matrimony · every profile verified",
   title: "Find a life partner your whole family can trust",
   description:
     "Real, photo-verified marriage proposals from across Sri Lanka and Sri Lankans overseas. Your contact details stay private until you say yes.",
@@ -34,17 +33,22 @@ export interface MarqueeProfile {
   religion: string;
   avatar: string;
   gender: "bride" | "groom";
+  /** Profile Photo Card (hero marquee) — first name, full location, mother tongue, main photo */
+  name: string;
+  location: string;
+  language: string;
+  photo: string;
 }
 
-/** Figma: Profile Marquee (auto-scroll) — Card 1…7 (the track repeats them) */
+/** Figma: Profile Marquee (auto-scroll) — Profile Photo Card 1…7 (the track repeats them) */
 export const MARQUEE_PROFILES: MarqueeProfile[] = [
-  { id: "MP-24817", city: "Kandy", country: "lk", age: 28, height: "5′ 4″", profession: "Doctor", religion: "Buddhist", avatar: "/images/profiles/avatar-mp-24817.jpg", gender: "groom" },
-  { id: "MP-24790", city: "Melbourne", country: "au", age: 32, height: "5′ 9″", profession: "Engineer", religion: "Catholic", avatar: "/images/profiles/avatar-mp-24790.jpg", gender: "bride" },
-  { id: "MP-24766", city: "Toronto", country: "ca", age: 29, height: "5′ 3″", profession: "Nurse", religion: "Hindu", avatar: "/images/profiles/avatar-mp-24766.jpg", gender: "bride" },
-  { id: "MP-24751", city: "Colombo", country: "lk", age: 30, height: "5′ 8″", profession: "Accountant", religion: "Muslim", avatar: "/images/profiles/avatar-mp-24751.jpg", gender: "groom" },
-  { id: "MP-24733", city: "Galle", country: "lk", age: 26, height: "5′ 2″", profession: "Teacher", religion: "Buddhist", avatar: "/images/profiles/avatar-mp-24733.jpg", gender: "bride" },
-  { id: "MP-24702", city: "Doha", country: "qa", age: 34, height: "5′ 10″", profession: "Civil Eng.", religion: "Buddhist", avatar: "/images/profiles/avatar-mp-24702.jpg", gender: "bride" },
-  { id: "MP-24688", city: "Kurunegala", country: "lk", age: 27, height: "5′ 5″", profession: "Pharmacist", religion: "Buddhist", avatar: "/images/profiles/avatar-mp-24688.jpg", gender: "bride" },
+  { id: "MP-24817", city: "Kandy", country: "lk", age: 28, height: "5′ 4″", profession: "Doctor", religion: "Buddhist", avatar: "/images/profiles/avatar-mp-24817.jpg", gender: "groom", name: "Kavindu", location: "Kandy, Sri Lanka", language: "Sinhala", photo: "/images/profiles/mp-24817.jpg" },
+  { id: "MP-24790", city: "Melbourne", country: "au", age: 32, height: "5′ 9″", profession: "Engineer", religion: "Catholic", avatar: "/images/profiles/avatar-mp-24790.jpg", gender: "bride", name: "Nethmi", location: "Melbourne, Australia", language: "Sinhala", photo: "/images/profiles/mp-24790.jpg" },
+  { id: "MP-24766", city: "Toronto", country: "ca", age: 29, height: "5′ 3″", profession: "Nurse", religion: "Hindu", avatar: "/images/profiles/avatar-mp-24766.jpg", gender: "bride", name: "Tharshini", location: "Toronto, Canada", language: "Tamil", photo: "/images/profiles/mp-24766.jpg" },
+  { id: "MP-24751", city: "Colombo", country: "lk", age: 30, height: "5′ 8″", profession: "Accountant", religion: "Muslim", avatar: "/images/profiles/avatar-mp-24751.jpg", gender: "groom", name: "Rizwan", location: "Colombo, Sri Lanka", language: "Tamil", photo: "/images/profiles/mp-24751.jpg" },
+  { id: "MP-24733", city: "Galle", country: "lk", age: 26, height: "5′ 2″", profession: "Teacher", religion: "Buddhist", avatar: "/images/profiles/avatar-mp-24733.jpg", gender: "bride", name: "Sachini", location: "Galle, Sri Lanka", language: "Sinhala", photo: "/images/profiles/mp-24733.jpg" },
+  { id: "MP-24702", city: "Doha", country: "qa", age: 34, height: "5′ 10″", profession: "Civil Eng.", religion: "Buddhist", avatar: "/images/profiles/avatar-mp-24702.jpg", gender: "bride", name: "Dilini", location: "Doha, Qatar", language: "Sinhala", photo: "/images/profiles/mp-24702.jpg" },
+  { id: "MP-24688", city: "Kurunegala", country: "lk", age: 27, height: "5′ 5″", profession: "Pharmacist", religion: "Buddhist", avatar: "/images/profiles/avatar-mp-24688.jpg", gender: "bride", name: "Hiruni", location: "Kurunegala, Sri Lanka", language: "Sinhala", photo: "/images/profiles/mp-24688.jpg" },
 ];
 
 /* ── 02 How it works ─────────────────────────────────────────────────── */
@@ -97,7 +101,7 @@ export const STORIES = {
   title: "Trusted by 100+ happy couples",
   description: "Real families, real weddings — from Colombo to Melbourne.",
   /**
-   * Item 1 is the story shown in Figma. Items 2–4 are PLACEHOLDER copy so the
+   * Item 1 is the story shown in Figma. Items 2–7 are PLACEHOLDER copy so the
    * carousel arrows have something to show — replace with real stories.
    */
   items: [
@@ -145,9 +149,40 @@ export const STORIES = {
       caption: "Watch their story",
       captionMeta: "Poruwa ceremony · December 2023",
     },
+    {
+      badge: "Married 2023",
+      headline: "Our parents became friends",
+      quote: "Both mothers chatted on the app before we did. By the time we met, the families were already close.",
+      initials: "SH",
+      names: "Sahan & Hiruni",
+      meta: "Kurunegala · Buddhist",
+      photo: "/images/stories/story-1.jpg",
+      caption: "Watch their story",
+      captionMeta: "Poruwa ceremony · May 2023",
+    },
+    {
+      badge: "Married 2025",
+      headline: "Home, even from Dubai",
+      quote: "Working abroad I worried I'd miss out. Vikasitha brought a match from my own hometown.",
+      initials: "MF",
+      names: "Mohamed & Fathima",
+      meta: "Dubai · Islam",
+      photo: "/images/stories/story-5.jpg",
+      caption: "Watch their story",
+      captionMeta: "Nikah ceremony · January 2025",
+    },
+    {
+      badge: "Married 2024",
+      headline: "Same values, same dreams",
+      quote: "We both wanted a simple wedding and a big family. The filters found exactly that.",
+      initials: "JP",
+      names: "Janith & Piumi",
+      meta: "Negombo · Catholic",
+      photo: "/images/stories/story-6.jpg",
+      caption: "Watch their story",
+      captionMeta: "Church wedding · October 2024",
+    },
   ],
-  /** Side photos in the Figma carousel, left → right */
-  side: ["/images/stories/story-1.jpg", "/images/stories/story-2.jpg", "/images/stories/story-3.jpg", "/images/stories/story-4.jpg", "/images/stories/story-5.jpg", "/images/stories/story-6.jpg"],
 };
 
 /* ── Category Brick Wall ─────────────────────────────────────────────── */
