@@ -15,7 +15,9 @@ To open a node, add `?node-id=` plus the ID with `:` changed to `-` (e.g. `15:93
 | Figma component | Node | Code |
 |---|---|---|
 | Button / Button Gradient | 15:930 / 15:964 | `ui/Button.tsx` |
-| Input (Text / Select) | 15:1111 | `ui/Input.tsx` (`Input`, `Select`) + `ui/Field.tsx` |
+| Input (Type = Text) | 15:1111 | `ui/Input.tsx` + `ui/Field.tsx` |
+| Input (Type = Select, incl. State = Open) + Dropdown Menu + Dropdown Option | 15:1111 / 133:33402 / 133:33314 | `ui/Select.tsx` (custom listbox with search when > 4 options, `DropdownMenu`, `DropdownOption`) |
+| Sort Dropdown | 86:19427 | `ui/Select.tsx` (`SortDropdown`) |
 | Phone Field | 76:15025 | `ui/PhoneField.tsx` |
 | Password Field | 76:15101 | `ui/PasswordField.tsx` |
 | OTP Input | 76:15147 | `ui/OtpInput.tsx` |

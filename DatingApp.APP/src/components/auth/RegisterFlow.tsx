@@ -428,10 +428,12 @@ function ProfileStep({ draft, update, onBack, onNext }: { draft: RegistrationDra
   const underage = age !== null && age < 18;
   const aboutError = containsContactDetails(draft.about) ? "Please remove phone numbers or emails — members connect safely through Vikasitha" : undefined;
 
-  const set = (k: ProfileKey) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    update({ [k]: e.target.value } as Partial<RegistrationDraft>);
+  const setValue = (k: ProfileKey, v: string) => {
+    update({ [k]: v } as Partial<RegistrationDraft>);
     setErrors((er) => ({ ...er, [k]: undefined }));
   };
+  const set = (k: ProfileKey) => (e: React.ChangeEvent<HTMLInputElement>) => setValue(k, e.target.value);
+  const pick = (k: ProfileKey) => (v: string) => setValue(k, v);
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -468,7 +470,7 @@ function ProfileStep({ draft, update, onBack, onNext }: { draft: RegistrationDra
 
       <div className="grid gap-4 sm:grid-cols-2">
         <Input label="Full name" placeholder="e.g. Nethmi Perera" icon={<User size={20} color="currentColor" />} value={draft.fullName} onChange={set("fullName")} error={errors.fullName} autoComplete="name" />
-        <Select label="Gender" placeholder="Select" options={OPTIONS.gender} value={draft.gender} onChange={set("gender")} error={errors.gender} icon={<Profile2User size={20} color="currentColor" />} />
+        <Select label="Gender" placeholder="Select" options={OPTIONS.gender} value={draft.gender} onChange={pick("gender")} error={errors.gender} icon={<Profile2User size={20} color="currentColor" />} />
         <Input
           label="Date of birth"
           type="date"
@@ -479,13 +481,13 @@ function ProfileStep({ draft, update, onBack, onNext }: { draft: RegistrationDra
           error={errors.dob ?? (underage ? "You must be at least 18 years old" : undefined)}
           helper={age !== null && !underage ? `${age} years` : undefined}
         />
-        <Select label="Religion" placeholder="Select" options={OPTIONS.religion} value={draft.religion} onChange={set("religion")} error={errors.religion} />
-        <Select label="District" placeholder="Select" options={OPTIONS.district} value={draft.district} onChange={set("district")} error={errors.district} icon={<Location size={20} color="currentColor" />} />
-        <Select label="Height" hint="Optional" placeholder="Select" options={OPTIONS.height} value={draft.height} onChange={set("height")} />
-        <Select label="Education" placeholder="Select" options={OPTIONS.education} value={draft.education} onChange={set("education")} error={errors.education} />
-        <Select label="Profession" placeholder="Select" options={OPTIONS.profession} value={draft.profession} onChange={set("profession")} error={errors.profession} icon={<Briefcase size={20} color="currentColor" />} />
-        <Select label="Marital status" placeholder="Select" options={OPTIONS.marital} value={draft.maritalStatus} onChange={set("maritalStatus")} error={errors.maritalStatus} />
-        <Select label="Living in" placeholder="Select" options={OPTIONS.livingIn} value={draft.livingIn} onChange={set("livingIn")} error={errors.livingIn} />
+        <Select label="Religion" placeholder="Select" options={OPTIONS.religion} value={draft.religion} onChange={pick("religion")} error={errors.religion} />
+        <Select label="District" placeholder="Select" options={OPTIONS.district} value={draft.district} onChange={pick("district")} error={errors.district} icon={<Location size={20} color="currentColor" />} />
+        <Select label="Height" hint="Optional" placeholder="Select" options={OPTIONS.height} value={draft.height} onChange={pick("height")} />
+        <Select label="Education" placeholder="Select" options={OPTIONS.education} value={draft.education} onChange={pick("education")} error={errors.education} />
+        <Select label="Profession" placeholder="Select" options={OPTIONS.profession} value={draft.profession} onChange={pick("profession")} error={errors.profession} icon={<Briefcase size={20} color="currentColor" />} />
+        <Select label="Marital status" placeholder="Select" options={OPTIONS.marital} value={draft.maritalStatus} onChange={pick("maritalStatus")} error={errors.maritalStatus} />
+        <Select label="Living in" placeholder="Select" options={OPTIONS.livingIn} value={draft.livingIn} onChange={pick("livingIn")} error={errors.livingIn} />
       </div>
 
       <Textarea
