@@ -73,13 +73,21 @@ public class AuthService : IAuthService
 
     public async Task<AuthResponseDto> LoginAsync(LoginDto dto, CancellationToken ct = default)
     {
+        var identifier = (dto.Email ?? string.Empty).Trim().ToLower();
+        var digitsOnly = new string(identifier.Where(char.IsDigit).ToArray());
+
         var user = await _context.Users
             .Include(u => u.Profile)
-            .FirstOrDefaultAsync(u => u.Email.ToLower() == dto.Email.ToLower().Trim(), ct);
+            .FirstOrDefaultAsync(u =>
+                u.Email.ToLower() == identifier ||
+                (!string.IsNullOrEmpty(digitsOnly) && digitsOnly.Length >= 7 &&
+                 (u.PhoneNumber.Contains(digitsOnly) ||
+                  (digitsOnly.Length >= 9 && u.PhoneNumber.Replace(" ", "").Replace("+", "").EndsWith(digitsOnly.Substring(digitsOnly.Length - 9))))),
+                ct);
 
         if (user == null || !_passwordHasher.VerifyPassword(dto.Password, user.PasswordHash))
         {
-            throw new UnauthorizedAccessException("Invalid email or password.");
+            throw new UnauthorizedAccessException("Invalid email, mobile number or password.");
         }
 
         var token = _jwtTokenGenerator.GenerateToken(user);

@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowRight2, Messages2 } from "iconsax-react";
+import { ArrowRight2, Messages2, Sms, Call } from "iconsax-react";
 import {
   Alert,
   Button,
@@ -11,10 +11,10 @@ import {
   CardTitle,
   Checkbox,
   CoupleAvatar,
+  Input,
   OrDivider,
   PasswordField,
   PhoneField,
-
   flashToast,
   isValidSriLankanMobile,
   useFlashToast,
@@ -22,25 +22,25 @@ import {
 } from "@/components/ui";
 import { AuthShell } from "./AuthShell";
 import { DemoTips } from "./DemoTips";
-import { DEMO, formatPhone } from "./shared";
+import { apiService } from "@/services/api";
+import { cn } from "@/lib/cn";
 
-/**
- * Journey 1 · Login (Figma 01, 01a wrong password, 01b locked, 01c suspended,
- * 01g success). Front-end only — see src/lib/demo.ts for the test values.
- */
 type LoginError = null | "wrong" | "locked" | "suspended";
 const LOCK_SECONDS = 15 * 60;
 
 export function LoginScreen() {
   const router = useRouter();
   const toast = useToast();
-  useFlashToast(); // e.g. "Password updated" coming from Forgot password
+  useFlashToast();
 
+  const [mode, setMode] = useState<"email" | "phone">("email");
+  const [email, setEmail] = useState("");
   const [mobile, setMobile] = useState("");
   const [password, setPassword] = useState("");
   const [remember, setRemember] = useState(true);
-  const [fieldErrors, setFieldErrors] = useState<{ mobile?: string; password?: string }>({});
+  const [fieldErrors, setFieldErrors] = useState<{ identifier?: string; password?: string }>({});
   const [error, setError] = useState<LoginError>(null);
+  const [errorMessage, setErrorMessage] = useState<string>("");
   const [attempts, setAttempts] = useState(0);
   const [lockLeft, setLockLeft] = useState(0);
   const [loading, setLoading] = useState(false);
@@ -52,7 +52,7 @@ export function LoginScreen() {
   }, [lockLeft]);
 
   useEffect(() => {
-    if (error === "locked" && lockLeft === 0 && attempts >= DEMO.maxLoginAttempts) {
+    if (error === "locked" && lockLeft === 0 && attempts >= 5) {
       setError(null);
       setAttempts(0);
     }
@@ -60,49 +60,67 @@ export function LoginScreen() {
 
   const locked = lockLeft > 0;
 
-  const submit = (e: React.FormEvent) => {
+  const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     const fe: typeof fieldErrors = {};
-    if (!mobile) fe.mobile = "Enter your mobile number";
-    else if (!isValidSriLankanMobile(mobile)) fe.mobile = "Enter a valid Sri Lankan mobile number";
-    if (!password) fe.password = "Enter your password";
+
+    const identifier = mode === "email" ? email.trim() : mobile.trim();
+
+    if (!identifier) {
+      fe.identifier = mode === "email" ? "Enter your email address" : "Enter your mobile number";
+    } else if (mode === "phone" && !isValidSriLankanMobile(identifier)) {
+      fe.identifier = "Enter a valid Sri Lankan mobile number";
+    } else if (mode === "email" && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(identifier)) {
+      fe.identifier = "Enter a valid email address";
+    }
+
+    if (!password) {
+      fe.password = "Enter your password";
+    }
+
     setFieldErrors(fe);
-    if (Object.keys(fe).length) return;
+    if (Object.keys(fe).length > 0) return;
 
     setLoading(true);
-    window.setTimeout(() => {
+    setError(null);
+    setErrorMessage("");
+
+    try {
+      // Real API Login Call
+      const session = await apiService.login({
+        email: identifier,
+        password: password,
+      });
+
       setLoading(false);
-      if (mobile === DEMO.suspendedMobile) {
-        setError("suspended");
-        return;
-      }
-      if (mobile === DEMO.registeredMobile && password === DEMO.password) {
-        setError(null);
-        flashToast("success", "Welcome back, Nethmi!", "You’re logged in.");
-        toast.success("Welcome back, Nethmi!", "You’re logged in.");
-        window.setTimeout(() => router.push("/dashboard"), 900);
-        return;
-      }
+      flashToast("success", `Welcome back, ${session.fullName || "Member"}!`, "You’re logged in.");
+      toast.success(`Welcome back, ${session.fullName || "Member"}!`, "You’re logged in.");
+      router.push("/dashboard");
+    } catch (err: unknown) {
+      setLoading(false);
+      const msg = err instanceof Error ? err.message : "Invalid credentials. Please try again.";
+      setErrorMessage(msg);
+
       const n = attempts + 1;
       setAttempts(n);
-      if (n >= DEMO.maxLoginAttempts) {
+
+      if (n >= 5) {
         setError("locked");
         setLockLeft(LOCK_SECONDS);
       } else {
         setError("wrong");
-        setFieldErrors({ password: `Incorrect password · ${DEMO.maxLoginAttempts - n} attempt${DEMO.maxLoginAttempts - n === 1 ? "" : "s"} left` });
+        setFieldErrors({
+          password: `${msg} (${5 - n} attempt${5 - n === 1 ? "" : "s"} left)`,
+        });
       }
-    }, 600);
+    }
   };
 
   const mm = String(Math.floor(lockLeft / 60)).padStart(2, "0");
   const ss = String(lockLeft % 60).padStart(2, "0");
 
   return (
-    <AuthShell
-      showTrust
-      action="create-account"
-    >
+    <AuthShell showTrust action="create-account">
       <Card className="w-full max-w-[520px] p-6 sm:p-10">
         <form onSubmit={submit} noValidate className="flex flex-col gap-5">
           <div className="flex flex-col items-center gap-2">
@@ -110,32 +128,96 @@ export function LoginScreen() {
             <CardTitle title="Welcome back" subtitle="Log in to see your matches and messages." />
           </div>
 
+          {/* Mode Tabs: Email vs Phone */}
+          <div className="grid grid-cols-2 p-1 bg-surface-subtle border border-line rounded-lg">
+            <button
+              type="button"
+              onClick={() => {
+                setMode("email");
+                setFieldErrors({});
+                setError(null);
+              }}
+              className={cn(
+                "flex items-center justify-center gap-2 py-2 text-sm font-semibold rounded-md transition-all",
+                mode === "email"
+                  ? "bg-surface-card text-brand shadow-xs"
+                  : "text-ink-secondary hover:text-ink"
+              )}
+            >
+              <Sms size={16} color="currentColor" />
+              <span>Email Address</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setMode("phone");
+                setFieldErrors({});
+                setError(null);
+              }}
+              className={cn(
+                "flex items-center justify-center gap-2 py-2 text-sm font-semibold rounded-md transition-all",
+                mode === "phone"
+                  ? "bg-surface-card text-brand shadow-xs"
+                  : "text-ink-secondary hover:text-ink"
+              )}
+            >
+              <Call size={16} color="currentColor" />
+              <span>Mobile Number</span>
+            </button>
+          </div>
+
           {error === "wrong" && (
-            <Alert type="error" title="Login failed" action={<Link href="/forgot-password" className="font-bold text-brand hover:underline">Reset password</Link>}>
-              Mobile number or password is incorrect.
-            </Alert>
-          )}
-          {error === "locked" && (
-            <Alert type="warning" title="Too many attempts — account locked">
-              For your safety, login is paused for <b>{mm}:{ss}</b>. You can{" "}
-              <Link href="/forgot-password" className="font-bold text-brand hover:underline">reset your password</Link> now.
-            </Alert>
-          )}
-          {error === "suspended" && (
-            <Alert type="error" title="Account suspended" action={<a href="mailto:support@vikasitha.lk" className="font-bold text-brand hover:underline">Contact support</a>}>
-              This account was suspended after a safety review. If you think this is a mistake, contact our support team.
+            <Alert
+              type="error"
+              title="Login failed"
+              action={
+                <Link href="/forgot-password" className="font-bold text-brand hover:underline">
+                  Reset password
+                </Link>
+              }
+            >
+              {errorMessage || "Invalid email, mobile number or password. Please try again."}
             </Alert>
           )}
 
-          <PhoneField
-            value={mobile}
-            onChange={(v) => {
-              setMobile(v);
-              setFieldErrors((f) => ({ ...f, mobile: undefined }));
-            }}
-            error={fieldErrors.mobile}
-            disabled={locked}
-          />
+          {error === "locked" && (
+            <Alert type="warning" title="Too many attempts — account locked">
+              For your safety, login is paused for <b>{mm}:{ss}</b>. You can{" "}
+              <Link href="/forgot-password" className="font-bold text-brand hover:underline">
+                reset your password
+              </Link>{" "}
+              now.
+            </Alert>
+          )}
+
+          {mode === "email" ? (
+            <Input
+              label="Email address"
+              type="email"
+              placeholder="e.g. demo@auramatrimony.lk"
+              value={email}
+              onChange={(e) => {
+                setEmail(e.target.value);
+                setFieldErrors((f) => ({ ...f, identifier: undefined }));
+              }}
+              error={fieldErrors.identifier}
+              disabled={locked}
+              autoComplete="email"
+              autoFocus
+            />
+          ) : (
+            <PhoneField
+              value={mobile}
+              onChange={(v) => {
+                setMobile(v);
+                setFieldErrors((f) => ({ ...f, identifier: undefined }));
+              }}
+              error={fieldErrors.identifier}
+              disabled={locked}
+              autoFocus
+            />
+          )}
+
           <PasswordField
             value={password}
             onChange={(v) => {
@@ -148,24 +230,37 @@ export function LoginScreen() {
           />
 
           <div className="flex items-center justify-between gap-3">
-            <Checkbox checked={remember} onChange={setRemember}>Remember me</Checkbox>
+            <Checkbox checked={remember} onChange={setRemember}>
+              Remember me
+            </Checkbox>
             <Link href="/forgot-password" className="text-link-sm text-brand-link underline">
               Forgot password?
             </Link>
           </div>
 
-          <Button type="submit" fullWidth loading={loading} disabled={locked} rightIcon={<ArrowRight2 size={18} color="currentColor" />}>
+          <Button
+            type="submit"
+            fullWidth
+            loading={loading}
+            disabled={locked}
+            rightIcon={<ArrowRight2 size={18} color="currentColor" />}
+          >
             {locked ? `Locked · ${mm}:${ss}` : "Log in"}
           </Button>
+
           <OrDivider />
+
           <Button
             variant="outline"
             fullWidth
             leftIcon={<Messages2 size={20} color="currentColor" />}
-            onClick={() => toast.info("Log in with OTP", "Coming soon in this prototype — use your password for now.")}
+            onClick={() =>
+              toast.info("Log in with OTP", "Coming soon in this prototype — use your password for now.")
+            }
           >
             Log in with OTP instead
           </Button>
+
           <p className="text-body-md text-ink-secondary">
             New here?{" "}
             <Link href="/register" className="font-semibold text-brand underline">
@@ -177,17 +272,32 @@ export function LoginScreen() {
 
       <DemoTips
         tips={[
-          { label: "Login works with", value: formatPhone(DEMO.registeredMobile) },
-          { label: "Password", value: DEMO.password },
-          { label: "Suspended account", value: formatPhone(DEMO.suspendedMobile) },
-          { label: "Wrong password 5× → locked 15 min" },
+          { label: "Demo Account", value: "demo@auramatrimony.lk" },
+          { label: "Password", value: "AuraDemo123!" },
+          { label: "Custom Account", value: "Use any registered email or phone" },
         ]}
         actions={[
-          { label: "Fill correct login", onClick: () => { setMobile(DEMO.registeredMobile); setPassword(DEMO.password); setError(null); setFieldErrors({}); } },
-          { label: "Reset attempts", onClick: () => { setAttempts(0); setLockLeft(0); setError(null); setFieldErrors({}); } },
+          {
+            label: "Fill Demo Login",
+            onClick: () => {
+              setMode("email");
+              setEmail("demo@auramatrimony.lk");
+              setPassword("AuraDemo123!");
+              setError(null);
+              setFieldErrors({});
+            },
+          },
+          {
+            label: "Reset Attempts",
+            onClick: () => {
+              setAttempts(0);
+              setLockLeft(0);
+              setError(null);
+              setFieldErrors({});
+            },
+          },
         ]}
       />
     </AuthShell>
   );
 }
-

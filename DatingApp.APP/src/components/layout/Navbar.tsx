@@ -39,16 +39,28 @@ export function Navbar({ variant = "light" }: { variant?: NavbarVariant }) {
   const [session, setSession] = useState<AuthSession | null>(null);
 
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      const raw = localStorage.getItem("aura_session");
-      if (raw) {
-        try {
-          setSession(JSON.parse(raw));
-        } catch {
+    const updateSession = () => {
+      if (typeof window !== "undefined") {
+        const raw = localStorage.getItem("aura_session");
+        if (raw) {
+          try {
+            setSession(JSON.parse(raw));
+          } catch {
+            setSession(null);
+          }
+        } else {
           setSession(null);
         }
       }
-    }
+    };
+
+    updateSession();
+    window.addEventListener("aura_auth_change", updateSession);
+    window.addEventListener("storage", updateSession);
+    return () => {
+      window.removeEventListener("aura_auth_change", updateSession);
+      window.removeEventListener("storage", updateSession);
+    };
   }, [pathname]);
 
   useEffect(() => {

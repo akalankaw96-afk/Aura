@@ -207,38 +207,32 @@ export const apiService = {
     return session;
   },
 
-  // Authentication: Login with Email
+  // Authentication: Login with Email or Mobile
   async login(credentials: { email: string; password: string }): Promise<AuthSession> {
+    let res: Response;
     try {
-      const res = await fetch(`${API_BASE_URL}/auth/login`, {
+      res = await fetch(`${API_BASE_URL}/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(credentials),
       });
-      if (res.ok) {
-        const json: AuthSession = await res.json();
-        if (typeof window !== 'undefined' && json.token) {
-          localStorage.setItem('aura_token', json.token);
-          localStorage.setItem('aura_session', JSON.stringify(json));
-        }
-        return json;
+    } catch (networkErr: unknown) {
+      console.warn('Network error connecting to API:', networkErr);
+      throw new Error(`Unable to connect to authentication server at ${API_BASE_URL}. Please ensure the API is running.`);
+    }
+
+    if (res.ok) {
+      const json: AuthSession = await res.json();
+      if (typeof window !== 'undefined' && json.token) {
+        localStorage.setItem('aura_token', json.token);
+        localStorage.setItem('aura_session', JSON.stringify(json));
+        window.dispatchEvent(new Event('aura_auth_change'));
       }
-    } catch (err) {
-      console.warn('API login error:', err);
+      return json;
     }
-    const session: AuthSession = {
-      token: 'demo-token-' + Date.now(),
-      userId: 'usr-' + Date.now(),
-      fullName: 'Demo Member',
-      email: credentials.email,
-      role: 'Member',
-      hasCompletedProfile: true,
-    };
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('aura_token', session.token);
-      localStorage.setItem('aura_session', JSON.stringify(session));
-    }
-    return session;
+
+    const errData = await res.json().catch(() => ({}));
+    throw new Error(errData.message || (res.status === 401 ? 'Invalid email, mobile number or password.' : 'Login failed. Please try again.'));
   },
 
   // Authentication: Google Sign-In
