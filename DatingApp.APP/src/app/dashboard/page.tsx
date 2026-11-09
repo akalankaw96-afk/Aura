@@ -8,8 +8,9 @@ export const metadata: Metadata = { title: "Dashboard | Aura Matrimony" };
 
 /**
  * Member Dashboard — Figma "📊 Member Dashboard" → "Dashboard — Desktop 1440".
- * Shown after a successful log in. Top (padding 32/80/48, gap 24): Hero, Search card,
- * Stats. Then the full-width Best matches band, then Requests + Messages, then Footer.
+ * Figma: "Dashboard — Version B (tabs)". Top (padding 32/80/48, gap 24): Hero, Stats,
+ * Requests & friends + Messages (tabbed cards), Search card. Then the full-width
+ * Best matches band and Footer. /dashboard?empty=1 shows the new-member empty states.
  * Data is mock (src/content/dashboard.ts).
  */
 export default function DashboardPage() {

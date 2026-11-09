@@ -143,6 +143,24 @@ export interface Translations {
     bestMatchesTitle: string;
     accept: string;
     decline: string;
+    friends: string;
+    allFriends: string;
+    messagesTab: string;
+    profile: string;
+    message: string;
+    newFriend: string;
+    sayHello: string;
+    acceptedAdded: string;
+    connectedJustNow: string;
+    onlineNow: string;
+    noFriendsTitle: string;
+    noFriendsBody: string;
+    noRequestsTitle: string;
+    noRequestsBody: string;
+    noMessagesTitle: string;
+    noMessagesBody: string;
+    addPhotos: string;
+    browseMatches: string;
   };
   requests: {
     title: string;
@@ -419,6 +437,24 @@ export const TRANSLATIONS: Record<Language, Translations> = {
       bestMatchesTitle: "Your best matches today",
       accept: "Accept",
       decline: "Decline",
+      friends: "Friends",
+      allFriends: "All friends",
+      messagesTab: "Messages",
+      profile: "Profile",
+      message: "Message",
+      newFriend: "New friend",
+      sayHello: "Say hello",
+      acceptedAdded: "Accepted · added to your friends",
+      connectedJustNow: "Connected just now",
+      onlineNow: "Online now",
+      noFriendsTitle: "No friends yet",
+      noFriendsBody: "When you accept an interest — or someone accepts yours — they’ll appear here so you can message them or view their profile.",
+      noRequestsTitle: "No new requests",
+      noRequestsBody: "Members who like your profile will appear here. Profiles with 3+ photos get up to 3× more interest.",
+      noMessagesTitle: "No messages yet",
+      noMessagesBody: "Accept an interest or get yours accepted to start chatting safely.",
+      addPhotos: "Add photos",
+      browseMatches: "Browse matches",
     },
     requests: {
       title: "Requests & Interests",
@@ -694,6 +730,24 @@ export const TRANSLATIONS: Record<Language, Translations> = {
       bestMatchesTitle: "අද දිනයේ ඔබට ගැළපෙනම යෝජනා",
       accept: "පිළිගන්න",
       decline: "ප්‍රතික්ෂේප කරන්න",
+      friends: "මිතුරන්",
+      allFriends: "සියලු මිතුරන්",
+      messagesTab: "පණිවිඩ",
+      profile: "පැතිකඩ",
+      message: "පණිවිඩය",
+      newFriend: "නව මිතුරා",
+      sayHello: "ආයුබෝවන් කියන්න",
+      acceptedAdded: "පිළිගත්තා · ඔබේ මිතුරන්ට එක් කළා",
+      connectedJustNow: "දැන් සම්බන්ධ විය",
+      onlineNow: "දැන් සබැඳිව",
+      noFriendsTitle: "තවම මිතුරන් නැත",
+      noFriendsBody: "ඔබ කැමැත්තක් පිළිගත් විට — හෝ කෙනෙක් ඔබේ කැමැත්ත පිළිගත් විට — ඔවුන් මෙහි පෙන්වයි.",
+      noRequestsTitle: "නව යෝජනා නැත",
+      noRequestsBody: "ඔබේ පැතිකඩට කැමති සාමාජිකයින් මෙහි පෙන්වයි. ඡායාරූප 3+ ඇති පැතිකඩවලට 3× වැඩි කැමැත්තක් ලැබේ.",
+      noMessagesTitle: "තවම පණිවිඩ නැත",
+      noMessagesBody: "කතාබහ ආරම්භ කිරීමට කැමැත්තක් පිළිගන්න.",
+      addPhotos: "ඡායාරූප එක් කරන්න",
+      browseMatches: "ගැළපීම් බලන්න",
     },
     requests: {
       title: "යෝජනා සහ කැමැත්ත",
