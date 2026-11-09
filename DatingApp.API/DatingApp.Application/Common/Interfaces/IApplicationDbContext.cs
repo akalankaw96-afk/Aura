@@ -11,6 +11,7 @@ public interface IApplicationDbContext
     DbSet<SuccessStory> SuccessStories { get; }
     DbSet<PricingPlan> PricingPlans { get; }
     DbSet<FaqItem> FaqItems { get; }
+    DbSet<ChatMessage> ChatMessages { get; }
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }

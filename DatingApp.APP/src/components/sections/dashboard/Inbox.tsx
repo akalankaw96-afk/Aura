@@ -107,7 +107,7 @@ function Messages() {
           const isUnread = !read.includes(m.id) && m.unread > 0;
           return (
             <li key={m.id} className={cn(i < MESSAGES.length - 1 && "border-b border-line")}>
-              <button type="button" onClick={() => setRead((r) => (r.includes(m.id) ? r : [...r, m.id]))} className="flex w-full items-center gap-3 rounded-md py-3 text-left transition-colors hover:bg-surface-subtle">
+              <Link href="/messages" className="flex w-full items-center gap-3 rounded-md py-3 text-left transition-colors hover:bg-surface-subtle">
                 <span className="relative shrink-0">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={m.photo} alt="" className="h-12 w-12 rounded-full object-cover" />
@@ -121,7 +121,7 @@ function Messages() {
                   <span className="text-caption text-ink-tertiary">{m.time}</span>
                   {isUnread && <span className="flex h-5 min-w-[20px] items-center justify-center rounded-full bg-brand px-1.5 text-label-sm text-ink-on-brand">{m.unread}</span>}
                 </span>
-              </button>
+              </Link>
             </li>
           );
         })}

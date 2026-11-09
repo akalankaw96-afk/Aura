@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo, useRef, useState, useEffect } from "react";
+import React, { useMemo, useRef, useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import {
   ArrowLeft,
@@ -11,115 +11,507 @@ import {
   ShieldTick,
   Verify,
 } from "iconsax-react";
+import {
+  Phone,
+  ShieldAlert,
+  Lock,
+  Unlock,
+  CheckCheck,
+  Check,
+  Sparkles,
+  Wifi,
+  WifiOff,
+  AlertTriangle,
+  MessageSquare,
+} from "lucide-react";
 import { cn } from "@/lib/cn";
 import { Button } from "@/components/ui/Button";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { useLanguage } from "@/context/LanguageContext";
-import { CONVERSATIONS, type Conversation, type ChatMessage } from "@/content/dashboard";
+import {
+  signalrService,
+  getConversations,
+  getChatHistory,
+  type ChatMessageDto,
+  type ConversationDto,
+  type TypingIndicatorDto,
+  type ContactUnlockedDto,
+  type ConnectionStatus,
+} from "@/services/signalrService";
 
-/**
- * Figma: 📊 Member Dashboard → Messages — Desktop 1440 (172:15691)
- *
- * Dedicated chat interface: conversation sidebar with live search & filters,
- * active thread with safety notice, bubbles, and interactive composer.
- */
+// Fallback conversation for instant offline rendering
+const INITIAL_CONVERSATIONS: ConversationDto[] = [
+  {
+    conversationId: "conv_seed_1",
+    partnerProfileId: "27d0a79d-16b8-4710-991f-ac479cf0c3aa",
+    partnerName: "Nilushi Senanayake",
+    partnerPhotoUrl: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?q=80&w=800&auto=format&fit=crop",
+    partnerProfession: "Senior Software Engineer",
+    partnerVerified: true,
+    partnerOnline: true,
+    lastMessageText: "That is wonderful to hear. My parents were keen to speak with your family when convenient.",
+    lastMessageTime: new Date().toISOString(),
+    unreadCount: 0,
+    isContactShared: false,
+    partnerPhoneNumber: null,
+  },
+];
+
 export default function MessagesPage() {
   const { t, lang } = useLanguage();
-  const [conversations, setConversations] = useState<Conversation[]>(CONVERSATIONS);
-  const [activeId, setActiveId] = useState<string>("c1");
+
+  // Current logged in user context (LK-9021 Dr. Kavinda Perera)
+  const currentProfileId = "5272b78c-df15-4c1e-9fa0-c3b9e6ed9fc2";
+  const currentProfileCode = "LK-9021";
+  const currentUserName = "Dr. Kavinda Perera";
+
+  const [conversations, setConversations] = useState<ConversationDto[]>(INITIAL_CONVERSATIONS);
+  const [activeConvId, setActiveConvId] = useState<string>(INITIAL_CONVERSATIONS[0].conversationId);
+  const [messages, setMessages] = useState<ChatMessageDto[]>([]);
   const [filter, setFilter] = useState<"all" | "unread">("all");
   const [search, setSearch] = useState("");
-  const [text, setText] = useState("");
+  const [inputText, setInputText] = useState("");
   const [mobileChatOpen, setMobileChatOpen] = useState(false);
+  const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>("disconnected");
+  const [partnerTyping, setPartnerTyping] = useState<string | null>(null);
+  const [contactRequestPending, setContactRequestPending] = useState(false);
+  const [unlockedPhone, setUnlockedPhone] = useState<string | null>(null);
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const sendTypingDebounceRef = useRef<NodeJS.Timeout | null>(null);
 
   const activeConv = useMemo(() => {
-    return conversations.find((c) => c.id === activeId) ?? conversations[0];
-  }, [conversations, activeId]);
+    return conversations.find((c) => c.conversationId === activeConvId) ?? conversations[0];
+  }, [conversations, activeConvId]);
+
+  // Scroll to latest message
+  const scrollToBottom = useCallback(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, []);
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages, partnerTyping, scrollToBottom]);
+
+  // Load conversations and history from backend
+  const loadData = useCallback(async () => {
+    const list = await getConversations(currentProfileCode);
+    if (list && list.length > 0) {
+      setConversations(list);
+      // If current activeConvId is not in list or is default, set to first
+      if (!list.some((c) => c.conversationId === activeConvId)) {
+        setActiveConvId(list[0].conversationId);
+      }
+    }
+  }, [currentProfileCode, activeConvId]);
+
+  // Load chat history when active conversation changes
+  const loadActiveHistory = useCallback(async (convId: string) => {
+    const history = await getChatHistory(convId, currentProfileId);
+    if (history && history.length > 0) {
+      setMessages(history);
+
+      // Check if contact sharing was already unlocked in history
+      const unlockedMsg = history.find((m) => m.isContactShareAccepted);
+      if (unlockedMsg) {
+        setUnlockedPhone("+94 77 123 4567");
+      }
+
+      // Check if there is an unanswered contact share request
+      const shareReq = history.find((m) => m.isContactShareRequest && !m.isContactShareAccepted);
+      if (shareReq && !shareReq.isMe) {
+        setContactRequestPending(true);
+      }
+    } else {
+      // Offline fallback seed messages
+      setMessages([
+        {
+          id: "m1",
+          senderProfileId: currentProfileId,
+          senderName: currentUserName,
+          senderPhotoUrl: "https://images.unsplash.com/photo-1622253692010-333f2da6031d?q=80&w=800&auto=format&fit=crop",
+          receiverProfileId: activeConv?.partnerProfileId || "p2",
+          receiverName: activeConv?.partnerName || "Nilushi",
+          conversationId: convId,
+          messageText: "Ayubowan Nilushi! Thank you for accepting my interest. How has your week been?",
+          sentAt: new Date(Date.now() - 3600000 * 3).toISOString(),
+          isRead: true,
+          isMe: true,
+          isFlaggedBySafety: false,
+          isContactShareRequest: false,
+          isContactShareAccepted: false,
+        },
+        {
+          id: "m2",
+          senderProfileId: activeConv?.partnerProfileId || "p2",
+          senderName: activeConv?.partnerName || "Nilushi",
+          senderPhotoUrl: activeConv?.partnerPhotoUrl || "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?q=80&w=800&auto=format&fit=crop",
+          receiverProfileId: currentProfileId,
+          receiverName: currentUserName,
+          conversationId: convId,
+          messageText: "Ayubowan Dr. Kavinda! It was nice reading about your work at the National Hospital. We had our family alms-giving this weekend.",
+          sentAt: new Date(Date.now() - 3600000 * 2).toISOString(),
+          isRead: true,
+          isMe: false,
+          isFlaggedBySafety: false,
+          isContactShareRequest: false,
+          isContactShareAccepted: false,
+        },
+      ]);
+    }
+  }, [currentProfileId, activeConv]);
+
+  // Initialize SignalR Hub connection and subscriptions
+  useEffect(() => {
+    let mounted = true;
+
+    async function initSignalR() {
+      await loadData();
+      const connected = await signalrService.startConnection();
+      if (!mounted) return;
+
+      setConnectionStatus(signalrService.getStatus());
+
+      if (connected && activeConvId) {
+        await signalrService.joinConversation(activeConvId);
+      }
+    }
+
+    initSignalR();
+
+    // Event listeners
+    const unsubStatus = signalrService.onConnectionStatusChange((status) => {
+      if (mounted) setConnectionStatus(status);
+    });
+
+    const unsubMsg = signalrService.onMessageReceived((newMsg: ChatMessageDto) => {
+      if (!mounted) return;
+
+      // Update message list if relevant to active conversation
+      setMessages((prev) => {
+        // Prevent duplicate appending if caller already added
+        if (prev.some((m) => m.id === newMsg.id)) return prev;
+        const isFromMe = newMsg.senderProfileId === currentProfileId || newMsg.senderName === currentUserName;
+        return [...prev, { ...newMsg, isMe: isFromMe }];
+      });
+
+      // Update conversation list item last message
+      setConversations((prev) =>
+        prev.map((c) => {
+          if (c.conversationId === newMsg.conversationId) {
+            return {
+              ...c,
+              lastMessageText: newMsg.messageText,
+              lastMessageTime: newMsg.sentAt,
+            };
+          }
+          return c;
+        })
+      );
+
+      // Check if message is a contact request
+      if (newMsg.isContactShareRequest && newMsg.senderProfileId !== currentProfileId) {
+        setContactRequestPending(true);
+      }
+      if (newMsg.isContactShareAccepted) {
+        setContactRequestPending(false);
+        setUnlockedPhone("+94 77 123 4567");
+      }
+    });
+
+    const unsubTyping = signalrService.onUserTyping((indicator: TypingIndicatorDto) => {
+      if (!mounted) return;
+      if (indicator.conversationId === activeConvId && indicator.userName !== currentUserName) {
+        if (indicator.isTyping) {
+          setPartnerTyping(indicator.userName);
+          if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+          typingTimeoutRef.current = setTimeout(() => {
+            if (mounted) setPartnerTyping(null);
+          }, 3500);
+        } else {
+          setPartnerTyping(null);
+        }
+      }
+    });
+
+    const unsubRead = signalrService.onMessageRead((_convId, messageId) => {
+      if (!mounted) return;
+      setMessages((prev) =>
+        prev.map((m) => (m.id === messageId ? { ...m, isRead: true } : m))
+      );
+    });
+
+    const unsubContactReq = signalrService.onContactShareRequested((_convId, requesterId) => {
+      if (!mounted) return;
+      if (requesterId !== currentProfileId) {
+        setContactRequestPending(true);
+      }
+    });
+
+    const unsubContactUnlocked = signalrService.onContactUnlocked((payload: ContactUnlockedDto) => {
+      if (!mounted) return;
+      setContactRequestPending(false);
+      setUnlockedPhone(payload.phoneNumber || "+94 77 123 4567");
+      setConversations((prev) =>
+        prev.map((c) =>
+          c.conversationId === payload.conversationId
+            ? { ...c, isContactShared: true, partnerPhoneNumber: payload.phoneNumber }
+            : c
+        )
+      );
+    });
+
+    return () => {
+      mounted = false;
+      unsubStatus();
+      unsubMsg();
+      unsubTyping();
+      unsubRead();
+      unsubContactReq();
+      unsubContactUnlocked();
+      signalrService.leaveConversation(activeConvId);
+    };
+  }, [loadData, activeConvId, currentProfileId]);
+
+  // Whenever active conversation changes, load its history & join its group
+  useEffect(() => {
+    if (activeConvId) {
+      loadActiveHistory(activeConvId);
+      signalrService.joinConversation(activeConvId);
+      setPartnerTyping(null);
+    }
+  }, [activeConvId, loadActiveHistory]);
+
+  // Handle typing input debouncing
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value;
+    setInputText(val);
+
+    if (activeConvId) {
+      if (!sendTypingDebounceRef.current) {
+        signalrService.sendTyping(activeConvId, currentUserName, true);
+      } else {
+        clearTimeout(sendTypingDebounceRef.current);
+      }
+
+      sendTypingDebounceRef.current = setTimeout(() => {
+        signalrService.sendTyping(activeConvId, currentUserName, false);
+        sendTypingDebounceRef.current = null;
+      }, 2000);
+    }
+  };
+
+  // Send message handler
+  const handleSend = async (e?: React.FormEvent, customText?: string) => {
+    e?.preventDefault();
+    const textToSend = customText ?? inputText;
+    if (!textToSend.trim() || !activeConv) return;
+
+    if (!customText) setInputText("");
+
+    // Notify typing stopped
+    signalrService.sendTyping(activeConv.conversationId, currentUserName, false);
+
+    // Flow 3 Anti-Scam client check preview for instantaneous feedback
+    const scamRegex = /\b(money|transfer|bank\s*account|cash|rupees|rs\.?|lkr|emergency\s*fund|crypto|usdt|bitcoin)\b/i;
+    const isScamMatch = scamRegex.test(textToSend);
+
+    const tempId = "temp_" + Date.now();
+    const optimisticMsg: ChatMessageDto = {
+      id: tempId,
+      senderProfileId: currentProfileId,
+      senderName: currentUserName,
+      senderPhotoUrl: "https://images.unsplash.com/photo-1622253692010-333f2da6031d?q=80&w=800&auto=format&fit=crop",
+      receiverProfileId: activeConv.partnerProfileId,
+      receiverName: activeConv.partnerName,
+      conversationId: activeConv.conversationId,
+      messageText: textToSend.trim(),
+      sentAt: new Date().toISOString(),
+      isRead: false,
+      isMe: true,
+      isFlaggedBySafety: isScamMatch,
+      safetyFlagReason: isScamMatch
+        ? "Safety Alert: Potential financial solicitation detected. Never transfer money or disclose banking details online."
+        : null,
+      isContactShareRequest: false,
+      isContactShareAccepted: false,
+    };
+
+    setMessages((prev) => [...prev, optimisticMsg]);
+
+    // Send through SignalR WebSocket
+    const sent = await signalrService.sendMessage(
+      currentProfileId,
+      activeConv.partnerProfileId,
+      textToSend.trim(),
+      activeConv.conversationId
+    );
+
+    // If SignalR was offline or failed, the optimistic message remains visible
+    if (!sent) {
+      console.log("Sent optimistically in offline mode");
+    }
+  };
+
+  // Flow 3: Request mutual contact exchange
+  const handleRequestContact = async () => {
+    if (!activeConv) return;
+    const sent = await signalrService.requestContactShare(
+      activeConv.conversationId,
+      currentProfileId,
+      activeConv.partnerProfileId
+    );
+
+    // Optimistic insert
+    const requestMsg: ChatMessageDto = {
+      id: "req_" + Date.now(),
+      senderProfileId: currentProfileId,
+      senderName: currentUserName,
+      senderPhotoUrl: "https://images.unsplash.com/photo-1622253692010-333f2da6031d?q=80&w=800&auto=format&fit=crop",
+      receiverProfileId: activeConv.partnerProfileId,
+      receiverName: activeConv.partnerName,
+      conversationId: activeConv.conversationId,
+      messageText: "📱 I requested mutual contact exchange. Once accepted, verified phone numbers will unlock.",
+      sentAt: new Date().toISOString(),
+      isRead: true,
+      isMe: true,
+      isFlaggedBySafety: false,
+      isContactShareRequest: true,
+      isContactShareAccepted: false,
+    };
+    setMessages((prev) => [...prev, requestMsg]);
+    if (!sent) {
+      console.log("Contact share request sent optimistically");
+    }
+  };
+
+  // Flow 3: Accept mutual contact exchange
+  const handleAcceptContact = async () => {
+    if (!activeConv) return;
+    await signalrService.acceptContactShare(
+      activeConv.conversationId,
+      currentProfileId,
+      activeConv.partnerProfileId
+    );
+
+    setContactRequestPending(false);
+    setUnlockedPhone("+94 77 123 4567");
+
+    const acceptMsg: ChatMessageDto = {
+      id: "acc_" + Date.now(),
+      senderProfileId: currentProfileId,
+      senderName: currentUserName,
+      senderPhotoUrl: "https://images.unsplash.com/photo-1622253692010-333f2da6031d?q=80&w=800&auto=format&fit=crop",
+      receiverProfileId: activeConv.partnerProfileId,
+      receiverName: activeConv.partnerName,
+      conversationId: activeConv.conversationId,
+      messageText: "🎉 Mutual contact details unlocked! Both parties can now speak directly on WhatsApp or phone.",
+      sentAt: new Date().toISOString(),
+      isRead: true,
+      isMe: true,
+      isFlaggedBySafety: false,
+      isContactShareRequest: false,
+      isContactShareAccepted: true,
+    };
+    setMessages((prev) => [...prev, acceptMsg]);
+  };
+
+  const handleSelectConv = (id: string) => {
+    setActiveConvId(id);
+    setMobileChatOpen(true);
+  };
 
   const filteredConversations = useMemo(() => {
     return conversations.filter((c) => {
-      if (filter === "unread" && c.unread === 0) return false;
+      if (filter === "unread" && c.unreadCount === 0) return false;
       if (!search.trim()) return true;
       const q = search.toLowerCase();
       return (
-        c.name.toLowerCase().includes(q) ||
-        c.messages.some((m) => m.text.toLowerCase().includes(q))
+        c.partnerName.toLowerCase().includes(q) ||
+        c.lastMessageText.toLowerCase().includes(q)
       );
     });
   }, [conversations, filter, search]);
 
   const unreadTotal = useMemo(() => {
-    return conversations.reduce((acc, c) => acc + c.unread, 0);
+    return conversations.reduce((acc, c) => acc + (c.unreadCount || 0), 0);
   }, [conversations]);
-
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  };
-
-  useEffect(() => {
-    scrollToBottom();
-  }, [activeConv?.messages]);
-
-  const handleSend = (e?: React.FormEvent) => {
-    e?.preventDefault();
-    if (!text.trim() || !activeConv) return;
-
-    const newMsg: ChatMessage = {
-      id: Date.now().toString(),
-      sender: "me",
-      text: text.trim(),
-      time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-      read: false,
-    };
-
-    setConversations((prev) =>
-      prev.map((c) => {
-        if (c.id === activeConv.id) {
-          return {
-            ...c,
-            time: newMsg.time,
-            messages: [...c.messages, newMsg],
-          };
-        }
-        return c;
-      })
-    );
-
-    setText("");
-  };
-
-  const handleSelectConv = (id: string) => {
-    setActiveId(id);
-    setMobileChatOpen(true);
-    // Mark as read
-    setConversations((prev) =>
-      prev.map((c) => (c.id === id ? { ...c, unread: 0 } : c))
-    );
-  };
 
   return (
     <div className="min-h-screen bg-page-gradient">
       <Navbar variant="member" />
 
       <main className="container-page pb-20 pt-6 lg:pt-8">
-        {/* Header & Breadcrumb */}
-        <div className="mb-8">
-          <nav aria-label="Breadcrumb" className="mb-2 flex items-center gap-2 text-body-sm text-ink-tertiary">
-            <Link href="/dashboard" className="transition-colors hover:text-brand">
-              {t.nav.dashboard}
-            </Link>
-            <span>/</span>
-            <span className="font-semibold text-ink">{t.nav.messages}</span>
-          </nav>
-          <h1 className="text-h2 text-ink">{t.messages.title}</h1>
-          <p className="mt-1 text-body-md text-ink-secondary">
-            {t.messages.subtitle}
-          </p>
+        {/* Header & Breadcrumb & Live SignalR Status */}
+        <div className="mb-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <div>
+            <nav aria-label="Breadcrumb" className="mb-2 flex items-center gap-2 text-body-sm text-ink-tertiary">
+              <Link href="/dashboard" className="transition-colors hover:text-brand">
+                {t.nav.dashboard}
+              </Link>
+              <span>/</span>
+              <span className="font-semibold text-ink">{t.nav.messages}</span>
+            </nav>
+            <h1 className="text-h2 text-ink flex items-center gap-3">
+              {t.messages.title}
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-brand-subtle text-brand border border-brand/20">
+                <Sparkles className="w-3.5 h-3.5" /> Flow 3 • Real-Time WebSockets
+              </span>
+            </h1>
+            <p className="mt-1 text-body-md text-ink-secondary">
+              {t.messages.subtitle}
+            </p>
+          </div>
+
+          {/* SignalR Connection Status Beacon */}
+          <div className="flex items-center gap-2 self-start md:self-auto">
+            <div
+              className={cn(
+                "flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-medium border transition-all shadow-xs",
+                connectionStatus === "connected"
+                  ? "bg-emerald-50 text-emerald-800 border-emerald-200"
+                  : connectionStatus === "connecting" || connectionStatus === "reconnecting"
+                  ? "bg-amber-50 text-amber-800 border-amber-200"
+                  : "bg-zinc-100 text-zinc-600 border-zinc-200"
+              )}
+            >
+              {connectionStatus === "connected" ? (
+                <>
+                  <span className="relative flex h-2 w-2">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-600"></span>
+                  </span>
+                  <Wifi className="w-3.5 h-3.5 text-emerald-600" />
+                  <span>SignalR Live WebSocket</span>
+                </>
+              ) : connectionStatus === "connecting" || connectionStatus === "reconnecting" ? (
+                <>
+                  <span className="h-2 w-2 rounded-full bg-amber-500 animate-pulse" />
+                  <span>Connecting Hub...</span>
+                </>
+              ) : (
+                <>
+                  <WifiOff className="w-3.5 h-3.5 text-zinc-400" />
+                  <span>Local Mode (Auto-Reconnect)</span>
+                </>
+              )}
+            </div>
+
+            {/* Quick Demo Simulator Buttons */}
+            <button
+              onClick={() => handleSend(undefined, "Can you transfer emergency cash to my bank account for urgent travel?")}
+              title="Test Flow 3 Anti-Scam Filter"
+              className="text-xs px-2.5 py-1.5 rounded-md border border-amber-300 bg-amber-50 text-amber-900 hover:bg-amber-100 transition-colors flex items-center gap-1 font-medium"
+            >
+              <AlertTriangle className="w-3 h-3 text-amber-600" />
+              <span>Simulate Scam Trigger</span>
+            </button>
+          </div>
         </div>
 
-        {/* Chat Split Window (Figma: 1280 × 680) */}
+        {/* Chat Split Window */}
         <div className="flex h-[720px] overflow-hidden rounded-xl border border-line bg-surface-card shadow-sm">
           {/* Left Panel: Conversation List */}
           <aside
@@ -184,17 +576,16 @@ export default function MessagesPage() {
             <div className="flex-1 overflow-y-auto p-2">
               {filteredConversations.length === 0 ? (
                 <div className="py-12 text-center text-body-sm text-ink-tertiary">
-                  No conversations found.
+                  No accepted match conversations found.
                 </div>
               ) : (
                 filteredConversations.map((c) => {
-                  const isSelected = activeConv?.id === c.id;
-                  const lastMsg = c.messages[c.messages.length - 1];
+                  const isSelected = activeConv?.conversationId === c.conversationId;
                   return (
                     <button
-                      key={c.id}
+                      key={c.conversationId}
                       type="button"
-                      onClick={() => handleSelectConv(c.id)}
+                      onClick={() => handleSelectConv(c.conversationId)}
                       className={cn(
                         "flex w-full items-center gap-3 rounded-lg p-3 text-left transition-all",
                         isSelected
@@ -206,11 +597,11 @@ export default function MessagesPage() {
                       <div className="relative shrink-0">
                         {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img
-                          src={c.photo}
-                          alt={c.name}
+                          src={c.partnerPhotoUrl}
+                          alt={c.partnerName}
                           className="h-12 w-12 rounded-full object-cover"
                         />
-                        {c.online && (
+                        {c.partnerOnline && (
                           <span className="absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-surface-card bg-success-fg" />
                         )}
                       </div>
@@ -219,27 +610,29 @@ export default function MessagesPage() {
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center justify-between">
                           <span className="flex items-center gap-1 truncate text-label-md text-ink">
-                            {c.name}
-                            {c.verified && (
+                            {c.partnerName}
+                            {c.partnerVerified && (
                               <Verify size={14} color="currentColor" variant="Bold" className="text-icon-brand" />
                             )}
                           </span>
-                          <span className="text-caption text-ink-tertiary">{c.time}</span>
+                          <span className="text-caption text-ink-tertiary">
+                            {new Date(c.lastMessageTime).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                          </span>
                         </div>
                         <p
                           className={cn(
                             "truncate text-body-sm",
-                            c.unread > 0 ? "font-semibold text-ink" : "text-ink-secondary"
+                            c.unreadCount > 0 ? "font-semibold text-ink" : "text-ink-secondary"
                           )}
                         >
-                          {lastMsg ? lastMsg.text : "No messages yet"}
+                          {c.lastMessageText}
                         </p>
                       </div>
 
                       {/* Unread Pill */}
-                      {c.unread > 0 && (
+                      {c.unreadCount > 0 && (
                         <span className="flex h-5 min-w-[20px] items-center justify-center rounded-full bg-brand px-1.5 text-label-sm text-ink-on-brand shrink-0">
-                          {c.unread}
+                          {c.unreadCount}
                         </span>
                       )}
                     </button>
@@ -272,30 +665,59 @@ export default function MessagesPage() {
                   <div className="relative">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
-                      src={activeConv.photo}
-                      alt={activeConv.name}
+                      src={activeConv.partnerPhotoUrl}
+                      alt={activeConv.partnerName}
                       className="h-11 w-11 rounded-full object-cover"
                     />
-                    {activeConv.online && (
+                    {activeConv.partnerOnline && (
                       <span className="absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-surface-card bg-success-fg" />
                     )}
                   </div>
 
                   <div>
                     <h2 className="flex items-center gap-1.5 text-label-lg text-ink">
-                      {activeConv.name}
+                      {activeConv.partnerName}
                       <Verify size={16} color="currentColor" variant="Bold" className="text-icon-brand" />
                     </h2>
-                    <p className="text-caption text-ink-tertiary">{activeConv.status}</p>
+                    <p className="text-caption text-ink-tertiary">
+                      {activeConv.partnerProfession || "Verified Candidate"} • Active Now
+                    </p>
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-3">
+                  {/* Flow 3 Mutual Contact Unlock Action */}
+                  {unlockedPhone || activeConv.isContactShared ? (
+                    <div className="flex items-center gap-2 px-3 py-1.5 bg-emerald-50 text-emerald-800 rounded-lg border border-emerald-200 text-xs font-medium">
+                      <Unlock className="w-3.5 h-3.5 text-emerald-600" />
+                      <span>{unlockedPhone || activeConv.partnerPhoneNumber || "+94 77 123 4567"}</span>
+                      <a
+                        href={`https://wa.me/${(unlockedPhone || activeConv.partnerPhoneNumber || "94771234567").replace(/\D/g, "")}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="ml-1 px-2 py-0.5 rounded bg-emerald-600 text-white text-[11px] font-semibold hover:bg-emerald-700 transition-colors"
+                      >
+                        WhatsApp
+                      </a>
+                    </div>
+                  ) : (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleRequestContact}
+                      className="text-xs flex items-center gap-1.5 border-brand/30 text-brand hover:bg-brand/5"
+                    >
+                      <Lock className="w-3.5 h-3.5" />
+                      <span>Request Contact Exchange</span>
+                    </Button>
+                  )}
+
                   <Link href="/requests">
                     <Button variant="outline" size="sm">
                       {t.messages.viewProfile}
                     </Button>
                   </Link>
+
                   <button
                     type="button"
                     aria-label="Conversation options"
@@ -308,11 +730,36 @@ export default function MessagesPage() {
 
               {/* Messages Thread */}
               <div className="flex-1 overflow-y-auto p-6 space-y-4">
-                {/* Safety Note */}
-                <div className="mx-auto flex max-w-lg items-center gap-2 rounded-full border border-warning-line/30 bg-warning-bg/50 px-4 py-2 text-center text-body-xs text-warning-fg">
-                  <ShieldTick size={16} color="currentColor" className="shrink-0" />
-                  <span>{t.messages.safetyNote}</span>
+                {/* Flow 3 Safety Notice Banner */}
+                <div className="mx-auto flex max-w-xl items-center gap-2 rounded-xl border border-warning-line/40 bg-warning-bg/60 p-3 text-body-xs text-warning-fg">
+                  <ShieldTick size={20} color="currentColor" className="shrink-0 text-amber-600" />
+                  <div>
+                    <span className="font-semibold text-amber-900 block">Flow 3 Guardrail Active</span>
+                    <span className="text-ink-secondary">
+                      Outgoing messages are actively protected. Solicitations for cash or unverified banking transfers are strictly prohibited.
+                    </span>
+                  </div>
                 </div>
+
+                {/* Contact Request Pending Banner if partner requested contact */}
+                {contactRequestPending && (
+                  <div className="mx-auto flex max-w-xl items-center justify-between rounded-xl border border-brand/30 bg-brand-subtle p-3.5 text-body-sm shadow-xs animate-in fade-in">
+                    <div className="flex items-center gap-2.5">
+                      <div className="p-2 rounded-full bg-brand/10 text-brand">
+                        <Phone className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <span className="font-semibold text-ink block">Contact Exchange Requested</span>
+                        <span className="text-ink-secondary text-xs">
+                          {activeConv.partnerName} requested to unlock direct WhatsApp and phone numbers.
+                        </span>
+                      </div>
+                    </div>
+                    <Button size="sm" variant="primary" onClick={handleAcceptContact}>
+                      Accept & Share
+                    </Button>
+                  </div>
+                )}
 
                 {/* Day Divider */}
                 <div className="flex items-center justify-center">
@@ -321,30 +768,68 @@ export default function MessagesPage() {
                   </span>
                 </div>
 
-                {/* Bubbles */}
-                {activeConv.messages.map((m) => {
-                  const isMe = m.sender === "me";
+                {/* Message Bubbles */}
+                {messages.map((m) => {
+                  const isMe = m.isMe;
+                  const timeFormatted = m.sentAt
+                    ? new Date(m.sentAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+                    : "Now";
+
                   return (
                     <div
                       key={m.id}
-                      className={cn("flex flex-col", isMe ? "items-end" : "items-start")}
+                      className={cn("flex flex-col group", isMe ? "items-end" : "items-start")}
                     >
                       <div
                         className={cn(
-                          "max-w-[480px] p-3.5 text-body-md transition-all shadow-xs",
-                          isMe
+                          "max-w-[500px] p-3.5 text-body-md transition-all shadow-xs relative",
+                          m.isFlaggedBySafety
+                            ? "rounded-2xl border-2 border-amber-400 bg-amber-50/90 text-amber-950"
+                            : isMe
                             ? "rounded-2xl rounded-tr-xs bg-brand-gradient text-ink-on-brand"
                             : "rounded-2xl rounded-tl-xs border border-line bg-surface-subtle text-ink"
                         )}
                       >
-                        {m.text}
+                        {/* Anti-Scam Alert Banner */}
+                        {m.isFlaggedBySafety && (
+                          <div className="mb-2 flex items-center gap-1.5 text-xs font-bold text-amber-800 bg-amber-200/70 px-2 py-1 rounded">
+                            <ShieldAlert className="w-4 h-4 text-amber-700 shrink-0" />
+                            <span>{m.safetyFlagReason || "Safety Warning: Potential risk detected."}</span>
+                          </div>
+                        )}
+
+                        <p className={cn(m.isFlaggedBySafety && "opacity-90 italic")}>{m.messageText}</p>
                       </div>
-                      <span className="mt-1 px-1 text-caption text-ink-tertiary">
-                        {m.time} {isMe && m.read && (lang === "si" ? "· කියවන ලදී" : "· Read")}
-                      </span>
+
+                      <div className="mt-1 flex items-center gap-1 px-1 text-caption text-ink-tertiary">
+                        <span>{timeFormatted}</span>
+                        {isMe && (
+                          <span>
+                            {m.isRead ? (
+                              <CheckCheck className="inline w-3.5 h-3.5 text-brand ml-0.5" />
+                            ) : (
+                              <Check className="inline w-3.5 h-3.5 text-ink-tertiary ml-0.5" />
+                            )}
+                          </span>
+                        )}
+                      </div>
                     </div>
                   );
                 })}
+
+                {/* Typing Indicator Bubble */}
+                {partnerTyping && (
+                  <div className="flex items-center gap-2 text-ink-tertiary text-xs bg-surface-subtle px-3 py-1.5 rounded-full w-fit animate-pulse">
+                    <MessageSquare className="w-3.5 h-3.5 text-brand" />
+                    <span>{partnerTyping} is typing...</span>
+                    <span className="flex gap-1">
+                      <span className="h-1.5 w-1.5 rounded-full bg-brand animate-bounce" style={{ animationDelay: "0ms" }}></span>
+                      <span className="h-1.5 w-1.5 rounded-full bg-brand animate-bounce" style={{ animationDelay: "150ms" }}></span>
+                      <span className="h-1.5 w-1.5 rounded-full bg-brand animate-bounce" style={{ animationDelay: "300ms" }}></span>
+                    </span>
+                  </div>
+                )}
+
                 <div ref={messagesEndRef} />
               </div>
 
@@ -360,8 +845,8 @@ export default function MessagesPage() {
 
                 <input
                   type="text"
-                  value={text}
-                  onChange={(e) => setText(e.target.value)}
+                  value={inputText}
+                  onChange={handleInputChange}
                   placeholder={t.messages.typeMessage}
                   className="h-11 flex-1 min-w-0 rounded-md border border-line bg-surface-subtle px-4 text-body-md text-ink placeholder:text-ink-disabled outline-none transition-colors focus:border-brand-focus"
                 />
@@ -370,7 +855,7 @@ export default function MessagesPage() {
                   type="submit"
                   variant="primary"
                   size="md"
-                  disabled={!text.trim()}
+                  disabled={!inputText.trim()}
                   rightIcon={<Send2 size={18} color="currentColor" />}
                 >
                   {t.messages.send}

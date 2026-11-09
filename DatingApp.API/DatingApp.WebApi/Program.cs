@@ -1,5 +1,6 @@
 using DatingApp.Infrastructure;
 using DatingApp.Infrastructure.Persistence;
+using DatingApp.WebApi.Hubs;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
@@ -10,15 +11,16 @@ var builder = WebApplication.CreateBuilder(args);
 // 1. Add Infrastructure & Application Services
 builder.Services.AddInfrastructureServices(builder.Configuration);
 
-// 2. Add Controllers
+// 2. Add Controllers and SignalR
 builder.Services.AddControllers();
+builder.Services.AddSignalR();
 
 // 3. Add CORS for Next.js App
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowNextJs", policy =>
     {
-        policy.WithOrigins("http://localhost:3000", "http://localhost:3001")
+        policy.WithOrigins("http://localhost:3000", "http://localhost:3001", "http://127.0.0.1:3000", "http://127.0.0.1:3001")
               .AllowAnyHeader()
               .AllowAnyMethod()
               .AllowCredentials();
@@ -112,5 +114,6 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
+app.MapHub<ChatHub>("/hubs/chat");
 
 app.Run();

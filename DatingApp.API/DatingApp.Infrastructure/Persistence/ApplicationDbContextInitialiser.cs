@@ -22,6 +22,30 @@ public class ApplicationDbContextInitialiser
         try
         {
             await _context.Database.EnsureCreatedAsync();
+
+            await _context.Database.ExecuteSqlRawAsync(@"
+                IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'ChatMessages')
+                BEGIN
+                    CREATE TABLE [dbo].[ChatMessages] (
+                        [Id] UNIQUEIDENTIFIER NOT NULL PRIMARY KEY,
+                        [SenderProfileId] UNIQUEIDENTIFIER NOT NULL,
+                        [ReceiverProfileId] UNIQUEIDENTIFIER NOT NULL,
+                        [ConversationId] NVARCHAR(450) NOT NULL,
+                        [MessageText] NVARCHAR(MAX) NOT NULL,
+                        [IsRead] BIT NOT NULL DEFAULT 0,
+                        [ReadAt] DATETIME2 NULL,
+                        [IsFlaggedBySafety] BIT NOT NULL DEFAULT 0,
+                        [SafetyFlagReason] NVARCHAR(MAX) NULL,
+                        [IsContactShareRequest] BIT NOT NULL DEFAULT 0,
+                        [IsContactShareAccepted] BIT NOT NULL DEFAULT 0,
+                        [CreatedAt] DATETIME2 NOT NULL DEFAULT GETUTCDATE(),
+                        [UpdatedAt] DATETIME2 NULL,
+                        CONSTRAINT [FK_ChatMessages_CandidateProfiles_SenderProfileId] FOREIGN KEY ([SenderProfileId]) REFERENCES [dbo].[CandidateProfiles] ([Id]),
+                        CONSTRAINT [FK_ChatMessages_CandidateProfiles_ReceiverProfileId] FOREIGN KEY ([ReceiverProfileId]) REFERENCES [dbo].[CandidateProfiles] ([Id])
+                    );
+                    CREATE INDEX [IX_ChatMessages_ConversationId] ON [dbo].[ChatMessages] ([ConversationId]);
+                END
+            ");
         }
         catch (Exception ex)
         {
@@ -287,6 +311,74 @@ public class ApplicationDbContextInitialiser
         {
             _context.FaqItems.AddRange(faqs);
             await _context.SaveChangesAsync();
+        }
+
+        // 6. Seed Flow 3 Live Chat messages between matched candidates (LK-9021 & LK-8834)
+        if (!await _context.ChatMessages.AnyAsync())
+        {
+            var p1 = await _context.CandidateProfiles.FirstOrDefaultAsync(p => p.Code == "LK-9021");
+            var p2 = await _context.CandidateProfiles.FirstOrDefaultAsync(p => p.Code == "LK-8834");
+
+            if (p1 != null && p2 != null)
+            {
+                var convId = $"conv_{p1.Id}_{p2.Id}";
+
+                // Ensure an accepted match request exists
+                var matchReq = await _context.MatchRequests.FirstOrDefaultAsync(m =>
+                    (m.SenderProfileId == p1.Id && m.ReceiverProfileId == p2.Id) ||
+                    (m.SenderProfileId == p2.Id && m.ReceiverProfileId == p1.Id));
+
+                if (matchReq == null)
+                {
+                    matchReq = new MatchRequest
+                    {
+                        SenderProfileId = p1.Id,
+                        ReceiverProfileId = p2.Id,
+                        Status = MatchRequestStatus.Accepted,
+                        Note = "Hello Nilushi, our family liked your profile. Would love to get in touch.",
+                        RespondedAt = DateTime.UtcNow.AddDays(-2)
+                    };
+                    _context.MatchRequests.Add(matchReq);
+                    await _context.SaveChangesAsync();
+                }
+
+                var seedMessages = new List<ChatMessage>
+                {
+                    new()
+                    {
+                        SenderProfileId = p1.Id,
+                        ReceiverProfileId = p2.Id,
+                        ConversationId = convId,
+                        MessageText = "Ayubowan Nilushi! Thank you for accepting my interest. How has your week been?",
+                        IsRead = true,
+                        ReadAt = DateTime.UtcNow.AddHours(-3),
+                        CreatedAt = DateTime.UtcNow.AddHours(-4)
+                    },
+                    new()
+                    {
+                        SenderProfileId = p2.Id,
+                        ReceiverProfileId = p1.Id,
+                        ConversationId = convId,
+                        MessageText = "Ayubowan Dr. Kavinda! It was nice reading about your work at the National Hospital. We had our family alms-giving this weekend.",
+                        IsRead = true,
+                        ReadAt = DateTime.UtcNow.AddHours(-2),
+                        CreatedAt = DateTime.UtcNow.AddHours(-3)
+                    },
+                    new()
+                    {
+                        SenderProfileId = p1.Id,
+                        ReceiverProfileId = p2.Id,
+                        ConversationId = convId,
+                        MessageText = "That is wonderful to hear. My parents were keen to speak with your family when convenient.",
+                        IsRead = true,
+                        ReadAt = DateTime.UtcNow.AddMinutes(-30),
+                        CreatedAt = DateTime.UtcNow.AddMinutes(-45)
+                    }
+                };
+
+                _context.ChatMessages.AddRange(seedMessages);
+                await _context.SaveChangesAsync();
+            }
         }
     }
 }

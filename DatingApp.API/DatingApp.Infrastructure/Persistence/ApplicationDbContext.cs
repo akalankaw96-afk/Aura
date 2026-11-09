@@ -16,6 +16,7 @@ public class ApplicationDbContext : DbContext, IApplicationDbContext
     public DbSet<SuccessStory> SuccessStories => Set<SuccessStory>();
     public DbSet<PricingPlan> PricingPlans => Set<PricingPlan>();
     public DbSet<FaqItem> FaqItems => Set<FaqItem>();
+    public DbSet<ChatMessage> ChatMessages => Set<ChatMessage>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -42,6 +43,20 @@ public class ApplicationDbContext : DbContext, IApplicationDbContext
             .HasForeignKey(m => m.ReceiverProfileId)
             .OnDelete(DeleteBehavior.Restrict);
 
+        // CandidateProfile - ChatMessages (Sender)
+        modelBuilder.Entity<ChatMessage>()
+            .HasOne(c => c.SenderProfile)
+            .WithMany()
+            .HasForeignKey(c => c.SenderProfileId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        // CandidateProfile - ChatMessages (Receiver)
+        modelBuilder.Entity<ChatMessage>()
+            .HasOne(c => c.ReceiverProfile)
+            .WithMany()
+            .HasForeignKey(c => c.ReceiverProfileId)
+            .OnDelete(DeleteBehavior.Restrict);
+
         // Indexes
         modelBuilder.Entity<User>()
             .HasIndex(u => u.Email)
@@ -50,6 +65,9 @@ public class ApplicationDbContext : DbContext, IApplicationDbContext
         modelBuilder.Entity<CandidateProfile>()
             .HasIndex(p => p.Code)
             .IsUnique();
+
+        modelBuilder.Entity<ChatMessage>()
+            .HasIndex(c => c.ConversationId);
     }
 }
 
