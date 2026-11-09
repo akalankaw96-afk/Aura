@@ -2,8 +2,9 @@
 
 | Folder | What | Stack |
 |---|---|---|
-| [`DatingApp.APP`](./DatingApp.APP) | Web app (front end). Built 1:1 from the Figma design. | Next.js 15 · React 19 · TypeScript · Tailwind 3 |
-| [`DatingApp.API`](./DatingApp.API) | Back end, clean architecture (Domain · Application · Infrastructure · WebApi) | .NET (`DatingApp.sln`) |
+| [`DatingApp.APP`](./DatingApp.APP) | User-facing web app (front end). Built 1:1 from the Figma design. Runs on port 3001. | Next.js 15 · React 19 · TypeScript · Tailwind 3 |
+| [`DatingApp.ADMIN`](./DatingApp.ADMIN) | Dedicated Admin & Governance Portal (front end). Moderation, Safety, Finance, Helpdesk, Audit. Runs on port 3002. | Next.js 15 · React 19 · TypeScript · Tailwind |
+| [`DatingApp.API`](./DatingApp.API) | Back end, clean architecture (Domain · Application · Infrastructure · WebApi). Runs on port 5000. | .NET 9 (`DatingApp.sln`) |
 
 **Design source of truth:** Figma file *AI-Learning-2*: https://www.figma.com/design/jyoGCUqvQuZsoUp2uUi95W/AI-Learning-2
 

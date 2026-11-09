@@ -30,6 +30,7 @@ public static class DependencyInjection
         services.AddScoped<IAuthService, AuthService>();
         services.AddScoped<IMatchRequestService, MatchRequestService>();
         services.AddScoped<IContentService, ContentService>();
+        services.AddScoped<IAdminService, AdminService>();
 
         return services;
     }
