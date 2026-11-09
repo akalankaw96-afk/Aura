@@ -82,12 +82,51 @@ export function readPlan(): Plan {
   }
 }
 
-export function setPlan(plan: Plan) {
+const MEMBERSHIP_KEY = "vk-membership";
+
+/** Paid period — when it started and how many months were bought (demo, no API). */
+export interface Membership {
+  plan: Exclude<Plan, "free">;
+  startedAt: string; // ISO date
+  months: number;
+}
+
+/** `months` = the billing period bought on /plans (1, 3 or 6). */
+export function setPlan(plan: Plan, months = 3) {
   try {
-    if (plan === "free") localStorage.removeItem(PLAN_KEY);
-    else localStorage.setItem(PLAN_KEY, plan);
+    if (plan === "free") {
+      localStorage.removeItem(PLAN_KEY);
+      localStorage.removeItem(MEMBERSHIP_KEY);
+    } else {
+      localStorage.setItem(PLAN_KEY, plan);
+      const m: Membership = { plan, startedAt: new Date().toISOString(), months };
+      localStorage.setItem(MEMBERSHIP_KEY, JSON.stringify(m));
+    }
   } catch {}
   window.dispatchEvent(new Event(PLAN_EVENT));
+}
+
+/** Membership details with start / expiry dates and days left. Null on the Free plan. */
+export function readMembership() {
+  const plan = readPlan();
+  if (plan === "free") return null;
+  let m: Membership | null = null;
+  try {
+    m = JSON.parse(localStorage.getItem(MEMBERSHIP_KEY) || "null");
+  } catch {}
+  if (!m || m.plan !== plan) {
+    // e.g. ?plan=gold preview — assume a 3-month plan bought 12 days ago
+    const d = new Date();
+    d.setDate(d.getDate() - 12);
+    m = { plan, startedAt: d.toISOString(), months: 3 };
+  }
+  const start = new Date(m.startedAt);
+  const expires = new Date(start);
+  expires.setMonth(expires.getMonth() + m.months);
+  const DAY = 86_400_000;
+  const total = Math.round((expires.getTime() - start.getTime()) / DAY);
+  const left = Math.max(0, Math.ceil((expires.getTime() - Date.now()) / DAY));
+  return { ...m, start, expires, totalDays: total, daysLeft: left };
 }
 
 /**

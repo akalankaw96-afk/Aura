@@ -6,6 +6,7 @@ import { BestMatches, DashboardHero, Inbox, SearchCard, StatsRow } from "@/compo
 import { VerificationPanel } from "@/components/sections/dashboard/VerificationPanel";
 import { FeatureGate } from "@/components/sections/dashboard/FeatureGate";
 import { PlanUsageCard } from "@/components/sections/dashboard/PlanUsageCard";
+import { ProPlanCard } from "@/components/sections/dashboard/ProPlanCard";
 import { DashboardDemo } from "@/components/sections/dashboard/DashboardDemo";
 
 export const metadata: Metadata = { title: "Dashboard | Aura Matrimony" };
@@ -29,6 +30,8 @@ export default function DashboardPage() {
           <DashboardHero />
           {/* approved Free members: allowance + what Gold unlocks (hidden for paid members) */}
           <PlanUsageCard />
+          {/* approved Gold / Platinum members: plan, expiry date and included features */}
+          <ProPlanCard />
           {/* profile insights are a paid feature */}
           <FeatureGate requires="paid" title="See who viewed & shortlisted you" text="Profile insights are included with Gold and Platinum.">
             <StatsRow />

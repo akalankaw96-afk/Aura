@@ -182,7 +182,7 @@ export function PlansScreen() {
           onPaid={() => {
             setCurrent(paying);
             saveDraft({ plan: paying });
-            setPlan(paying); // unlocks the paid features on the Dashboard
+            setPlan(paying, period); // unlocks the paid features on the Dashboard (expiry = period)
             setPaying(null);
             toast.success(`You’re now ${paying === "gold" ? "Gold" : "Platinum"}!`, "Unlimited interests are unlocked. Happy matching!");
             window.scrollTo({ top: 0, behavior: "smooth" });

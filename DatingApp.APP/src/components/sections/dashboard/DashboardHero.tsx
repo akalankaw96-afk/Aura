@@ -2,12 +2,12 @@
 
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
-import { AddCircle, Lock1, Lovely, TickCircle } from "iconsax-react";
+import { AddCircle, Crown1, Lock1, Lovely, TickCircle } from "iconsax-react";
 import { cn } from "@/lib/cn";
 import { DASH_HERO, MEMBER } from "@/content/dashboard";
 import { HERO } from "@/content/home";
 import { useLanguage } from "@/context/LanguageContext";
-import { useKyc } from "@/lib/verification";
+import { useAccess } from "@/lib/verification";
 
 /**
  * Figma: Dashboard → Hero — 1280 wide, padding 48, gap 40, radius 2xl.
@@ -16,7 +16,7 @@ import { useKyc } from "@/lib/verification";
  */
 export function DashboardHero() {
   const { t, lang } = useLanguage();
-  const { locked } = useKyc();
+  const { locked, isPaid, plan } = useAccess();
   const [hello, setHello] = useState("Welcome");
 
   useEffect(() => {
@@ -37,9 +37,17 @@ export function DashboardHero() {
 
       <div className="flex flex-col gap-8 p-6 sm:p-10 lg:flex-row lg:items-center lg:gap-10 lg:p-12">
         <div className="flex flex-1 flex-col gap-4">
-          <span className="enter inline-flex w-fit items-center gap-1.5 rounded-full border border-line-glass bg-surface-glass py-1.5 pl-2.5 pr-3 text-label-sm backdrop-blur-[8px]">
-            <Lovely size={16} color="currentColor" /> {t.dashboard.eyebrow}
-          </span>
+          <div className="enter flex flex-wrap items-center gap-2">
+            <span className="inline-flex w-fit items-center gap-1.5 rounded-full border border-line-glass bg-surface-glass py-1.5 pl-2.5 pr-3 text-label-sm backdrop-blur-[8px]">
+              <Lovely size={16} color="currentColor" /> {t.dashboard.eyebrow}
+            </span>
+            {/* paid members: plan badge */}
+            {!locked && isPaid && (
+              <span className="kyc-pop inline-flex items-center gap-1.5 rounded-full bg-[linear-gradient(135deg,var(--gold-300),var(--gold-500))] py-1.5 pl-2.5 pr-3 text-label-sm font-bold text-gold-900 shadow-md">
+                <Crown1 size={16} color="currentColor" /> {plan === "platinum" ? "Platinum" : "Gold"} member
+              </span>
+            )}
+          </div>
           <h1 className="enter text-h2 md:text-display-lg" style={{ "--enter-delay": "80ms" } as React.CSSProperties}>
             {hello}, {MEMBER.firstName}
           </h1>
@@ -81,7 +89,7 @@ export function DashboardHero() {
 /** Figma: Hero → Profile strength — glass card, 340 wide, padding 20, gap 16, radius xl */
 function ProfileStrength() {
   const { t, lang } = useLanguage();
-  const { locked } = useKyc();
+  const { locked, isPaid, plan } = useAccess();
   const [w, setW] = useState(0);
   useEffect(() => {
     const tTimer = window.setTimeout(() => setW(MEMBER.strength), 500);
@@ -102,8 +110,15 @@ function ProfileStrength() {
       style={{ "--enter-delay": "320ms" } as React.CSSProperties}
     >
       <div className="flex items-center gap-3">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={MEMBER.photo} alt="" className="h-14 w-14 rounded-full border-2 border-white object-cover" />
+        <span className="relative shrink-0">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={MEMBER.photo} alt="" className={cn("h-14 w-14 rounded-full border-2 object-cover", !locked && isPaid ? "border-gold-300" : "border-white")} />
+          {!locked && isPaid && (
+            <span aria-label={plan === "platinum" ? "Platinum" : "Gold"} className="absolute -bottom-1 -right-1 flex h-6 w-6 items-center justify-center rounded-full bg-gold-300 text-gold-900 ring-2 ring-white">
+              <Crown1 size={14} color="currentColor" />
+            </span>
+          )}
+        </span>
         <div className="flex flex-col gap-0.5">
           <p className="text-h6">{MEMBER.fullName}</p>
           <p className="text-caption text-ink-on-brand-muted">{locked ? "Pending review" : `${MEMBER.id} · ${t.featured.verified}`}</p>
