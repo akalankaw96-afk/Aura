@@ -8,7 +8,7 @@ import { cn } from "@/lib/cn";
  * and Button Gradient. All buttons are pills (radius full).
  * Primary uses Gradient/Brand, as agreed in the design review.
  */
-export type ButtonVariant = "primary" | "secondary" | "outline" | "ghost" | "white";
+export type ButtonVariant = "primary" | "secondary" | "outline" | "ghost" | "white" | "danger";
 export type ButtonSize = "sm" | "md" | "lg";
 
 export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
@@ -35,6 +35,9 @@ const variants: Record<ButtonVariant, string> = {
     "bg-surface-card text-ink ring-1 ring-inset ring-line-strong hover:bg-surface-subtle disabled:text-ink-disabled disabled:ring-line",
   ghost: "bg-transparent text-brand hover:bg-brand-subtle disabled:text-ink-disabled",
   white: "bg-surface-card text-brand hover:bg-brand-subtle disabled:text-ink-disabled",
+  /** Figma: Button / Danger — destructive confirm (Block) */
+  danger:
+    "bg-error-fg text-white hover:brightness-110 hover:shadow-md active:brightness-95 disabled:bg-surface-muted disabled:text-ink-disabled",
 };
 
 export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(

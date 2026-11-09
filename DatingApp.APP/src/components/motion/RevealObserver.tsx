@@ -7,6 +7,7 @@ import { usePathname } from "next/navigation";
  * Scroll reveal for the whole site. Mount once (root layout).
  *  - `.reveal`, `.reveal-zoom` → animate in when 15 % visible
  *  - `.reveal-stagger` → each direct child animates in, 90 ms apart
+ *  - `.bump-title` → <BumpTitle> words zoom & bump in
  * Sets `data-in` (an attribute React never touches, so re-renders keep it).
  */
 export function RevealObserver() {
@@ -33,7 +34,7 @@ export function RevealObserver() {
           el.style.setProperty("--reveal-delay", `${Math.min(i, 8) * 90}ms`);
         });
       });
-      document.querySelectorAll(".reveal:not([data-in]), .reveal-zoom:not([data-in]), [data-reveal]:not([data-in])").forEach((el) => io.observe(el));
+      document.querySelectorAll(".reveal:not([data-in]), .reveal-zoom:not([data-in]), [data-reveal]:not([data-in]), .bump-title:not([data-in])").forEach((el) => io.observe(el));
     };
 
     scan();

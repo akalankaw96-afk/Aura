@@ -6,6 +6,7 @@ import { cn } from "@/lib/cn";
 import { SectionHeader } from "@/components/ui/SectionHeader";
 import { LoveSticker } from "@/components/ui/Decor";
 import { useLanguage } from "@/context/LanguageContext";
+import { BumpTitle } from "@/components/motion/BumpTitle";
 
 /**
  * Figma: How It Works Notes (1440 × 842) — four pinned notes on a board
@@ -136,7 +137,7 @@ function Note({ step, className, style }: { step: Step; className?: string; styl
             <span className={cn("text-[48px] font-bold leading-[1.2]", rose ? "text-brand" : "text-gold-700")}>{step.n}</span>
           </div>
           {/* note panels are always light (paper), so text uses fixed primitives */}
-          <h3 className="text-h5 text-gray-900">{step.title}</h3>
+          <BumpTitle as="h3" delay={200} stagger={60} className="text-h5 text-gray-900">{step.title}</BumpTitle>
           <p className="text-body-sm text-gray-600">{step.text}</p>
           <span className="w-fit rounded-full bg-white px-2.5 py-1 text-label-sm text-rose-700">{step.pill}</span>
         </div>

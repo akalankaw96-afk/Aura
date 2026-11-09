@@ -8,6 +8,7 @@ import { flashToast } from "@/components/ui/Toast";
 import { saveDraft } from "@/lib/demo";
 import { useLanguage } from "@/context/LanguageContext";
 import { SIGN_UP } from "@/content/home";
+import { BumpTitle } from "@/components/motion/BumpTitle";
 
 /**
  * Figma: 08 Sign up — CTA band (1280 × 749, padding 80, radius 2xl,
@@ -72,7 +73,7 @@ export function SignUp() {
 
           <div className="flex max-w-[520px] flex-col gap-5 text-ink-on-brand">
             <p className="text-overline uppercase">{t.signUp.eyebrow}</p>
-            <h2 className="text-h2 lg:text-display-lg">{t.signUp.title}</h2>
+            <BumpTitle as="h2" delay={100} className="text-h2 lg:text-display-lg">{t.signUp.title}</BumpTitle>
             <p className="text-body-md lg:text-body-lg">{t.signUp.body}</p>
             <ul className="reveal-stagger flex flex-col gap-5">
               {t.signUp.benefits.map((b) => (
@@ -86,7 +87,7 @@ export function SignUp() {
           {/* Figma: Sign-up Form */}
           <form onSubmit={submit} noValidate className="flex flex-col gap-6 rounded-xl border border-line bg-surface-card p-6 text-ink shadow-xl sm:p-10">
             <div className="flex flex-col gap-2">
-              <h3 className="text-h3">{t.signUp.formTitle}</h3>
+              <BumpTitle as="h3" className="text-h3">{t.signUp.formTitle}</BumpTitle>
               <p className="text-body-md text-ink-secondary">{t.signUp.formSubtitle}</p>
             </div>
             <div className="grid gap-4 sm:grid-cols-2">

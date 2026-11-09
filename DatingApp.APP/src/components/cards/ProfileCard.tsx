@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
-import { ArrowRight2, Book1, Briefcase, Cake, Heart, Ruler, ShieldTick, Star1, Verify } from "iconsax-react";
+import { ArrowRight2, Book1, Briefcase, Cake, Crown1, Heart, Ruler, ShieldTick, Star1, Verify } from "iconsax-react";
 import { cn } from "@/lib/cn";
 import { Flag } from "@/components/ui/Flag";
 import type { FeaturedProfile } from "@/content/home";
@@ -12,14 +12,21 @@ import type { FeaturedProfile } from "@/content/home";
  * 296 × 497 · padding 8 · radius lg · border default · Shadow/SM.
  * Hover: border focus + Shadow/LG. One action: "View details" (Button Primary S, full width).
  * The heart on the photo shortlists the profile.
+ * `promoted` swaps the Horoscope badge for the gold "Promoted" badge (Search → Promoted profiles).
  */
 export function ProfileCard({
   profile,
   onInterest,
   onView,
   onShortlist,
+  promoted,
+  className,
+  style,
 }: {
   profile: FeaturedProfile;
+  promoted?: boolean;
+  className?: string;
+  style?: React.CSSProperties;
   onInterest?: (p: FeaturedProfile) => void;
   onView?: (p: FeaturedProfile) => void;
   onShortlist?: (p: FeaturedProfile, saved: boolean) => void;
@@ -28,7 +35,13 @@ export function ProfileCard({
   const [sent, setSent] = useState(false);
 
   return (
-    <article className="flex flex-col rounded-lg border border-line bg-surface-card p-2 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-brand-focus hover:shadow-lg">
+    <article
+      style={style}
+      className={cn(
+        "flex flex-col rounded-lg border border-line bg-surface-card p-2 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-brand-focus hover:shadow-lg",
+        className
+      )}
+    >
       {/* Photo 280 × 264 */}
       <div
         className={cn("relative aspect-[280/264] overflow-hidden rounded-sm bg-surface-muted", onView && "cursor-pointer group")}
@@ -39,6 +52,12 @@ export function ProfileCard({
           src={profile.photo}
           alt={`Profile photo of ${profile.id}`}
           loading="lazy"
+          onError={(e) => {
+            // photo missing → the bride / groom illustration (Figma: photo hidden)
+            const img = e.currentTarget;
+            const fallback = profile.gender === "groom" ? "/brand/groom.png" : "/brand/bride.png";
+            if (!img.src.endsWith(fallback)) img.src = fallback;
+          }}
           className="absolute inset-0 h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
         />
         <div className="absolute inset-0 flex flex-col justify-between p-3 pointer-events-none">
@@ -47,7 +66,11 @@ export function ProfileCard({
               <span className="inline-flex h-[22px] items-center gap-1 rounded-full bg-success-bg px-2 text-label-sm text-success-fg">
                 <Verify size={14} color="currentColor" /> Verified
               </span>
-              {profile.horoscope && (
+              {promoted ? (
+                <span className="inline-flex h-[22px] items-center gap-1 rounded-full bg-premium-bg px-2 text-label-sm text-premium-fg">
+                  <Crown1 size={14} color="currentColor" /> Promoted
+                </span>
+              ) : profile.horoscope && (
                 <span className="inline-flex h-[22px] items-center gap-1 rounded-full bg-info-bg px-2 text-label-sm text-info-fg">
                   <Star1 size={14} color="currentColor" /> Horoscope
                 </span>

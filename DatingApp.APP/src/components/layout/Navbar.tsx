@@ -63,6 +63,33 @@ export function Navbar({ variant = "light" }: { variant?: NavbarVariant }) {
     };
   }, [pathname]);
 
+  // Hide on scroll down, show again on scroll up (always shown near the top)
+  const [hidden, setHidden] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
+  useEffect(() => {
+    let last = window.scrollY;
+    let raf = 0;
+    const onScroll = () => {
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(() => {
+        const y = window.scrollY;
+        const delta = y - last;
+        setScrolled(y > 8);
+        if (y < 120) setHidden(false);
+        else if (delta > 6) setHidden(true);
+        else if (delta < -6) setHidden(false);
+        if (Math.abs(delta) > 6) last = y;
+      });
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => {
+      cancelAnimationFrame(raf);
+      window.removeEventListener("scroll", onScroll);
+    };
+  }, []);
+  // a page change always brings the bar back
+  useEffect(() => setHidden(false), [pathname]);
+
   useEffect(() => {
     document.body.style.overflow = open ? "hidden" : "";
     return () => {
@@ -102,7 +129,9 @@ export function Navbar({ variant = "light" }: { variant?: NavbarVariant }) {
   return (
     <header
       className={cn(
-        "sticky top-0 z-50 w-full border-b",
+        "sticky top-0 z-50 w-full border-b transition-[transform,box-shadow] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]",
+        hidden && !open && "-translate-y-full",
+        scrolled && !hidden && "shadow-md",
         glass
           ? "border-line-glass bg-[rgb(255_255_255/0.65)] backdrop-blur-[16px] dark:bg-[rgb(14_16_19/0.65)]"
           : "border-line bg-[linear-gradient(90deg,var(--color-surface-card),var(--rose-100))] dark:bg-[linear-gradient(90deg,var(--color-surface-card),var(--color-bg-brand-subtle))]"

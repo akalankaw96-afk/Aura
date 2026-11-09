@@ -185,6 +185,37 @@ export interface Translations {
     typeMessage: string;
     send: string;
     safetyNote: string;
+    back: string;
+    blocked: string;
+    blockedMembers: string;
+    blockedHelp: string;
+    blockedOn: (date: string) => string;
+    unblock: string;
+    report: string;
+    muteNotifications: string;
+    unmuteNotifications: string;
+    block: string;
+    blockTitle: (name: string) => string;
+    blockPoint1: string;
+    blockPoint2: string;
+    blockPoint3: string;
+    reasonLabel: string;
+    reasonPlaceholder: string;
+    reasons: string[];
+    alsoReport: string;
+    cancel: string;
+    youBlocked: (name: string) => string;
+    youBlockedBody: string;
+    cantReply: string;
+    blockedStatus: string;
+    blockedToast: (name: string) => string;
+    unblockedToast: (name: string) => string;
+    reportedToast: string;
+    mutedToast: string;
+    unmutedToast: string;
+    noBlockedTitle: string;
+    noBlockedBody: string;
+    moreOptions: string;
   };
   auth: {
     loginTitle: string;
@@ -469,8 +500,8 @@ export const TRANSLATIONS: Record<Language, Translations> = {
       aboutTitle: "About",
     },
     messages: {
-      title: "Private Messages",
-      subtitle: "Chat privately with verified members whose requests you have accepted.",
+      title: "Messages",
+      subtitle: "Chat safely with members who accepted your interest.",
       searchPlaceholder: "Search conversations…",
       all: "All",
       unread: "Unread",
@@ -479,6 +510,37 @@ export const TRANSLATIONS: Record<Language, Translations> = {
       typeMessage: "Type a message…",
       send: "Send",
       safetyNote: "Keep chats on Vikasitha. Never share bank details or send money.",
+      back: "Back",
+      blocked: "Blocked",
+      blockedMembers: "Blocked members",
+      blockedHelp: "Blocked members can't message you, see your profile or find you in search.",
+      blockedOn: (d) => `Blocked ${d}`,
+      unblock: "Unblock",
+      report: "Report",
+      muteNotifications: "Mute notifications",
+      unmuteNotifications: "Unmute notifications",
+      block: "Block",
+      blockTitle: (n) => `Block ${n}?`,
+      blockPoint1: "They can't message you or see your profile",
+      blockPoint2: "You won't appear in their search results",
+      blockPoint3: "They aren't told — you can unblock anytime",
+      reasonLabel: "Reason (optional)",
+      reasonPlaceholder: "Choose a reason",
+      reasons: ["Asked for money or bank details", "Rude or inappropriate messages", "Fake or misleading profile", "Not interested anymore", "Other"],
+      alsoReport: "Also report this member to our safety team",
+      cancel: "Cancel",
+      youBlocked: (n) => `You blocked ${n}`,
+      youBlockedBody: "They can't message you, see your profile or find you in search. They aren't told that you blocked them.",
+      cantReply: "You can't reply to a blocked member. Unblock to chat again.",
+      blockedStatus: "Blocked · can't contact you",
+      blockedToast: (n) => `${n} is blocked`,
+      unblockedToast: (n) => `${n} is unblocked — you can chat again`,
+      reportedToast: "Thanks — our safety team will review this member.",
+      mutedToast: "Notifications muted for this chat",
+      unmutedToast: "Notifications turned back on",
+      noBlockedTitle: "No blocked members",
+      noBlockedBody: "Members you block will show here. You can unblock them anytime.",
+      moreOptions: "More options",
     },
     auth: {
       loginTitle: "Log in to your account",
@@ -762,8 +824,8 @@ export const TRANSLATIONS: Record<Language, Translations> = {
       aboutTitle: "තොරතුරු",
     },
     messages: {
-      title: "පුද්ගලික පණිවිඩ",
-      subtitle: "ඔබ පිළිගත් සත්‍යාපිත සාමාජිකයන් සමඟ පුද්ගලිකව සහ ආරක්ෂිතව කතාබස් කරන්න.",
+      title: "පණිවිඩ",
+      subtitle: "ඔබේ කැමැත්ත පිළිගත් සාමාජිකයන් සමඟ ආරක්ෂිතව කතාබස් කරන්න.",
       searchPlaceholder: "පණිවිඩ සොයන්න…",
       all: "සියල්ල",
       unread: "නොකියවූ",
@@ -772,6 +834,37 @@ export const TRANSLATIONS: Record<Language, Translations> = {
       typeMessage: "පණිවිඩයක් ලියන්න…",
       send: "යවන්න",
       safetyNote: "කතාබස් විකසිත තුළම තබාගන්න. කිසිවිටෙක බැංකු තොරතුරු හෝ මුදල් හුවමාරු නොකරන්න.",
+      back: "ආපසු",
+      blocked: "අවහිර කළ",
+      blockedMembers: "අවහිර කළ සාමාජිකයන්",
+      blockedHelp: "අවහිර කළ සාමාජිකයන්ට ඔබට පණිවිඩ යැවීමට, ඔබේ පැතිකඩ බැලීමට හෝ සෙවීමේදී ඔබව සොයාගැනීමට නොහැක.",
+      blockedOn: (d) => `${d} අවහිර කළා`,
+      unblock: "අවහිරය ඉවත් කරන්න",
+      report: "වාර්තා කරන්න",
+      muteNotifications: "දැනුම්දීම් නිහඬ කරන්න",
+      unmuteNotifications: "දැනුම්දීම් සක්‍රිය කරන්න",
+      block: "අවහිර කරන්න",
+      blockTitle: (n) => `${n} අවහිර කරන්නද?`,
+      blockPoint1: "ඔවුන්ට ඔබට පණිවිඩ යැවීමට හෝ ඔබේ පැතිකඩ බැලීමට නොහැක",
+      blockPoint2: "ඔවුන්ගේ සෙවුම් ප්‍රතිඵලවල ඔබ නොපෙන්වයි",
+      blockPoint3: "ඔවුන්ට දැනුම් නොදේ — ඕනෑම වේලාවක අවහිරය ඉවත් කළ හැක",
+      reasonLabel: "හේතුව (අත්‍යවශ්‍ය නොවේ)",
+      reasonPlaceholder: "හේතුවක් තෝරන්න",
+      reasons: ["මුදල් හෝ බැංකු තොරතුරු ඉල්ලුවා", "අශිෂ්ට හෝ නුසුදුසු පණිවිඩ", "ව්‍යාජ හෝ නොමඟ යවන පැතිකඩ", "තවදුරටත් උනන්දුවක් නැත", "වෙනත්"],
+      alsoReport: "මෙම සාමාජිකයා අපගේ ආරක්ෂක කණ්ඩායමට ද වාර්තා කරන්න",
+      cancel: "අවලංගු කරන්න",
+      youBlocked: (n) => `ඔබ ${n} අවහිර කළා`,
+      youBlockedBody: "ඔවුන්ට ඔබට පණිවිඩ යැවීමට, ඔබේ පැතිකඩ බැලීමට හෝ ඔබව සොයාගැනීමට නොහැක. ඔබ අවහිර කළ බව ඔවුන්ට දැනුම් නොදේ.",
+      cantReply: "අවහිර කළ සාමාජිකයෙකුට පිළිතුරු දිය නොහැක. නැවත කතාබස් කිරීමට අවහිරය ඉවත් කරන්න.",
+      blockedStatus: "අවහිර කළා · ඔබව සම්බන්ධ කළ නොහැක",
+      blockedToast: (n) => `${n} අවහිර කළා`,
+      unblockedToast: (n) => `${n} ගේ අවහිරය ඉවත් කළා — නැවත කතාබස් කළ හැක`,
+      reportedToast: "ස්තූතියි — අපගේ ආරක්ෂක කණ්ඩායම මෙම සාමාජිකයා පරීක්ෂා කරනු ඇත.",
+      mutedToast: "මෙම කතාබහේ දැනුම්දීම් නිහඬ කළා",
+      unmutedToast: "දැනුම්දීම් නැවත සක්‍රියයි",
+      noBlockedTitle: "අවහිර කළ සාමාජිකයන් නැත",
+      noBlockedBody: "ඔබ අවහිර කරන සාමාජිකයන් මෙහි පෙන්වයි. ඕනෑම වේලාවක අවහිරය ඉවත් කළ හැක.",
+      moreOptions: "තවත් විකල්ප",
     },
     auth: {
       loginTitle: "ඔබේ ගිණුමට පිවිසෙන්න",
