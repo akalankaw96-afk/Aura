@@ -28,6 +28,7 @@ import {
   OtpInput,
   PasswordField,
   PhoneField,
+  OrDivider,
   Select,
   Stepper,
   Textarea,
@@ -40,6 +41,7 @@ import { cn } from "@/lib/cn";
 import { ageFrom, containsContactDetails, emptyDraft, loadDraft, saveDraft, type RegistrationDraft } from "@/lib/demo";
 import { AuthShell } from "./AuthShell";
 import { DemoTips } from "./DemoTips";
+import { GoogleSignInButton } from "./GoogleSignInButton";
 import { DEMO, formatPhone } from "./shared";
 import { setKyc } from "@/lib/verification";
 import { AVATARS, avatarDataUri, isIllustration, type AvatarGender } from "@/content/avatars";
@@ -102,7 +104,7 @@ export function RegisterFlow({ initialStep = 1, embedded, onComplete }: Register
     >
       <Stepper step={step} className="max-w-[680px]" />
       <Card className="w-full max-w-[680px] p-5 sm:p-8">
-        {step === 1 && <AccountStep draft={draft} update={update} onNext={() => go(2)} />}
+        {step === 1 && <AccountStep draft={draft} update={update} onNext={() => go(2)} onGoogleSuccess={() => go(3)} />}
         {step === 2 && <VerifyStep mobile={draft.mobile || DEMO.registeredMobile} onBack={() => go(1)} onNext={() => go(3)} />}
         {step === 3 && <ProfileStep draft={draft} update={update} onBack={() => go(2)} onNext={() => go(4)} />}
         {step === 4 && <PhotosStep draft={draft} update={update} onBack={() => go(3)} onFinish={finish} />}
@@ -119,7 +121,17 @@ export function RegisterFlow({ initialStep = 1, embedded, onComplete }: Register
 /* ───────────────────────── Step 1 · Account (02, 02a–02e) ───────────────────────── */
 
 
-function AccountStep({ draft, update, onNext }: { draft: RegistrationDraft; update: (p: Partial<RegistrationDraft>) => void; onNext: () => void }) {
+function AccountStep({
+  draft,
+  update,
+  onNext,
+  onGoogleSuccess,
+}: {
+  draft: RegistrationDraft;
+  update: (p: Partial<RegistrationDraft>) => void;
+  onNext: () => void;
+  onGoogleSuccess?: () => void;
+}) {
   const toast = useToast();
   const [mobile, setMobile] = useState(draft.mobile);
   const [pw, setPw] = useState("");
@@ -166,6 +178,27 @@ function AccountStep({ draft, update, onNext }: { draft: RegistrationDraft; upda
   return (
     <form onSubmit={submit} noValidate className="flex flex-col gap-5">
       <CardTitle title="Create your free account" subtitle="No payment needed — browse and connect for free, upgrade anytime." />
+
+      <GoogleSignInButton
+        isSignUp
+        onSuccess={(session) => {
+          const parts = session.fullName.trim().split(" ");
+          const firstName = parts[0] || session.fullName;
+          const lastName = parts.slice(1).join(" ") || "";
+          update({
+            email: session.email,
+            firstName,
+            lastName,
+          });
+          if (onGoogleSuccess) {
+            onGoogleSuccess();
+          } else {
+            onNext();
+          }
+        }}
+      />
+
+      <OrDivider />
 
       {taken && (
         <Alert type="error" title="This number is already registered" action={<Link href="/login" className="font-bold text-brand hover:underline">Log in instead →</Link>}>

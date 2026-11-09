@@ -22,6 +22,7 @@ public class GoogleLoginDto
     public string FullName { get; set; } = string.Empty;
     public string? PhotoUrl { get; set; }
     public string? GoogleId { get; set; }
+    public string? IdToken { get; set; }
 }
 
 public class SendOtpDto
@@ -53,4 +54,9 @@ public class AuthResponseDto
     public string Role { get; set; } = string.Empty;
     public Guid? ProfileId { get; set; }
     public bool HasCompletedProfile { get; set; }
+    public bool IsVerified { get; set; }
+    public bool IsUnderReview { get; set; }
+    public bool IsPremium { get; set; }
+    public string PlanId { get; set; } = "free";
+    public string? PhotoUrl { get; set; }
 }

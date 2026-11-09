@@ -64,6 +64,11 @@ export interface AuthSession {
   hasCompletedProfile: boolean;
   subscription?: SubscriptionInfo;
   closureStatus?: AccountClosureStatus;
+  isVerified?: boolean;
+  isUnderReview?: boolean;
+  isPremium?: boolean;
+  planId?: string;
+  photoUrl?: string;
 }
 
 export interface CreateProfilePayload {
@@ -236,7 +241,7 @@ export const apiService = {
   },
 
   // Authentication: Google Sign-In
-  async googleLogin(data: { email: string; fullName: string; photoUrl?: string }): Promise<AuthSession> {
+  async googleLogin(data: { email: string; fullName: string; photoUrl?: string; idToken?: string }): Promise<AuthSession> {
     try {
       const res = await fetch(`${API_BASE_URL}/auth/google-login`, {
         method: 'POST',
@@ -244,12 +249,32 @@ export const apiService = {
         body: JSON.stringify(data),
       });
       if (res.ok) {
-        const json: AuthSession = await res.json();
-        if (typeof window !== 'undefined' && json.token) {
-          localStorage.setItem('aura_token', json.token);
-          localStorage.setItem('aura_session', JSON.stringify(json));
+        const json = await res.json();
+        const session: AuthSession = {
+          token: json.token,
+          userId: json.userId,
+          fullName: json.fullName,
+          email: json.email,
+          phoneNumber: json.phoneNumber,
+          role: json.role,
+          profileId: json.profileId,
+          hasCompletedProfile: json.hasCompletedProfile,
+          isVerified: json.isVerified,
+          isUnderReview: json.isUnderReview,
+          isPremium: json.isPremium,
+          planId: json.planId || 'free',
+          photoUrl: json.photoUrl || data.photoUrl,
+        };
+        if (typeof window !== 'undefined' && session.token) {
+          localStorage.setItem('aura_token', session.token);
+          localStorage.setItem('aura_session', JSON.stringify(session));
+          localStorage.setItem('aura_auth_user', JSON.stringify(session));
+          if (session.isUnderReview) {
+            localStorage.setItem('aura_review_status', 'submitted');
+          }
+          window.dispatchEvent(new Event('aura_auth_change'));
         }
-        return json;
+        return session;
       }
     } catch (err) {
       console.warn('API Google sign-in error:', err);
@@ -261,10 +286,18 @@ export const apiService = {
       email: data.email,
       role: 'Member',
       hasCompletedProfile: false,
+      isVerified: false,
+      isUnderReview: true,
+      isPremium: false,
+      planId: 'free',
+      photoUrl: data.photoUrl,
     };
     if (typeof window !== 'undefined') {
       localStorage.setItem('aura_token', session.token);
       localStorage.setItem('aura_session', JSON.stringify(session));
+      localStorage.setItem('aura_auth_user', JSON.stringify(session));
+      localStorage.setItem('aura_review_status', 'submitted');
+      window.dispatchEvent(new Event('aura_auth_change'));
     }
     return session;
   },
@@ -669,6 +702,18 @@ export const apiService = {
     if (typeof window !== 'undefined') {
       localStorage.removeItem('aura_token');
       localStorage.removeItem('aura_session');
+      localStorage.removeItem('aura_auth_user');
+      localStorage.removeItem('aura_review_status');
+      sessionStorage.clear();
+
+      try {
+        const googleAuth = (window as unknown as { google?: { accounts?: { id?: { disableAutoSelect?: () => void } } } }).google;
+        googleAuth?.accounts?.id?.disableAutoSelect?.();
+      } catch (e) {
+        console.warn('Google auto-select disable notice:', e);
+      }
+
+      window.dispatchEvent(new Event('aura_auth_change'));
     }
   },
 };

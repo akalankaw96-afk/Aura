@@ -22,6 +22,7 @@ import {
 } from "@/components/ui";
 import { AuthShell } from "./AuthShell";
 import { DemoTips } from "./DemoTips";
+import { GoogleSignInButton } from "./GoogleSignInButton";
 import { apiService } from "@/services/api";
 import { cn } from "@/lib/cn";
 
@@ -249,6 +250,8 @@ export function LoginScreen() {
           </Button>
 
           <OrDivider />
+
+          <GoogleSignInButton />
 
           <Button
             variant="outline"

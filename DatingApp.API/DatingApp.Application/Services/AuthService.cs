@@ -91,6 +91,7 @@ public class AuthService : IAuthService
         }
 
         var token = _jwtTokenGenerator.GenerateToken(user);
+        var hasProfile = user.Profile != null;
 
         return new AuthResponseDto
         {
@@ -101,25 +102,35 @@ public class AuthService : IAuthService
             PhoneNumber = user.PhoneNumber,
             Role = user.Role,
             ProfileId = user.Profile?.Id,
-            HasCompletedProfile = user.Profile != null
+            HasCompletedProfile = hasProfile,
+            IsVerified = user.Profile?.Verified ?? false,
+            IsUnderReview = hasProfile && !user.Profile!.Verified,
+            IsPremium = user.Profile?.Premium ?? false,
+            PlanId = (user.Profile?.Premium ?? false) ? "premium" : "free",
+            PhotoUrl = user.Profile?.PhotoUrl
         };
     }
 
     public async Task<AuthResponseDto> GoogleLoginAsync(GoogleLoginDto dto, CancellationToken ct = default)
     {
         var email = dto.Email.ToLower().Trim();
+        if (string.IsNullOrWhiteSpace(email))
+        {
+            throw new ArgumentException("Email is required for Google authentication.");
+        }
+
         var user = await _context.Users
             .Include(u => u.Profile)
             .FirstOrDefaultAsync(u => u.Email.ToLower() == email, ct);
 
         if (user == null)
         {
-            // First time Google sign-in: create new user
+            // First time Google sign-in: create new user account
             user = new User
             {
                 Email = email,
                 PasswordHash = _passwordHasher.HashPassword(Guid.NewGuid().ToString("N")),
-                FullName = dto.FullName.Trim(),
+                FullName = string.IsNullOrWhiteSpace(dto.FullName) ? email.Split('@')[0] : dto.FullName.Trim(),
                 PhoneNumber = "",
                 Role = "Member",
                 IsActive = true
@@ -128,8 +139,14 @@ public class AuthService : IAuthService
             _context.Users.Add(user);
             await _context.SaveChangesAsync(ct);
         }
+        else if (user.Profile != null && string.IsNullOrWhiteSpace(user.Profile.PhotoUrl) && !string.IsNullOrWhiteSpace(dto.PhotoUrl))
+        {
+            user.Profile.PhotoUrl = dto.PhotoUrl;
+            await _context.SaveChangesAsync(ct);
+        }
 
         var token = _jwtTokenGenerator.GenerateToken(user);
+        var hasProfile = user.Profile != null;
 
         return new AuthResponseDto
         {
@@ -140,7 +157,12 @@ public class AuthService : IAuthService
             PhoneNumber = user.PhoneNumber,
             Role = user.Role,
             ProfileId = user.Profile?.Id,
-            HasCompletedProfile = user.Profile != null
+            HasCompletedProfile = hasProfile,
+            IsVerified = user.Profile?.Verified ?? false,
+            IsUnderReview = hasProfile && !user.Profile!.Verified,
+            IsPremium = user.Profile?.Premium ?? false,
+            PlanId = (user.Profile?.Premium ?? false) ? "premium" : "free",
+            PhotoUrl = user.Profile?.PhotoUrl ?? dto.PhotoUrl
         };
     }
 
@@ -205,6 +227,7 @@ public class AuthService : IAuthService
         }
 
         var token = _jwtTokenGenerator.GenerateToken(user);
+        var hasProfile = user.Profile != null;
 
         return new AuthResponseDto
         {
@@ -215,7 +238,12 @@ public class AuthService : IAuthService
             PhoneNumber = user.PhoneNumber,
             Role = user.Role,
             ProfileId = user.Profile?.Id,
-            HasCompletedProfile = user.Profile != null
+            HasCompletedProfile = hasProfile,
+            IsVerified = user.Profile?.Verified ?? false,
+            IsUnderReview = hasProfile && !user.Profile!.Verified,
+            IsPremium = user.Profile?.Premium ?? false,
+            PlanId = (user.Profile?.Premium ?? false) ? "premium" : "free",
+            PhotoUrl = user.Profile?.PhotoUrl
         };
     }
 
@@ -228,6 +256,7 @@ public class AuthService : IAuthService
         if (user == null) return null;
 
         var token = _jwtTokenGenerator.GenerateToken(user);
+        var hasProfile = user.Profile != null;
 
         return new AuthResponseDto
         {
@@ -238,7 +267,12 @@ public class AuthService : IAuthService
             PhoneNumber = user.PhoneNumber,
             Role = user.Role,
             ProfileId = user.Profile?.Id,
-            HasCompletedProfile = user.Profile != null
+            HasCompletedProfile = hasProfile,
+            IsVerified = user.Profile?.Verified ?? false,
+            IsUnderReview = hasProfile && !user.Profile!.Verified,
+            IsPremium = user.Profile?.Premium ?? false,
+            PlanId = (user.Profile?.Premium ?? false) ? "premium" : "free",
+            PhotoUrl = user.Profile?.PhotoUrl
         };
     }
 }
