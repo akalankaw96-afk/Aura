@@ -17,6 +17,7 @@ export interface Translations {
     requests: string;
     messages: string;
     plans: string;
+    search: string;
     logout: string;
   };
   hero: {
@@ -244,6 +245,7 @@ export const TRANSLATIONS: Record<Language, Translations> = {
       requests: "Requests",
       messages: "Messages",
       plans: "Plans",
+      search: "Search",
       logout: "Log out",
     },
     hero: {
@@ -568,6 +570,7 @@ export const TRANSLATIONS: Record<Language, Translations> = {
       requests: "යෝජනා",
       messages: "පණිවිඩ",
       plans: "ගාස්තු සැලසුම්",
+      search: "සොයන්න",
       logout: "ඉවත් වන්න",
     },
     hero: {

@@ -14,6 +14,7 @@ import { RemovableFilterChip } from "@/components/ui/RemovableFilterChip";
 import { SortDropdown } from "@/components/ui/SortDropdown";
 import { ViewToggle, type ResultsView } from "@/components/ui/ViewToggle";
 import { useToast } from "@/components/ui/Toast";
+import { useSignedIn } from "@/lib/session";
 import { ProfileCard } from "@/components/cards/ProfileCard";
 import { ProfileCardList } from "@/components/cards/ProfileCardList";
 import { ProfileDetailModal, type ProposalDetail } from "@/components/profile/ProfileDetailModal";
@@ -69,6 +70,7 @@ const PAGE_SIZE: Record<ResultsView, number> = { grid: 12, list: 6 };
 function SearchPageContent() {
   const searchParams = useSearchParams();
   const toast = useToast();
+  const signedIn = useSignedIn();
   const topRef = useRef<HTMLDivElement>(null);
 
   const initialFor = searchParams.get("for")?.toLowerCase() === "groom" ? "groom" : "bride";
@@ -370,8 +372,8 @@ function SearchPageContent() {
       {/* Search band — breadcrumb */}
       <div className="container-page flex h-[68px] items-center">
         <nav aria-label="Breadcrumb" className="enter flex items-center gap-1.5 text-body-sm text-ink-tertiary">
-          <Link href="/" className="transition-colors hover:text-brand-text">
-            Home
+          <Link href={signedIn ? "/dashboard" : "/"} className="transition-colors hover:text-brand-text">
+            {signedIn ? "Dashboard" : "Home"}
           </Link>
           <ArrowRight2 size={14} color="currentColor" />
           <span aria-current="page" className="text-ink-secondary">

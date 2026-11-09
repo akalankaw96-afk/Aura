@@ -9,7 +9,6 @@ import {
   Crown,
   Logout,
   LogoutCurve,
-  Notification,
   Setting2,
   ShieldTick,
   TextalignJustifycenter,
@@ -18,7 +17,7 @@ import {
 import { cn } from "@/lib/cn";
 import { LanguageSwitch, Logo, ThemeToggle } from "@/components/ui/Brand";
 import { useLanguage } from "@/context/LanguageContext";
-import { MEMBER } from "@/content/dashboard";
+import { MEMBER, MESSAGES, REQUESTS } from "@/content/dashboard";
 import { apiService, type AuthSession } from "@/services/api";
 
 /**
@@ -110,13 +109,18 @@ export function Navbar({ variant = "light" }: { variant?: NavbarVariant }) {
     ? { label: t.nav.logout, href: "/" }
     : { label: t.nav.createOrLogin, href: "/login" };
 
-  const links = isMember
+  // unread counts shown next to Requests / Messages (same source as the mobile tab bar)
+  const requestCount = REQUESTS.length;
+  const messageCount = MESSAGES.reduce((n, m) => n + m.unread, 0);
+
+  const links: { label: string; href: string; count?: number }[] = isMember
     ? [
+        // Figma: Navbar (Style = Member) → Dashboard · Search · Requests · Messages · Plans
         { label: t.nav.dashboard, href: "/dashboard" },
-        { label: t.nav.requests, href: "/requests" },
-        { label: t.nav.messages, href: "/messages" },
+        { label: t.nav.search, href: "/search" },
+        { label: t.nav.requests, href: "/requests", count: requestCount },
+        { label: t.nav.messages, href: "/messages", count: messageCount },
         { label: t.nav.plans, href: "/plans" },
-        { label: "Search", href: "/search" },
       ]
     : [
         { label: t.nav.home, href: "/" },
@@ -153,7 +157,7 @@ export function Navbar({ variant = "light" }: { variant?: NavbarVariant }) {
                 href={l.href}
                 aria-current={active ? "page" : undefined}
                 className={cn(
-                  "text-label-lg transition-colors",
+                  "group inline-flex items-center gap-1.5 text-label-lg transition-colors",
                   glass
                     ? active
                       ? "bg-brand-gradient bg-clip-text text-transparent font-bold"
@@ -164,6 +168,7 @@ export function Navbar({ variant = "light" }: { variant?: NavbarVariant }) {
                 )}
               >
                 {l.label}
+                {!!l.count && <NavCount count={l.count} />}
               </Link>
             );
           })}
@@ -171,13 +176,11 @@ export function Navbar({ variant = "light" }: { variant?: NavbarVariant }) {
 
         <div className="hidden items-center gap-3 lg:flex">
           <LanguageSwitch surface={glass ? "glass" : "default"} />
+          {/* Figma: Navbar (Style = Member) → EN · Theme toggle · Account (no notifications bell) */}
           <ThemeToggle surface={glass ? "glass" : "default"} />
 
           {isMember ? (
-            <>
-              <NotificationButton />
-              <AccountMenu session={session} onLogout={handleLogout} />
-            </>
+            <AccountMenu session={session} onLogout={handleLogout} />
           ) : (
             <Link
               href={cta.href}
@@ -191,7 +194,6 @@ export function Navbar({ variant = "light" }: { variant?: NavbarVariant }) {
         {/* Figma: Navbar Mobile */}
         <div className="flex items-center gap-2 lg:hidden">
           <LanguageSwitch surface={glass ? "glass" : "default"} />
-          {isMember && <NotificationButton />}
           <button
             type="button"
             aria-label={open ? "Close menu" : "Open menu"}
@@ -217,9 +219,10 @@ export function Navbar({ variant = "light" }: { variant?: NavbarVariant }) {
                 key={l.label}
                 href={l.href}
                 onClick={() => setOpen(false)}
-                className="rounded-md px-3 py-3 text-label-lg text-ink hover:bg-brand-subtle"
+                className="flex items-center justify-between rounded-md px-3 py-3 text-label-lg text-ink hover:bg-brand-subtle"
               >
                 {l.label}
+                {!!l.count && <NavCount count={l.count} />}
               </Link>
             ))}
             <div className="mt-4 flex items-center justify-between rounded-md bg-surface-subtle px-3 py-2">
@@ -263,17 +266,16 @@ export function Navbar({ variant = "light" }: { variant?: NavbarVariant }) {
   );
 }
 
-/** Figma: Navbar (Style = Member) → Notifications — 40px round, brand-subtle, unread dot */
-function NotificationButton() {
+/** Unread count chip next to a nav link — brand pill, pops in when the number changes */
+function NavCount({ count }: { count: number }) {
   return (
-    <Link
-      href="/dashboard#requests"
-      aria-label="Notifications, 3 new"
-      className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand-subtle text-icon-brand transition-transform hover:scale-105"
+    <span
+      key={count}
+      aria-label={`${count} new`}
+      className="inline-flex h-5 min-w-5 animate-pop-in items-center justify-center rounded-full bg-brand-gradient px-1.5 text-[11px] font-bold leading-none text-ink-on-brand shadow-xs transition-transform group-hover:scale-110"
     >
-      <Notification size={20} color="currentColor" />
-      <span aria-hidden className="absolute right-[5px] top-[6px] h-2.5 w-2.5 rounded-full border-2 border-surface-card bg-brand" />
-    </Link>
+      {count > 99 ? "99+" : count}
+    </span>
   );
 }
 
@@ -298,7 +300,9 @@ function AccountMenu({ session, onLogout }: { session: AuthSession | null; onLog
     };
   }, [open]);
 
-  const displayName = session?.fullName || MEMBER.firstName;
+  const fullName = session?.fullName || MEMBER.firstName;
+  // Figma: Account pill shows the first name only
+  const displayName = fullName.split(" ")[0];
 
   return (
     <div ref={ref} className="relative">
@@ -321,7 +325,7 @@ function AccountMenu({ session, onLogout }: { session: AuthSession | null; onLog
           className="absolute right-0 top-[calc(100%+8px)] z-50 w-56 animate-pop-in overflow-hidden rounded-xl border border-line bg-surface-card py-2 shadow-2xl"
         >
           <div className="px-3 py-1.5 border-b border-line mb-1">
-            <p className="text-body-sm font-bold text-ink truncate">{displayName}</p>
+            <p className="text-body-sm font-bold text-ink truncate">{fullName}</p>
             <p className="text-caption text-ink-tertiary truncate">{session?.email || "member@auramatrimony.lk"}</p>
           </div>
 

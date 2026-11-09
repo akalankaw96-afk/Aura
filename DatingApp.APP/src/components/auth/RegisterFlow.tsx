@@ -8,6 +8,7 @@ import {
   ArrowRight2,
   Calendar,
   Edit2,
+  EmojiHappy,
   Gallery,
   GalleryAdd,
   InfoCircle,
@@ -22,6 +23,7 @@ import {
   Card,
   CardTitle,
   Checkbox,
+  Chip,
   Input,
   OtpInput,
   PasswordField,
@@ -39,6 +41,8 @@ import { ageFrom, containsContactDetails, emptyDraft, loadDraft, saveDraft, type
 import { AuthShell } from "./AuthShell";
 import { DemoTips } from "./DemoTips";
 import { DEMO, formatPhone } from "./shared";
+import { AVATARS, avatarDataUri, isIllustration, type AvatarGender } from "@/content/avatars";
+import type { CountryCode } from "@/components/ui/Flag";
 
 /**
  * Registration journeys 3–6 (Figma 02 Account, 03 Verify, 04 Profile,
@@ -394,7 +398,7 @@ const OPTIONS = {
   country: ["Sri Lanka", "Australia", "United Kingdom", "Canada", "USA", "Qatar", "UAE", "Italy", "New Zealand", "Other"],
 };
 
-type ProfileKey = "firstName" | "lastName" | "displayNameFormat" | "createdBy" | "email" | "height" | "dob" | "gender" | "civilStatus" | "religion" | "ethnicity" | "caste" | "country";
+type ProfileKey = "firstName" | "lastName" | "displayNameFormat" | "createdBy" | "email" | "whatsapp" | "height" | "dob" | "gender" | "civilStatus" | "religion" | "ethnicity" | "caste" | "country";
 const REQUIRED: ProfileKey[] = ["firstName", "lastName", "displayNameFormat", "createdBy", "height", "dob", "gender", "civilStatus", "religion", "ethnicity", "country"];
 
 function ProfileStep({ draft, update, onBack, onNext }: { draft: RegistrationDraft; update: (p: Partial<RegistrationDraft>) => void; onBack: () => void; onNext: () => void }) {
@@ -421,6 +425,11 @@ function ProfileStep({ draft, update, onBack, onNext }: { draft: RegistrationDra
       if (!String(draft[k] ?? "").trim()) er[k] = "Required";
     });
     if (draft.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(draft.email)) er.email = "Enter a valid email address";
+    // WhatsApp (optional): validate only when a different number was entered
+    if (!draft.whatsappSameAsMobile && draft.whatsapp) {
+      const ok = draft.whatsappCountry === "lk" ? isValidSriLankanMobile(draft.whatsapp) : /^\d{7,14}$/.test(draft.whatsapp);
+      if (!ok) er.whatsapp = draft.whatsappCountry === "lk" ? "Enter a valid Sri Lankan mobile number" : "Enter a valid WhatsApp number";
+    }
     if (underage) er.dob = "You must be at least 18 years old";
     if (aboutError) er.about = aboutError;
     setErrors(er);
@@ -453,6 +462,34 @@ function ProfileStep({ draft, update, onBack, onNext }: { draft: RegistrationDra
         <Select label="Display name format" options={OPTIONS.displayNameFormat} value={draft.displayNameFormat} onChange={pick("displayNameFormat")} error={errors.displayNameFormat} />
         <Select label="Account created by" options={OPTIONS.createdBy} value={draft.createdBy} onChange={pick("createdBy")} error={errors.createdBy} />
         <Input label="Email" type="email" placeholder="you@example.com" value={draft.email} onChange={set("email")} error={errors.email} autoComplete="email" />
+        {/* WhatsApp number — next to Email (same row), optional */}
+        <div className="flex flex-col gap-2">
+          <PhoneField
+            label="WhatsApp number (optional)"
+            value={draft.whatsappSameAsMobile ? draft.mobile : draft.whatsapp}
+            onChange={(v) => {
+              update({ whatsapp: v, whatsappSameAsMobile: false });
+              setErrors((er) => ({ ...er, whatsapp: undefined }));
+            }}
+            country={(draft.whatsappSameAsMobile ? "lk" : draft.whatsappCountry) as CountryCode}
+            onCountryChange={(c) => update({ whatsappCountry: c.iso, whatsappSameAsMobile: false })}
+            disabled={draft.whatsappSameAsMobile && !!draft.mobile}
+            compact
+            helper="Shared only with members you accept."
+            error={errors.whatsapp}
+          />
+          {draft.mobile && (
+            <Checkbox
+              checked={draft.whatsappSameAsMobile}
+              onChange={(v) => {
+                update({ whatsappSameAsMobile: v, whatsapp: v ? "" : draft.whatsapp, whatsappCountry: v ? "lk" : draft.whatsappCountry });
+                setErrors((er) => ({ ...er, whatsapp: undefined }));
+              }}
+            >
+              <span className="text-body-sm text-ink-secondary">Same as my mobile ({formatPhone(draft.mobile)})</span>
+            </Checkbox>
+          )}
+        </div>
         <Select label="Height" options={OPTIONS.height} value={draft.height} onChange={pick("height")} error={errors.height} />
         <Input
           label="Birthdate"
@@ -541,6 +578,11 @@ function PhotosStep({ draft, update, onBack, onFinish }: { draft: RegistrationDr
   const [failed, setFailed] = useState<string>();
   const [blur, setBlur] = useState(false);
   const [confirmSkip, setConfirmSkip] = useState(false);
+  // "upload" real photos, or "illustration" — a friendly avatar for members not ready to share photos
+  const [mode, setMode] = useState<"upload" | "illustration">(isIllustration(draft.photo) ? "illustration" : "upload");
+  useEffect(() => {
+    if (isIllustration(draft.photo)) setMode("illustration");
+  }, [draft.photo]);
 
   const pick = (slot: number) => {
     setTarget(slot);
@@ -578,6 +620,10 @@ function PhotosStep({ draft, update, onBack, onFinish }: { draft: RegistrationDr
   };
 
   const finish = () => {
+    if (mode === "illustration" && !isIllustration(draft.photo)) {
+      toast.error("Pick an illustration", "Choose one of the illustrations, or switch to Upload photos.");
+      return;
+    }
     if (!draft.photo && !confirmSkip) {
       setConfirmSkip(true);
       return;
@@ -588,6 +634,9 @@ function PhotosStep({ draft, update, onBack, onFinish }: { draft: RegistrationDr
   return (
     <div className="flex flex-col gap-5">
       <CardTitle title="Add your best photos" subtitle="Profiles with clear photos receive more interest — every photo is checked by our team." />
+
+      {/* Upload real photos ↔ use an illustration */}
+      <PhotoModeSwitch value={mode} onChange={(m) => { setMode(m); setConfirmSkip(false); }} />
       <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={onFile} />
 
       {failed && (
@@ -601,8 +650,20 @@ function PhotosStep({ draft, update, onBack, onFinish }: { draft: RegistrationDr
         </Alert>
       )}
 
+      {mode === "illustration" ? (
+        <IllustrationPicker
+          gender={draft.gender === "Male" ? "male" : draft.gender === "Female" ? "female" : undefined}
+          value={isIllustration(draft.photo) ? draft.photo : null}
+          onPick={(uri, name) => {
+            update({ photo: uri });
+            setConfirmSkip(false);
+            toast.success("Illustration selected", `“${name}” will show on your profile until you add photos.`);
+          }}
+        />
+      ) : (
+      <>
       {/* Figma: Photo slots — row 260 high, gap 12: Main photo 200 × 260 + More photos 2 × 2 of 146 × 124 */}
-      <div className="flex flex-col gap-3 sm:h-[260px] sm:flex-row">
+      <div key="upload" className="flex animate-fade-up flex-col gap-3 sm:h-[260px] sm:flex-row">
         <PhotoSlot main src={draft.photo} onPick={() => pick(-1)} onRemove={() => update({ photo: null })} className="aspect-[200/260] w-full sm:aspect-auto sm:h-full sm:w-[200px] sm:shrink-0" />
         <div className="grid grid-cols-2 grid-rows-2 gap-3 sm:w-[304px] sm:shrink-0">
           {extra.map((src, i) => (
@@ -626,6 +687,8 @@ function PhotosStep({ draft, update, onBack, onFinish }: { draft: RegistrationDr
         ))}
       </ul>
       <Checkbox checked={blur} onChange={setBlur}>Blur my photos until I accept an interest</Checkbox>
+      </>
+      )}
 
       <div className="flex gap-3">
         <Button variant="outline" onClick={onBack} leftIcon={<ArrowLeft size={18} color="currentColor" />} className="shrink-0">
@@ -635,9 +698,11 @@ function PhotosStep({ draft, update, onBack, onFinish }: { draft: RegistrationDr
           Finish &amp; go live
         </Button>
       </div>
-      <button type="button" onClick={() => setConfirmSkip(true)} className="text-left text-body-sm font-semibold text-brand hover:underline">
-        Skip for now — I’ll add photos later
-      </button>
+      {mode === "upload" && (
+        <button type="button" onClick={() => setConfirmSkip(true)} className="text-left text-body-sm font-semibold text-brand hover:underline">
+          Skip for now — I’ll add photos later
+        </button>
+      )}
 
       <DemoTips
         tips={[{ label: "Upload any JPG/PNG under 5 MB" }, { label: "Other file types or > 5 MB → upload failed" }, { label: "Finish without a photo → warning" }]}
@@ -646,6 +711,128 @@ function PhotosStep({ draft, update, onBack, onFinish }: { draft: RegistrationDr
           { label: "Use sample photo", onClick: () => { update({ photo: "/brand/bride.png" }); setFailed(undefined); toast.success("Photo uploaded", "Looking great! It’ll be checked by our team."); } },
         ]}
       />
+    </div>
+  );
+}
+
+/** Segmented switch: Upload photos / Use an illustration — the brand pad slides between them */
+function PhotoModeSwitch({ value, onChange }: { value: "upload" | "illustration"; onChange: (v: "upload" | "illustration") => void }) {
+  const opts = [
+    { id: "upload" as const, label: "Upload photos", Icon: Gallery },
+    { id: "illustration" as const, label: "Use an illustration", Icon: EmojiHappy },
+  ];
+  return (
+    <div role="radiogroup" aria-label="Profile picture type" className="relative grid grid-cols-2 rounded-full border border-line bg-surface-subtle p-1">
+      <span
+        aria-hidden
+        className={cn(
+          "absolute bottom-1 left-1 top-1 w-[calc(50%-4px)] rounded-full bg-brand-gradient shadow-sm transition-transform duration-300 [transition-timing-function:cubic-bezier(0.34,1.3,0.64,1)]",
+          value === "illustration" && "translate-x-full"
+        )}
+      />
+      {opts.map(({ id, label, Icon }) => (
+        <button
+          key={id}
+          type="button"
+          role="radio"
+          aria-checked={value === id}
+          onClick={() => onChange(id)}
+          className={cn(
+            "relative flex h-11 items-center justify-center gap-2 rounded-full px-3 text-label-md transition-colors",
+            value === id ? "text-ink-on-brand" : "text-ink-secondary hover:text-ink"
+          )}
+        >
+          <Icon size={18} color="currentColor" variant={value === id ? "Bold" : "Linear"} />
+          <span className="truncate">{label}</span>
+        </button>
+      ))}
+    </div>
+  );
+}
+
+/**
+ * Illustration picker — flat avatars in the brand style (content/avatars.ts).
+ * Large preview on the left (like the Main photo slot), options grid on the right,
+ * Bride / Groom filter preset from the gender chosen in the previous step.
+ */
+function IllustrationPicker({ gender, value, onPick }: { gender?: AvatarGender; value: string | null; onPick: (uri: string, name: string) => void }) {
+  const [filter, setFilter] = useState<AvatarGender>(gender ?? "female");
+  const list = AVATARS.filter((a) => a.gender === filter);
+  const selected = AVATARS.find((a) => avatarDataUri(a) === value);
+
+  return (
+    <div key="illustration" className="flex animate-fade-up flex-col gap-4">
+      <div className="flex items-start gap-3 rounded-md bg-info-bg p-3.5 text-body-sm text-info-fg">
+        <InfoCircle size={20} color="currentColor" className="mt-px shrink-0" />
+        <p>
+          <span className="font-semibold">Not ready to share photos?</span> Pick a friendly illustration for now — members see it instead of a photo, and
+          you can switch to real photos anytime from your profile.
+        </p>
+      </div>
+
+      <div className="flex flex-col gap-4 sm:flex-row">
+        {/* preview — same footprint as the Main photo slot */}
+        <div className="relative flex aspect-[200/260] w-full shrink-0 flex-col items-center justify-center gap-3 overflow-hidden rounded-lg border-[1.5px] border-dashed border-brand-focus bg-brand-subtle sm:h-[260px] sm:w-[200px]">
+          {selected ? (
+            <>
+              <span className="absolute left-2.5 top-2.5">
+                <Badge tone="info">Illustration</Badge>
+              </span>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img key={selected.id} src={avatarDataUri(selected)} alt={selected.name} className="h-36 w-36 animate-pop-in rounded-full shadow-lg ring-4 ring-surface-card" />
+              <p className="text-label-md text-ink">{selected.name}</p>
+            </>
+          ) : (
+            <>
+              <EmojiHappy size={32} color="currentColor" className="text-brand" />
+              <p className="px-4 text-center text-body-sm font-semibold text-brand">Choose an illustration</p>
+            </>
+          )}
+        </div>
+
+        <div className="flex min-w-0 flex-1 flex-col gap-3">
+          {/* same Bride / Groom chips (with illustration avatars) as Search → "I'm looking for" */}
+          <div className="flex gap-2">
+            <Chip avatar="/brand/bride.png" selected={filter === "female"} onClick={() => setFilter("female")}>
+              Bride
+            </Chip>
+            <Chip avatar="/brand/groom.png" selected={filter === "male"} onClick={() => setFilter("male")}>
+              Groom
+            </Chip>
+          </div>
+          <div key={filter} role="radiogroup" aria-label="Illustrations" className="grid grid-cols-4 gap-2.5">
+            {list.map((a, i) => {
+              const uri = avatarDataUri(a);
+              const on = uri === value;
+              return (
+                <button
+                  key={a.id}
+                  type="button"
+                  role="radio"
+                  aria-checked={on}
+                  aria-label={a.name}
+                  title={a.name}
+                  onClick={() => onPick(uri, a.name)}
+                  style={{ animation: `pop-in 360ms cubic-bezier(0.22,1,0.36,1) ${i * 45}ms backwards` }}
+                  className={cn(
+                    "group relative aspect-square rounded-full p-1 transition-all duration-200 active:scale-95",
+                    on ? "bg-brand-gradient shadow-glow" : "bg-surface-subtle hover:-translate-y-0.5 hover:bg-brand-ring"
+                  )}
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={uri} alt="" className="h-full w-full rounded-full bg-surface-card" />
+                  {on && (
+                    <span className="absolute -right-0.5 -top-0.5 flex h-6 w-6 animate-pop-in items-center justify-center rounded-full border-2 border-surface-card bg-success-fg text-white">
+                      <TickCircle size={14} color="currentColor" variant="Bold" />
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+          <p className="text-caption text-ink-tertiary">Tip: profiles with real photos get about 3× more replies — add yours whenever you’re ready.</p>
+        </div>
+      </div>
     </div>
   );
 }
@@ -659,7 +846,7 @@ function PhotoSlot({ src, main, label = "Add photo", onPick, onRemove, className
         <img src={src} alt={main ? "Main photo" : "Photo"} className="h-full w-full object-cover" />
         {main && (
           <span className="absolute left-2.5 top-2.5">
-            <Badge tone="success">Main photo</Badge>
+            <Badge tone={isIllustration(src) ? "info" : "success"}>{isIllustration(src) ? "Illustration" : "Main photo"}</Badge>
           </span>
         )}
         <div className="absolute bottom-2.5 left-2.5 flex gap-2">

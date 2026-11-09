@@ -5,11 +5,13 @@ import Link from "next/link";
 import { Global, Moon, Sun1 } from "iconsax-react";
 import { cn } from "@/lib/cn";
 import { useLanguage } from "@/context/LanguageContext";
+import { useHomeHref } from "@/lib/session";
 
-/** Figma: Logo (Variant = Default) — 122 × 72 */
+/** Figma: Logo (Variant = Default) — 122 × 72. Links to Home, or the Dashboard once signed in. */
 export function Logo({ height = 72, className }: { height?: number; className?: string }) {
+  const home = useHomeHref();
   return (
-    <Link href="/" aria-label="Vikasitha home" className={cn("inline-flex shrink-0", className)}>
+    <Link href={home} aria-label={home === "/" ? "Vikasitha home" : "Go to your dashboard"} className={cn("inline-flex shrink-0", className)}>
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img src="/brand/logo.png" alt="Vikasitha" style={{ height, width: (height * 122) / 72 }} />
     </Link>

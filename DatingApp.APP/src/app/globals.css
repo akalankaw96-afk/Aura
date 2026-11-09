@@ -39,38 +39,42 @@
 }
 
 @layer components {
-  /* Figma: Range Slider thumb — 30 × 22 ellipse, white, 3px brand stroke, drop shadow */
+  /* Figma: Range Slider thumb — 22 × 22 circle, white, 3px brand stroke, Shadow/MD */
   .range-thumb::-webkit-slider-thumb {
     pointer-events: auto;
     -webkit-appearance: none;
     appearance: none;
-    width: 30px;
+    box-sizing: border-box;
+    width: 22px;
     height: 22px;
-    border-radius: 50%;
+    border-radius: 9999px;
     border: 3px solid var(--color-bg-brand);
     background: var(--color-surface-card);
     box-shadow: var(--shadow-md);
     cursor: grab;
-    transition: transform 160ms var(--ease-out), box-shadow 160ms var(--ease-out);
-  }
-  .range-thumb:active::-webkit-slider-thumb {
-    cursor: grabbing;
-    transform: scale(1.12);
+    transition: transform 200ms var(--ease-spring), box-shadow 200ms var(--ease-out);
   }
   .range-thumb::-moz-range-thumb {
     pointer-events: auto;
     box-sizing: border-box;
-    width: 30px;
+    width: 22px;
     height: 22px;
-    border-radius: 50%;
+    border-radius: 9999px;
     border: 3px solid var(--color-bg-brand);
     background: var(--color-surface-card);
     box-shadow: var(--shadow-md);
     cursor: grab;
+    transition: transform 200ms var(--ease-spring), box-shadow 200ms var(--ease-out);
   }
-  .range-thumb:focus-visible::-webkit-slider-thumb {
-    box-shadow: var(--focus-ring-brand);
-  }
+  .range-thumb::-webkit-slider-runnable-track { background: transparent; border: 0; }
+  .range-thumb::-moz-range-track { background: transparent; border: 0; }
+  /* hover: soft brand halo · drag: grows a little */
+  .range-thumb:hover::-webkit-slider-thumb { box-shadow: var(--shadow-md), 0 0 0 6px rgb(222 5 71 / 0.12); }
+  .range-thumb:hover::-moz-range-thumb { box-shadow: var(--shadow-md), 0 0 0 6px rgb(222 5 71 / 0.12); }
+  .range-thumb:active::-webkit-slider-thumb { cursor: grabbing; transform: scale(1.15); box-shadow: var(--shadow-md), 0 0 0 8px rgb(222 5 71 / 0.16); }
+  .range-thumb:active::-moz-range-thumb { cursor: grabbing; transform: scale(1.15); box-shadow: var(--shadow-md), 0 0 0 8px rgb(222 5 71 / 0.16); }
+  .range-thumb:focus-visible::-webkit-slider-thumb { box-shadow: var(--focus-ring-brand); }
+  .range-thumb:focus-visible::-moz-range-thumb { box-shadow: var(--focus-ring-brand); }
 }
 
 @layer utilities {
@@ -284,3 +288,41 @@
 .drawer-in {
   animation: drawer-in 320ms cubic-bezier(0.22, 1, 0.36, 1);
 }
+
+/* Mobile tab bar: slides up on first show; active icon pops */
+@keyframes tabbar-in {
+  from { opacity: 0; transform: translateY(24px) scale(0.96); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+.tabbar-in { animation: tabbar-in 520ms var(--ease-out) 150ms backwards; }
+@keyframes tabbar-icon-pop {
+  0% { transform: scale(0.6) rotate(-12deg); }
+  55% { transform: scale(1.2) rotate(4deg); }
+  80% { transform: scale(0.94); }
+  100% { transform: scale(1); }
+}
+.tabbar-icon-pop { animation: tabbar-icon-pop 520ms var(--ease-out); }
+
+/* Install-app banner (mobile): slides down, icon bounces once; sheet slides up */
+@keyframes install-bar-in {
+  from { opacity: 0; transform: translateY(-100%); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes install-bar-out {
+  from { opacity: 1; max-height: 80px; }
+  to { opacity: 0; max-height: 0; }
+}
+@keyframes install-icon {
+  0%, 100% { transform: scale(1) rotate(0); }
+  30% { transform: scale(1.15) rotate(-6deg); }
+  55% { transform: scale(0.95) rotate(3deg); }
+  75% { transform: scale(1.04); }
+}
+@keyframes install-sheet {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+.install-bar-in { animation: install-bar-in 520ms var(--ease-out) both; }
+.install-bar-out { animation: install-bar-out 300ms ease-in forwards; }
+.install-icon { animation: install-icon 900ms var(--ease-out) 600ms backwards; }
+.install-sheet { animation: install-sheet 460ms var(--ease-out); }

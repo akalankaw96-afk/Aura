@@ -2,6 +2,7 @@
 
 import React, { useMemo, useRef, useState, useEffect, useCallback } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   ArrowLeft,
   AttachCircle,
@@ -50,6 +51,7 @@ import {
 
 export default function MessagesPage() {
   const { t, lang } = useLanguage();
+  const router = useRouter();
 
   // Current logged in user context
   const currentProfileId = "5272b78c-df15-4c1e-9fa0-c3b9e6ed9fc2";
@@ -496,7 +498,8 @@ export default function MessagesPage() {
         </div>
 
         {/* Chat Split Window */}
-        <div className="flex h-[720px] overflow-hidden rounded-xl border border-line bg-surface-card shadow-sm">
+        {/* mobile: fills the screen between the top bar and the floating tab bar */}
+        <div className="flex h-[calc(100dvh-200px)] min-h-[460px] overflow-hidden rounded-xl border border-line bg-surface-card shadow-sm lg:h-[720px]">
           {/* Left Panel: Conversation List */}
           <aside
             className={cn(
@@ -638,23 +641,23 @@ export default function MessagesPage() {
           {activeConv ? (
             <section
               className={cn(
-                "flex flex-1 flex-col bg-surface-card",
+                "flex min-w-0 flex-1 flex-col bg-surface-card",
                 !mobileChatOpen ? "hidden lg:flex" : "flex"
               )}
             >
               {/* Chat Header */}
-              <div className="flex h-[76px] items-center justify-between border-b border-line px-6">
-                <div className="flex items-center gap-3">
+              <div className="flex h-[68px] items-center justify-between gap-2 border-b border-line px-2 sm:h-[76px] sm:px-6">
+                <div className="flex min-w-0 items-center gap-2 sm:gap-3">
                   <button
                     type="button"
                     onClick={() => setMobileChatOpen(false)}
                     aria-label="Back to conversations"
-                    className="flex h-9 w-9 items-center justify-center rounded-full text-ink-tertiary hover:bg-surface-subtle lg:hidden"
+                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-ink-tertiary hover:bg-surface-subtle lg:hidden"
                   >
                     <ArrowLeft size={20} color="currentColor" />
                   </button>
 
-                  <div className="relative">
+                  <div className="relative shrink-0">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
                       src={activeConv.partnerPhotoUrl}
@@ -666,22 +669,22 @@ export default function MessagesPage() {
                     )}
                   </div>
 
-                  <div>
+                  <div className="min-w-0">
                     <h2 className="flex items-center gap-1.5 text-label-lg text-ink">
-                      {activeConv.partnerName}
-                      <Verify size={16} color="currentColor" variant="Bold" className="text-icon-brand" />
+                      <span className="truncate">{activeConv.partnerName}</span>
+                      <Verify size={16} color="currentColor" variant="Bold" className="shrink-0 text-icon-brand" />
                     </h2>
                     {activeBlocked ? (
-                      <p className="animate-fade-in text-caption text-error-fg">{t.messages.blockedStatus}</p>
+                      <p className="animate-fade-in truncate text-caption text-error-fg">{t.messages.blockedStatus}</p>
                     ) : (
-                      <p className="text-caption text-ink-tertiary">
+                      <p className="truncate text-caption text-ink-tertiary">
                         {activeConv.partnerProfession || "Verified Candidate"} • Active Now
                       </p>
                     )}
                   </div>
                 </div>
 
-                <div className="flex items-center gap-3">
+                <div className="flex shrink-0 items-center gap-1.5 sm:gap-3">
                   {activeBlocked ? (
                     <Button variant="outline" size="sm" className="animate-pop-in rounded-full" onClick={() => unblock(activeConv.conversationId)}>
                       {t.messages.unblock}
@@ -690,7 +693,7 @@ export default function MessagesPage() {
                   <>
                   {/* Flow 3 Mutual Contact Unlock Action */}
                   {unlockedPhone || activeConv.isContactShared ? (
-                    <div className="flex items-center gap-2 px-3 py-1.5 bg-emerald-50 text-emerald-800 rounded-lg border border-emerald-200 text-caption font-medium">
+                    <div className="hidden md:flex items-center gap-2 px-3 py-1.5 bg-emerald-50 text-emerald-800 rounded-lg border border-emerald-200 text-caption font-medium">
                       <Unlock className="w-3.5 h-3.5 text-emerald-600" />
                       <span>{unlockedPhone || activeConv.partnerPhoneNumber || "+94 77 123 4567"}</span>
                       <a
@@ -707,14 +710,14 @@ export default function MessagesPage() {
                       variant="outline"
                       size="sm"
                       onClick={handleRequestContact}
-                      className="text-caption flex items-center gap-1.5 border-brand/30 text-brand hover:bg-brand/5"
+                      className="hidden md:inline-flex text-caption items-center gap-1.5 border-brand/30 text-brand hover:bg-brand/5"
                     >
                       <Lock className="w-3.5 h-3.5" />
                       <span>Request Contact Exchange</span>
                     </Button>
                   )}
 
-                  <Link href="/requests">
+                  <Link href="/requests" className="hidden md:block">
                     <Button variant="outline" size="sm">
                       {t.messages.viewProfile}
                     </Button>
@@ -728,6 +731,16 @@ export default function MessagesPage() {
                     onToggleMute={() => toggleMute(activeConv.conversationId)}
                     onBlock={() => (activeBlocked ? undefined : setBlockTargetId(activeConv.conversationId))}
                     onReport={reportMember}
+                    compactItems={
+                      activeBlocked
+                        ? []
+                        : [
+                            { key: "profile", label: t.messages.viewProfile, onClick: () => router.push("/requests") },
+                            unlockedPhone || activeConv.isContactShared
+                              ? { key: "whatsapp", label: `WhatsApp ${unlockedPhone || activeConv.partnerPhoneNumber || ""}`.trim(), onClick: () => window.open(`https://wa.me/${(unlockedPhone || activeConv.partnerPhoneNumber || "94771234567").replace(/\D/g, "")}`, "_blank") }
+                              : { key: "contact", label: "Request contact exchange", onClick: handleRequestContact },
+                          ]
+                    }
                     trigger={({ open, toggle }) => (
                       <button
                         type="button"
@@ -748,7 +761,7 @@ export default function MessagesPage() {
               </div>
 
               {/* Messages Thread */}
-              <div className={cn("relative flex-1 overflow-y-auto p-6 space-y-4 transition-colors duration-300", activeBlocked && "bg-surface-subtle")}>
+              <div className={cn("relative flex-1 overflow-y-auto overflow-x-hidden p-3 space-y-4 sm:p-6 transition-colors duration-300", activeBlocked && "bg-surface-subtle")}>
                 <div className={cn("space-y-4 transition-opacity duration-500", activeBlocked && "pointer-events-none select-none opacity-40 grayscale")}>
                 {/* Figma: Safety note */}
                 <p className="mx-auto flex w-fit max-w-full items-center gap-2 rounded-[12px] bg-info-bg px-3.5 py-2 text-body-xs font-semibold text-info-fg">
@@ -796,7 +809,7 @@ export default function MessagesPage() {
                     >
                       <div
                         className={cn(
-                          "max-w-[500px] p-3.5 text-body-md transition-all shadow-xs relative",
+                          "max-w-[85%] break-words p-3.5 text-body-md transition-all shadow-xs relative sm:max-w-[500px]",
                           m.isFlaggedBySafety
                             ? "rounded-2xl border-2 border-amber-400 bg-amber-50/90 text-amber-950"
                             : isMe
@@ -861,11 +874,11 @@ export default function MessagesPage() {
               {activeBlocked ? (
                 <BlockedComposer />
               ) : (
-              <form onSubmit={handleSend} className="flex items-center gap-3 border-t border-line p-4">
+              <form onSubmit={handleSend} className="flex items-center gap-2 border-t border-line p-2.5 sm:gap-3 sm:p-4">
                 <button
                   type="button"
                   aria-label="Attach document or photo"
-                  className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-ink-tertiary transition-colors hover:bg-surface-subtle hover:text-brand"
+                  className="flex h-10 w-10 shrink-0 sm:h-11 sm:w-11 items-center justify-center rounded-full text-ink-tertiary transition-colors hover:bg-surface-subtle hover:text-brand"
                 >
                   <AttachCircle size={24} color="currentColor" />
                 </button>
@@ -883,9 +896,11 @@ export default function MessagesPage() {
                   variant="primary"
                   size="md"
                   disabled={!inputText.trim()}
+                  aria-label={t.messages.send}
+                  className="shrink-0 max-sm:h-11 max-sm:w-11 max-sm:rounded-full max-sm:px-0"
                   rightIcon={<Send2 size={18} color="currentColor" />}
                 >
-                  {t.messages.send}
+                  <span className="hidden sm:inline">{t.messages.send}</span>
                 </Button>
               </form>
               )}

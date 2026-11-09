@@ -53,9 +53,11 @@ export interface PhoneFieldProps {
   error?: React.ReactNode;
   disabled?: boolean;
   autoFocus?: boolean;
+  /** half-width layouts: hides the phone icon and uses a smaller number font so all digits fit */
+  compact?: boolean;
 }
 
-export function PhoneField({ label = "Mobile number", value, onChange, country, onCountryChange, helper, error, disabled, autoFocus }: PhoneFieldProps) {
+export function PhoneField({ label = "Mobile number", value, onChange, country, onCountryChange, helper, error, disabled, autoFocus, compact }: PhoneFieldProps) {
   const id = useId();
   const [internal, setInternal] = useState<CountryCode>("lk");
   const iso = country ?? internal;
@@ -72,7 +74,7 @@ export function PhoneField({ label = "Mobile number", value, onChange, country, 
       <div className="flex gap-2">
         <CountryPicker current={current} onPick={pick} disabled={disabled} />
         <div className={controlShell({ error: !!error, disabled })}>
-          <Mobile size={20} color="currentColor" className="shrink-0 text-ink-tertiary" />
+          {!compact && <Mobile size={20} color="currentColor" className="shrink-0 text-ink-tertiary" />}
           <input
             id={id}
             type="tel"
@@ -84,7 +86,7 @@ export function PhoneField({ label = "Mobile number", value, onChange, country, 
             placeholder={iso === "lk" ? "7X XXX XXXX" : "Phone number"}
             value={iso === "lk" ? formatMobile(value) : value}
             onChange={(e) => onChange(e.target.value.replace(/\D/g, "").replace(/^0/, "").slice(0, iso === "lk" ? 9 : 12))}
-            className="h-full w-full min-w-0 bg-transparent text-body-lg text-ink outline-none"
+            className={cn("h-full w-full min-w-0 bg-transparent text-ink outline-none", compact ? "text-body-md" : "text-body-lg")}
           />
           {valid && !error && <TickCircle size={20} color="currentColor" className="shrink-0 text-success-fg" />}
         </div>

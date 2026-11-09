@@ -2,7 +2,8 @@
 
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
-import { LanguageSwitch, Logo } from "@/components/ui/Brand";
+import { ArrowDown2 } from "iconsax-react";
+import { LanguageSwitch, Logo, ThemeToggle } from "@/components/ui/Brand";
 import { loadDraft } from "@/lib/demo";
 
 /**
@@ -13,6 +14,7 @@ import { loadDraft } from "@/lib/demo";
  *  create-account → Login + Forgot password pages ("Register")
  *  login          → Register steps (Account, Verify, Profile, Photos)
  *  avatar         → signed-in screens (Review status, Plans)
+ * Right side (Figma): EN · Theme toggle · Register / Login / Account pill.
  */
 export type AuthHeaderAction = "create-account" | "login" | "avatar" | "none";
 
@@ -23,6 +25,7 @@ export function AuthHeader({ action = "none" }: { action?: AuthHeaderAction }) {
       <Logo height={40} className="md:hidden" />
       <div className="flex items-center gap-3 md:gap-4">
         <LanguageSwitch />
+        <ThemeToggle />
         {/* Figma: Button Primary S — "Register" on Log in pages, "Login" on Register pages */}
         {action === "create-account" && <HeaderButton href="/register">Register</HeaderButton>}
         {action === "login" && <HeaderButton href="/login">Login</HeaderButton>}
@@ -41,7 +44,7 @@ function HeaderButton({ href, children }: { href: string; children: React.ReactN
   );
 }
 
-/** Figma: Avatar (Size = M, Type = Photo) — 48px. Falls back to the couple illustration. */
+/** Figma: Account pill — avatar 36px + first name + chevron (same as the member Navbar). Falls back to the couple illustration. */
 function MemberAvatar() {
   const [src, setSrc] = useState("/brand/couple.png");
   const [name, setName] = useState("Your profile");
@@ -51,9 +54,15 @@ function MemberAvatar() {
     if (d.firstName) setName(d.firstName);
   }, []);
   return (
-    <Link href="/register/status" aria-label={`${name} — profile`} className="shrink-0 rounded-full ring-2 ring-white transition-shadow hover:shadow-ring-brand">
+    <Link
+      href="/register/status"
+      aria-label={`${name} — profile`}
+      className="flex shrink-0 items-center gap-2 rounded-full border border-line bg-surface-card py-1 pl-1 pr-3 text-label-md text-ink transition-shadow hover:shadow-md"
+    >
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={src} alt="" className="h-12 w-12 rounded-full bg-brand-subtle object-cover" />
+      <img src={src} alt="" className="h-9 w-9 rounded-full bg-brand-subtle object-cover" />
+      <span className="max-w-[110px] truncate max-sm:hidden">{name}</span>
+      <ArrowDown2 size={16} color="currentColor" className="text-icon-brand max-sm:hidden" />
     </Link>
   );
 }

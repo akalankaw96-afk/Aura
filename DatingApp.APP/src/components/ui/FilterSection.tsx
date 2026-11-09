@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useId, useState } from "react";
+import React, { useEffect, useId, useState } from "react";
 import { ArrowDown2 } from "iconsax-react";
 import { cn } from "@/lib/cn";
 
@@ -21,7 +21,12 @@ export function FilterSection({
   children: React.ReactNode;
 }) {
   const [open, setOpen] = useState(defaultOpen);
+  // once fully open, let dropdowns (e.g. the District select) float outside the section
+  const [settled, setSettled] = useState(defaultOpen);
   const id = useId();
+  useEffect(() => {
+    if (!open) setSettled(false);
+  }, [open]);
   return (
     <div className="border-t border-line">
       <button
@@ -49,8 +54,11 @@ export function FilterSection({
           "grid transition-[grid-template-rows,opacity] duration-300 ease-out",
           open ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"
         )}
+        onTransitionEnd={(e) => {
+          if (e.target === e.currentTarget && open) setSettled(true);
+        }}
       >
-        <div className="min-h-0 overflow-hidden">
+        <div className={cn("min-h-0", settled && open ? "overflow-visible" : "overflow-hidden")}>
           <div className="pb-4 pt-0.5">{children}</div>
         </div>
       </div>

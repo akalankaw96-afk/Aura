@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useRef, useState } from "react";
-import { Ban, Bell, BellOff, CircleCheck, Flag, ShieldX, UserRound } from "lucide-react";
+import { Ban, Bell, BellOff, CircleCheck, Flag, Phone, ShieldX, UserRound } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { Button } from "@/components/ui/Button";
 import { Select } from "@/components/ui/Select";
@@ -17,9 +17,12 @@ export function ChatActionMenu({
   onToggleMute,
   onBlock,
   onReport,
+  compactItems = [],
   trigger,
 }: {
   muted: boolean;
+  /** extra items shown only on small screens (header buttons that don't fit on phones) */
+  compactItems?: { key: string; label: string; onClick: () => void }[];
   onViewProfile?: () => void;
   onToggleMute: () => void;
   onBlock: () => void;
@@ -72,6 +75,12 @@ export function ChatActionMenu({
           role="menu"
           className="absolute right-0 top-[calc(100%+8px)] z-30 w-[220px] origin-top-right animate-pop-in rounded-lg border border-line bg-surface-card p-1.5 shadow-xl"
         >
+          {compactItems.length > 0 && (
+            <div className="md:hidden">
+              {compactItems.map((c, i) => item(c.key === "profile" ? <UserRound size={18} /> : <Phone size={18} />, c.label, c.onClick, false, i))}
+              <div className="my-1 h-px bg-line" />
+            </div>
+          )}
           {onViewProfile && item(<UserRound size={18} />, t.messages.viewProfile, onViewProfile, false, 0)}
           {item(
             muted ? <Bell size={18} /> : <BellOff size={18} />,
