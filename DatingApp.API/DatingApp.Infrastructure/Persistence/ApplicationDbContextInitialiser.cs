@@ -54,25 +54,6 @@ public class ApplicationDbContextInitialiser
         }
     }
 
-    private async Task<User> GetOrCreateCandidateUserAsync(string email, string fullName)
-    {
-        var existing = await _context.Users.FirstOrDefaultAsync(u => u.Email == email);
-        if (existing != null) return existing;
-
-        var user = new User
-        {
-            Email = email,
-            FullName = fullName,
-            PhoneNumber = "+94 " + new Random().Next(70, 78) + " " + new Random().Next(100, 999) + " " + new Random().Next(1000, 9999),
-            PasswordHash = _passwordHasher.HashPassword("AuraDemo123!"),
-            Role = "Member",
-            IsActive = true
-        };
-        _context.Users.Add(user);
-        await _context.SaveChangesAsync();
-        return user;
-    }
-
     public async Task SeedAsync()
     {
         try
@@ -104,64 +85,7 @@ public class ApplicationDbContextInitialiser
             await _context.SaveChangesAsync();
         }
 
-        // 2. Seed Initial 8 Verified Professional Profiles if missing
-        if (!await _context.CandidateProfiles.AnyAsync(p => p.Code == "LK-9021"))
-        {
-            var u1 = await GetOrCreateCandidateUserAsync("kavinda.perera@auramatrimony.lk", "Dr. Kavinda Perera");
-            var u2 = await GetOrCreateCandidateUserAsync("nilushi.senanayake@auramatrimony.lk", "Nilushi Senanayake");
-            var u3 = await GetOrCreateCandidateUserAsync("amila.fernando@auramatrimony.lk", "Eng. Amila Fernando");
-            var u4 = await GetOrCreateCandidateUserAsync("priya.wickramasinghe@auramatrimony.lk", "Dr. Priya Wickramasinghe");
-            var u5 = await GetOrCreateCandidateUserAsync("roshan.gunasekara@auramatrimony.lk", "Roshan Gunasekara");
-            var u6 = await GetOrCreateCandidateUserAsync("dinithi.jayasuriya@auramatrimony.lk", "Dinithi Jayasuriya");
-            var u7 = await GetOrCreateCandidateUserAsync("sameera.alwis@auramatrimony.lk", "Dr. Sameera Alwis");
-            var u8 = await GetOrCreateCandidateUserAsync("tharushi.alahakoon@auramatrimony.lk", "Tharushi Alahakoon");
-
-            var candidateSpecs = new[]
-            {
-                (u1, "LK-9021", "Dr. Kavinda Perera", Gender.Male, 29, "5' 10\"", "Medical Officer (MBBS)", ProfessionCategory.Doctor, "MBBS, Faculty of Medicine, Colombo", "University of Colombo", "Colombo 07", "Sri Lanka", "Buddhist", "Sinhala Govigama", true, true, "https://images.unsplash.com/photo-1622253692010-333f2da6031d?q=80&w=800&auto=format&fit=crop", "Practicing doctor at National Hospital Colombo. Values family, traditional culture, and outdoor hiking. Looking for an educated, caring life partner.", "Father is a retired civil engineer, mother is a teacher. Younger sister is reading for her degree.", true, "Medicine,Hiking,Photography,Volunteering"),
-                (u2, "LK-8834", "Nilushi Senanayake", Gender.Female, 26, "5' 5\"", "Senior Software Engineer", ProfessionCategory.IT, "BSc (Hons) in Computer Science, University of Moratuwa", "University of Moratuwa", "Colombo / Remote", "Sri Lanka", "Buddhist", "Sinhala Govigama", true, false, "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?q=80&w=800&auto=format&fit=crop", "Software engineer at a leading US tech firm. Passionate about art, reading, and gentle family lifestyle. Seeking an ambitious and honest professional.", "Respectable Buddhist family from Kandy. Parents are government pensioners.", true, "Tech & AI,Classical Music,Cooking,Reading"),
-                (u3, "LK-7102", "Eng. Amila Fernando", Gender.Male, 31, "6' 0\"", "Civil Structural Engineer", ProfessionCategory.Engineer, "BSc Eng (Hons) Moratuwa, MSc Melbourne", "University of Melbourne", "Melbourne / Colombo", "Australia", "Christian", "Sinhala", true, true, "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=800&auto=format&fit=crop", "Chartered civil engineer working in Melbourne with Australian PR. Non-smoker, active athlete, balanced spiritual life. Open to settling in Australia or Sri Lanka.", "Well-established family in Moratuwa. Both parents are university lecturers.", false, "Cricket,Travel,Architecture,Badminton"),
-                (u4, "LK-6549", "Dr. Priya Wickramasinghe", Gender.Female, 28, "5' 4\"", "Dental Surgeon (BDS)", ProfessionCategory.Doctor, "BDS University of Peradeniya", "University of Peradeniya", "Kandy / Kurunegala", "Sri Lanka", "Buddhist", "Sinhala Govigama", true, false, "https://images.unsplash.com/photo-1559839734-2b71ea197ec2?q=80&w=800&auto=format&fit=crop", "Dental surgeon running a private dental practice in Kandy. Values Buddhist traditions, cultural festivals, and community welfare.", "Father is a retired medical specialist, mother holds a high post in education.", true, "Gardening,Cooking,Meditation,Classical Dance"),
-                (u5, "LK-5421", "Roshan Gunasekara", Gender.Male, 33, "5' 9\"", "Chartered Financial Analyst (CFA)", ProfessionCategory.Finance, "BBA Finance, CFA Charterholder", "University of Colombo", "Singapore / Colombo", "Singapore", "Buddhist", "Sinhala Karava", true, false, "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?q=80&w=800&auto=format&fit=crop", "Portfolio Manager at a Singapore investment fund. Frequent traveler, fitness enthusiast, grounded and family-oriented. Looking for a partner with global exposure.", "Parents live in Colombo 05. Elder brother is a doctor in the UK.", true, "FinTech,Scuba Diving,Running,Fine Dining"),
-                (u6, "LK-4318", "Dinithi Jayasuriya", Gender.Female, 27, "5' 6\"", "Attorney-at-Law & Legal Counsel", ProfessionCategory.Legal, "LL.B (Hons) London, Attorney-at-Law Sri Lanka Law College", "University of London", "Colombo 03", "Sri Lanka", "Buddhist", "Sinhala Govigama", true, true, "https://images.unsplash.com/photo-1580489944761-15a19d654956?q=80&w=800&auto=format&fit=crop", "Corporate legal counsel handling international arbitration. Calm temperament, love for literature, animal welfare, and family gatherings.", "Father is a President's Counsel, mother is a homemaker.", true, "Literature,Animal Welfare,Violin,Debating"),
-                (u7, "LK-3904", "Dr. Sameera Alwis", Gender.Male, 30, "5' 11\"", "Consultant Radiologist", ProfessionCategory.Doctor, "MBBS, MD (Radiology), FRCR (UK)", "Royal College of Radiologists (UK)", "London / Colombo", "United Kingdom", "Catholic", "Sinhala", true, true, "https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?q=80&w=800&auto=format&fit=crop", "Currently in NHS Fellowship training in London. Values kindness, intellectual curiosity, and balanced work-life harmony.", "Devout Catholic family from Negombo with strong ethical values.", false, "Medical Research,Tennis,Jazz,Global Travel"),
-                (u8, "LK-2810", "Tharushi Alahakoon", Gender.Female, 25, "5' 3\"", "UX Design Lead & Lecturer", ProfessionCategory.IT, "BSc in Design & Interaction, Singapore", "National University of Singapore", "Galle / Colombo", "Sri Lanka", "Buddhist", "Sinhala", true, false, "https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=800&auto=format&fit=crop", "Creative digital design leader and visiting university lecturer. Loves minimalist aesthetics, coastal road trips, and culinary experiments.", "Mother is a school principal, father runs a boutique hospitality firm in the South.", true, "UI/UX Design,Baking,Nature Walks,Yoga")
-            };
-
-            foreach (var s in candidateSpecs)
-            {
-                if (!await _context.CandidateProfiles.AnyAsync(p => p.Code == s.Item2 || p.UserId == s.Item1.Id))
-                {
-                    _context.CandidateProfiles.Add(new CandidateProfile
-                    {
-                        UserId = s.Item1.Id,
-                        Code = s.Item2,
-                        FullName = s.Item3,
-                        Gender = s.Item4,
-                        Age = s.Item5,
-                        Height = s.Item6,
-                        Profession = s.Item7,
-                        ProfessionCategory = s.Item8,
-                        Education = s.Item9,
-                        University = s.Item10,
-                        Location = s.Item11,
-                        Country = s.Item12,
-                        Religion = s.Item13,
-                        Community = s.Item14,
-                        Verified = s.Item15,
-                        Premium = s.Item16,
-                        PhotoUrl = s.Item17,
-                        Bio = s.Item18,
-                        AboutFamily = s.Item19,
-                        HoroscopeAvailable = s.Item20,
-                        Interests = s.Item21
-                    });
-                }
-            }
-            await _context.SaveChangesAsync();
-        }
-
-        // 3. Seed Success Stories
+        // 2. Static Platform Data: Seed Success Stories
         var stories = new List<SuccessStory>
         {
             new()
@@ -311,74 +235,6 @@ public class ApplicationDbContextInitialiser
         {
             _context.FaqItems.AddRange(faqs);
             await _context.SaveChangesAsync();
-        }
-
-        // 6. Seed Flow 3 Live Chat messages between matched candidates (LK-9021 & LK-8834)
-        if (!await _context.ChatMessages.AnyAsync())
-        {
-            var p1 = await _context.CandidateProfiles.FirstOrDefaultAsync(p => p.Code == "LK-9021");
-            var p2 = await _context.CandidateProfiles.FirstOrDefaultAsync(p => p.Code == "LK-8834");
-
-            if (p1 != null && p2 != null)
-            {
-                var convId = $"conv_{p1.Id}_{p2.Id}";
-
-                // Ensure an accepted match request exists
-                var matchReq = await _context.MatchRequests.FirstOrDefaultAsync(m =>
-                    (m.SenderProfileId == p1.Id && m.ReceiverProfileId == p2.Id) ||
-                    (m.SenderProfileId == p2.Id && m.ReceiverProfileId == p1.Id));
-
-                if (matchReq == null)
-                {
-                    matchReq = new MatchRequest
-                    {
-                        SenderProfileId = p1.Id,
-                        ReceiverProfileId = p2.Id,
-                        Status = MatchRequestStatus.Accepted,
-                        Note = "Hello Nilushi, our family liked your profile. Would love to get in touch.",
-                        RespondedAt = DateTime.UtcNow.AddDays(-2)
-                    };
-                    _context.MatchRequests.Add(matchReq);
-                    await _context.SaveChangesAsync();
-                }
-
-                var seedMessages = new List<ChatMessage>
-                {
-                    new()
-                    {
-                        SenderProfileId = p1.Id,
-                        ReceiverProfileId = p2.Id,
-                        ConversationId = convId,
-                        MessageText = "Ayubowan Nilushi! Thank you for accepting my interest. How has your week been?",
-                        IsRead = true,
-                        ReadAt = DateTime.UtcNow.AddHours(-3),
-                        CreatedAt = DateTime.UtcNow.AddHours(-4)
-                    },
-                    new()
-                    {
-                        SenderProfileId = p2.Id,
-                        ReceiverProfileId = p1.Id,
-                        ConversationId = convId,
-                        MessageText = "Ayubowan Dr. Kavinda! It was nice reading about your work at the National Hospital. We had our family alms-giving this weekend.",
-                        IsRead = true,
-                        ReadAt = DateTime.UtcNow.AddHours(-2),
-                        CreatedAt = DateTime.UtcNow.AddHours(-3)
-                    },
-                    new()
-                    {
-                        SenderProfileId = p1.Id,
-                        ReceiverProfileId = p2.Id,
-                        ConversationId = convId,
-                        MessageText = "That is wonderful to hear. My parents were keen to speak with your family when convenient.",
-                        IsRead = true,
-                        ReadAt = DateTime.UtcNow.AddMinutes(-30),
-                        CreatedAt = DateTime.UtcNow.AddMinutes(-45)
-                    }
-                };
-
-                _context.ChatMessages.AddRange(seedMessages);
-                await _context.SaveChangesAsync();
-            }
         }
     }
 }

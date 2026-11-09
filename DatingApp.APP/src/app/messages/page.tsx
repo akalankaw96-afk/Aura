@@ -40,34 +40,16 @@ import {
   type ConnectionStatus,
 } from "@/services/signalrService";
 
-// Fallback conversation for instant offline rendering
-const INITIAL_CONVERSATIONS: ConversationDto[] = [
-  {
-    conversationId: "conv_seed_1",
-    partnerProfileId: "27d0a79d-16b8-4710-991f-ac479cf0c3aa",
-    partnerName: "Nilushi Senanayake",
-    partnerPhotoUrl: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?q=80&w=800&auto=format&fit=crop",
-    partnerProfession: "Senior Software Engineer",
-    partnerVerified: true,
-    partnerOnline: true,
-    lastMessageText: "That is wonderful to hear. My parents were keen to speak with your family when convenient.",
-    lastMessageTime: new Date().toISOString(),
-    unreadCount: 0,
-    isContactShared: false,
-    partnerPhoneNumber: null,
-  },
-];
-
 export default function MessagesPage() {
   const { t, lang } = useLanguage();
 
-  // Current logged in user context (LK-9021 Dr. Kavinda Perera)
+  // Current logged in user context
   const currentProfileId = "5272b78c-df15-4c1e-9fa0-c3b9e6ed9fc2";
   const currentProfileCode = "LK-9021";
   const currentUserName = "Dr. Kavinda Perera";
 
-  const [conversations, setConversations] = useState<ConversationDto[]>(INITIAL_CONVERSATIONS);
-  const [activeConvId, setActiveConvId] = useState<string>(INITIAL_CONVERSATIONS[0].conversationId);
+  const [conversations, setConversations] = useState<ConversationDto[]>([]);
+  const [activeConvId, setActiveConvId] = useState<string>("");
   const [messages, setMessages] = useState<ChatMessageDto[]>([]);
   const [filter, setFilter] = useState<"all" | "unread">("all");
   const [search, setSearch] = useState("");
@@ -83,7 +65,7 @@ export default function MessagesPage() {
   const sendTypingDebounceRef = useRef<NodeJS.Timeout | null>(null);
 
   const activeConv = useMemo(() => {
-    return conversations.find((c) => c.conversationId === activeConvId) ?? conversations[0];
+    return conversations.find((c) => c.conversationId === activeConvId);
   }, [conversations, activeConvId]);
 
   // Scroll to latest message
@@ -95,73 +77,43 @@ export default function MessagesPage() {
     scrollToBottom();
   }, [messages, partnerTyping, scrollToBottom]);
 
-  // Load conversations and history from backend
+  // Load conversations from backend
   const loadData = useCallback(async () => {
     const list = await getConversations(currentProfileCode);
+    setConversations(list || []);
     if (list && list.length > 0) {
-      setConversations(list);
-      // If current activeConvId is not in list or is default, set to first
       if (!list.some((c) => c.conversationId === activeConvId)) {
         setActiveConvId(list[0].conversationId);
       }
+    } else {
+      setActiveConvId("");
+      setMessages([]);
     }
   }, [currentProfileCode, activeConvId]);
 
   // Load chat history when active conversation changes
   const loadActiveHistory = useCallback(async (convId: string) => {
+    if (!convId) {
+      setMessages([]);
+      return;
+    }
     const history = await getChatHistory(convId, currentProfileId);
     if (history && history.length > 0) {
       setMessages(history);
 
-      // Check if contact sharing was already unlocked in history
       const unlockedMsg = history.find((m) => m.isContactShareAccepted);
       if (unlockedMsg) {
         setUnlockedPhone("+94 77 123 4567");
       }
 
-      // Check if there is an unanswered contact share request
       const shareReq = history.find((m) => m.isContactShareRequest && !m.isContactShareAccepted);
       if (shareReq && !shareReq.isMe) {
         setContactRequestPending(true);
       }
     } else {
-      // Offline fallback seed messages
-      setMessages([
-        {
-          id: "m1",
-          senderProfileId: currentProfileId,
-          senderName: currentUserName,
-          senderPhotoUrl: "https://images.unsplash.com/photo-1622253692010-333f2da6031d?q=80&w=800&auto=format&fit=crop",
-          receiverProfileId: activeConv?.partnerProfileId || "p2",
-          receiverName: activeConv?.partnerName || "Nilushi",
-          conversationId: convId,
-          messageText: "Ayubowan Nilushi! Thank you for accepting my interest. How has your week been?",
-          sentAt: new Date(Date.now() - 3600000 * 3).toISOString(),
-          isRead: true,
-          isMe: true,
-          isFlaggedBySafety: false,
-          isContactShareRequest: false,
-          isContactShareAccepted: false,
-        },
-        {
-          id: "m2",
-          senderProfileId: activeConv?.partnerProfileId || "p2",
-          senderName: activeConv?.partnerName || "Nilushi",
-          senderPhotoUrl: activeConv?.partnerPhotoUrl || "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?q=80&w=800&auto=format&fit=crop",
-          receiverProfileId: currentProfileId,
-          receiverName: currentUserName,
-          conversationId: convId,
-          messageText: "Ayubowan Dr. Kavinda! It was nice reading about your work at the National Hospital. We had our family alms-giving this weekend.",
-          sentAt: new Date(Date.now() - 3600000 * 2).toISOString(),
-          isRead: true,
-          isMe: false,
-          isFlaggedBySafety: false,
-          isContactShareRequest: false,
-          isContactShareAccepted: false,
-        },
-      ]);
+      setMessages([]);
     }
-  }, [currentProfileId, activeConv]);
+  }, [currentProfileId]);
 
   // Initialize SignalR Hub connection and subscriptions
   useEffect(() => {
