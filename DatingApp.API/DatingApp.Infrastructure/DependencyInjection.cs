@@ -12,11 +12,21 @@ public static class DependencyInjection
 {
     public static IServiceCollection AddInfrastructureServices(this IServiceCollection services, IConfiguration configuration)
     {
-        var connectionString = configuration.GetConnectionString("DefaultConnection") 
-            ?? "Server=(localdb)\\mssqllocaldb;Database=AuraMatrimonyDb;Trusted_Connection=True;MultipleActiveResultSets=true;TrustServerCertificate=True;";
+        var useInMemory = !string.Equals(configuration["UseInMemoryDatabase"], "false", StringComparison.OrdinalIgnoreCase);
 
-        services.AddDbContext<ApplicationDbContext>(options =>
-            options.UseSqlServer(connectionString, b => b.MigrationsAssembly(typeof(ApplicationDbContext).Assembly.FullName)));
+        if (useInMemory)
+        {
+            services.AddDbContext<ApplicationDbContext>(options =>
+                options.UseInMemoryDatabase("AuraMatrimonyDb"));
+        }
+        else
+        {
+            var connectionString = configuration.GetConnectionString("DefaultConnection") 
+                ?? "Server=(localdb)\\mssqllocaldb;Database=AuraMatrimonyDb;Trusted_Connection=True;MultipleActiveResultSets=true;TrustServerCertificate=True;";
+
+            services.AddDbContext<ApplicationDbContext>(options =>
+                options.UseSqlServer(connectionString, b => b.MigrationsAssembly(typeof(ApplicationDbContext).Assembly.FullName)));
+        }
 
         services.AddScoped<IApplicationDbContext>(provider => provider.GetRequiredService<ApplicationDbContext>());
         services.AddScoped<ApplicationDbContextInitialiser>();
@@ -34,4 +44,3 @@ public static class DependencyInjection
         return services;
     }
 }
-

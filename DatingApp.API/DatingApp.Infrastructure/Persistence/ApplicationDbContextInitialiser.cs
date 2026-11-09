@@ -23,7 +23,9 @@ public class ApplicationDbContextInitialiser
         {
             await _context.Database.EnsureCreatedAsync();
 
-            await _context.Database.ExecuteSqlRawAsync(@"
+            if (_context.Database.IsSqlServer())
+            {
+                await _context.Database.ExecuteSqlRawAsync(@"
                 IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'ChatMessages')
                 BEGIN
                     CREATE TABLE [dbo].[ChatMessages] (
@@ -46,6 +48,7 @@ public class ApplicationDbContextInitialiser
                     CREATE INDEX [IX_ChatMessages_ConversationId] ON [dbo].[ChatMessages] ([ConversationId]);
                 END
             ");
+            }
         }
         catch (Exception ex)
         {
