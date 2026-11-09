@@ -18,6 +18,7 @@ import { LanguageProvider } from "@/context/LanguageContext";
 import { PageLoader, RevealObserver } from "@/components/motion";
 import { MobileTabBar } from "@/components/layout/MobileTabBar";
 import { InstallAppBanner } from "@/components/layout/InstallAppBanner";
+import { UpgradePrompt } from "@/components/layout/UpgradePrompt";
 
 export const metadata: Metadata = {
   title: "Vikasitha | Find a life partner your whole family can trust",
@@ -52,6 +53,8 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
             {children}
             {/* signed-in members on phones: floating app-style tab bar */}
             <MobileTabBar />
+            {/* free-plan limit reached → upgrade prompt */}
+            <UpgradePrompt />
           </ToastProvider>
         </LanguageProvider>
       </body>

@@ -1,42 +1,66 @@
 "use client";
 
 import React from "react";
-import { Lock1 } from "iconsax-react";
+import Link from "next/link";
+import { Crown1, Lock1 } from "iconsax-react";
 import { cn } from "@/lib/cn";
-import { useKyc } from "@/lib/verification";
+import { useAccess } from "@/lib/verification";
 
 /**
- * Locks a dashboard feature until the profile is approved (KYC live).
- * The content stays visible but blurred + inert, with a calm lock card on top,
- * so new members can see what's coming instead of an empty page.
+ * Locks a feature and shows a calm card on top of the blurred, inert content —
+ * members see what's there instead of an empty page.
+ *  requires="approved" (default) → locked until the profile passes review (KYC)
+ *  requires="paid"               → also needs Gold / Platinum (free members see an upgrade card)
  */
 export function FeatureGate({
-  title = "Unlocks after your profile is approved",
-  text = "We’re reviewing your profile — this usually takes less than 24 hours.",
+  requires = "approved",
+  title,
+  text,
   className,
   children,
 }: {
+  requires?: "approved" | "paid";
   title?: string;
   text?: string;
   className?: string;
   children: React.ReactNode;
 }) {
-  const { locked, status } = useKyc();
-  if (!locked) return <>{children}</>;
+  const { locked, status, isPaid } = useAccess();
+  const kycLock = locked;
+  const planLock = !locked && requires === "paid" && !isPaid;
+  if (!kycLock && !planLock) return <>{children}</>;
+
   return (
     <div className={cn("relative", className)}>
       <div aria-hidden inert className="pointer-events-none select-none opacity-60 blur-[3px] saturate-50 transition-all duration-500">
         {children}
       </div>
       <div className="absolute inset-0 z-10 flex items-center justify-center p-4">
-        <div className="kyc-in flex max-w-sm flex-col items-center gap-2 rounded-xl border border-line bg-surface-card px-6 py-5 text-center shadow-xl backdrop-blur-sm">
-          <span className="kyc-pop flex h-12 w-12 items-center justify-center rounded-full bg-brand-gradient text-ink-on-brand shadow-glow">
-            <Lock1 size={22} color="currentColor" variant="Bold" />
+        <div className="kyc-in flex max-w-sm flex-col items-center gap-2 rounded-xl border border-line bg-surface-card px-6 py-5 text-center shadow-xl">
+          <span
+            className={cn(
+              "kyc-pop flex h-12 w-12 items-center justify-center rounded-full shadow-glow",
+              planLock ? "bg-premium-fg text-white" : "bg-brand-gradient text-ink-on-brand"
+            )}
+          >
+            {planLock ? <Crown1 size={22} color="currentColor" /> : <Lock1 size={22} color="currentColor" variant="Bold" />}
           </span>
-          <p className="text-label-lg text-ink">{title}</p>
+          <p className="text-label-lg text-ink">{planLock ? title ?? "A Gold feature" : title ?? "Unlocks after your profile is approved"}</p>
           <p className="text-body-sm text-ink-secondary">
-            {status === "changes" ? "Fix the flagged details above and resubmit to unlock this." : text}
+            {planLock
+              ? text ?? "Upgrade to Gold or Platinum to unlock this."
+              : status === "changes"
+              ? "Fix the flagged details above and resubmit to unlock this."
+              : "We’re reviewing your profile — this usually takes less than 24 hours."}
           </p>
+          {planLock && (
+            <Link
+              href="/plans"
+              className="mt-1 flex h-10 items-center gap-1.5 rounded-full bg-brand-gradient px-5 text-button-sm text-ink-on-brand transition-shadow hover:shadow-glow"
+            >
+              <Crown1 size={16} color="currentColor" /> Upgrade to Gold
+            </Link>
+          )}
         </div>
       </div>
     </div>

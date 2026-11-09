@@ -15,9 +15,11 @@ import { SortDropdown } from "@/components/ui/SortDropdown";
 import { ViewToggle, type ResultsView } from "@/components/ui/ViewToggle";
 import { useToast } from "@/components/ui/Toast";
 import { useSignedIn } from "@/lib/session";
+import { cn } from "@/lib/cn";
+import { consume, useUsage } from "@/lib/usage";
 import { ProfileCard } from "@/components/cards/ProfileCard";
 import { ProfileCardList } from "@/components/cards/ProfileCardList";
-import { ProfileDetailModal, type ProposalDetail } from "@/components/profile/ProfileDetailModal";
+import { ProfileView } from "@/components/sections/search/ProfileView";
 import {
   AGE_MAX,
   AGE_MIN,
@@ -95,7 +97,9 @@ function SearchPageContent() {
   const [sort, setSort] = useState<SortKey>("newest");
   const [page, setPage] = useState(1);
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const [activeModalProfile, setActiveModalProfile] = useState<ProposalDetail | null>(null);
+  // Full-page profile view (?id=) — results list on the left, profile on the right
+  const [viewId, setViewId] = useState<string | null>(null);
+  const pushedRef = useRef(false);
 
   // Live Database Connectivity State
   const [dbStatus, setDbStatus] = useState<"checking" | "connected" | "offline">("checking");
@@ -235,8 +239,28 @@ function SearchPageContent() {
   );
 
   // Filtered + sorted results
+  /* Free plan: each search (filters / sort applied) uses one of the monthly searches.
+     The sidebar edits `filters`; results follow `applied`, which only updates when a search is allowed. */
+  const [applied, setApplied] = useState<{ filters: SearchFilters; sort: SortKey }>({ filters, sort });
+  const { left: usageLeft, unlimited } = useUsage();
+  const searchesLeft = usageLeft("searches");
+  useEffect(() => {
+    if (applied.filters === filters && applied.sort === sort) return;
+    const t = window.setTimeout(() => {
+      if (consume("searches")) setApplied({ filters, sort });
+      else {
+        // limit reached → put the controls back to the last allowed search
+        setFilters(applied.filters);
+        setSort(applied.sort);
+      }
+    }, 700);
+    return () => window.clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filters, sort]);
+
   const results = useMemo(() => {
-    const f = filters;
+    const f = applied.filters;
+    const sort = applied.sort;
     const list = candidatePool.filter((p) => {
       if (p.gender !== f.lookingFor) return false;
       if (p.age < f.age[0] || p.age > f.age[1]) return false;
@@ -268,7 +292,7 @@ function SearchPageContent() {
     if (sort === "age-asc") sorted.sort((a, b) => a.age - b.age);
     if (sort === "age-desc") sorted.sort((a, b) => b.age - a.age);
     return sorted;
-  }, [candidatePool, filters, sort, extrasById]);
+  }, [candidatePool, applied, extrasById]);
 
   // Promoted = the three best-matching results (demo); shown in their own band in grid view
   const promotedIds = useMemo(
@@ -284,15 +308,19 @@ function SearchPageContent() {
   const to = Math.min(page * size, pool.length);
 
   // Back to page 1 whenever the filters, sort or view change
-  useEffect(() => setPage(1), [filters, sort, view]);
+  useEffect(() => setPage(1), [applied, view]);
 
-  // Auto-open ?id=
+  // Open ?id= on load, and follow browser back / forward
   useEffect(() => {
-    if (!initialId) return;
-    const match = candidatePool.find((c) => c.id.toLowerCase() === initialId.toLowerCase());
-    if (match) handleOpenDetail(match);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [initialId, candidatePool]);
+    if (initialId) setViewId(initialId);
+    const onPop = () => {
+      pushedRef.current = false;
+      setViewId(new URLSearchParams(window.location.search).get("id"));
+    };
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+  }, [initialId]);
+  const viewing = viewId ? candidatePool.find((c) => c.id.toLowerCase() === viewId.toLowerCase()) ?? null : null;
 
   // Lock page scroll while the mobile filter drawer is open
   useEffect(() => {
@@ -302,26 +330,27 @@ function SearchPageContent() {
     };
   }, [drawerOpen]);
 
-  const handleOpenDetail = (p: CandidateProposal) => {
-    setActiveModalProfile({
-      id: p.id,
-      name: p.name,
-      code: p.id,
-      gender: p.gender,
-      age: p.age,
-      height: p.height,
-      profession: p.profession,
-      education: p.education || "Bachelor's Degree",
-      location: p.location,
-      country: p.country.toUpperCase(),
-      religion: p.religion,
-      photo: p.photo,
-      bio: p.bio,
-      aboutFamily: p.aboutFamily,
-      horoscope: p.horoscope,
-      rasi: p.rasi,
-      nakshatra: p.nakshatra,
-    });
+  const handleOpenDetail = (p: FeaturedProfile) => {
+    const url = new URL(window.location.href);
+    url.searchParams.set("id", p.id);
+    // first open adds a history entry (browser Back returns to results); switching profiles replaces it
+    if (viewId) window.history.replaceState(null, "", url);
+    else {
+      window.history.pushState(null, "", url);
+      pushedRef.current = true;
+    }
+    setViewId(p.id);
+  };
+  const closeDetail = () => {
+    if (pushedRef.current) {
+      pushedRef.current = false;
+      window.history.back();
+    } else {
+      const url = new URL(window.location.href);
+      url.searchParams.delete("id");
+      window.history.replaceState(null, "", url);
+    }
+    setViewId(null);
   };
 
   const goToPage = (p: number) => {
@@ -329,7 +358,12 @@ function SearchPageContent() {
     topRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
   const clearAll = () => setFilters(defaultFilters(filters.lookingFor));
-  const sendInterest = (p: FeaturedProfile) => toast.success("Interest sent", `${p.id} will be notified. You can chat once they accept.`);
+  const sendInterest = (p: FeaturedProfile) => {
+    // Free plan: monthly interest allowance (opens the Upgrade prompt when used up)
+    if (!consume("interests")) return false;
+    toast.success("Interest sent", `${p.id} will be notified. You can chat once they accept.`);
+    return true;
+  };
   const saveSearch = () => toast.success("Search saved", "We’ll let you know when new matches join.");
 
   /* ---------- active filter chips ---------- */
@@ -369,6 +403,17 @@ function SearchPageContent() {
       <HeartPattern className="-z-10" />
       <Navbar variant="light" />
 
+      {viewing ? (
+        <ProfileView
+          results={results}
+          selected={viewing}
+          extrasById={extrasById}
+          onSelect={handleOpenDetail}
+          onBack={closeDetail}
+          onInterest={(p) => sendInterest(p)}
+        />
+      ) : (
+      <>
       {/* Search band — breadcrumb */}
       <div className="container-page flex h-[68px] items-center">
         <nav aria-label="Breadcrumb" className="enter flex items-center gap-1.5 text-body-sm text-ink-tertiary">
@@ -398,6 +443,15 @@ function SearchPageContent() {
                   {results.length.toLocaleString()} proposals
                 </span>
               </p>
+              {/* Free plan: searches left this month */}
+              {signedIn && !unlimited && (
+                <p className={cn("mt-1 inline-flex w-fit items-center gap-1.5 rounded-full px-2.5 py-1 text-label-sm", searchesLeft === 0 ? "bg-error-bg text-error-fg" : "bg-premium-bg text-premium-fg")}>
+                  {searchesLeft === 0 ? "No free searches left this month" : `${searchesLeft} free search${searchesLeft === 1 ? "" : "es"} left this month`}
+                  <Link href="/plans" className="font-bold underline-offset-2 hover:underline">
+                    Upgrade
+                  </Link>
+                </p>
+              )}
             </div>
             <div className="flex items-center gap-2">
               <button
@@ -509,6 +563,9 @@ function SearchPageContent() {
         </section>
       </main>
 
+      </>
+      )}
+
       <Footer />
 
       {/* Mobile / tablet filter drawer */}
@@ -529,13 +586,6 @@ function SearchPageContent() {
         </div>
       )}
 
-      {activeModalProfile && (
-        <ProfileDetailModal
-          profile={activeModalProfile}
-          onClose={() => setActiveModalProfile(null)}
-          onConnect={(p) => toast.success("Interest sent", `Your introductory request has been delivered to ${p.id}.`)}
-        />
-      )}
     </div>
   );
 }

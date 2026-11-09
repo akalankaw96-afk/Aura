@@ -23,10 +23,9 @@ import {
 } from "iconsax-react";
 import { cn } from "@/lib/cn";
 import { Badge } from "@/components/ui/Badge";
+import { Alert } from "@/components/ui/Alert";
 import { Button } from "@/components/ui/Button";
-import { useToast } from "@/components/ui/Toast";
 import { useFlashToast } from "@/components/ui";
-import { DemoTips } from "@/components/auth/DemoTips";
 import { FLAGGED } from "@/components/auth/ReviewStatus";
 import { formatPhone } from "@/components/auth/shared";
 import { loadDraft, type RegistrationDraft } from "@/lib/demo";
@@ -41,8 +40,7 @@ import { useKyc, type KycStatus } from "@/lib/verification";
 const STEPS = ["Account created", "Mobile verified", "Profile submitted", "Safety review", "Profile live"];
 
 export function VerificationPanel() {
-  const { status, setStatus } = useKyc();
-  const toast = useToast();
+  const { status } = useKyc();
   useFlashToast(); // shows "Profile submitted" after the registration redirect
   const [draft, setDraft] = useState<RegistrationDraft | null>(null);
   const [justLive, setJustLive] = useState(false);
@@ -54,16 +52,6 @@ export function VerificationPanel() {
     prev.current = status;
   }, [status]);
 
-  const demo = (
-    <DemoTips
-      tips={[{ label: "Admin review is simulated here" }, { label: "Status now", value: status }]}
-      actions={[
-        { label: "Admin approves", onClick: () => { setStatus("live"); toast.success("Your profile is live!", "Every feature is now unlocked."); } },
-        { label: "Admin requests changes", onClick: () => { setStatus("changes"); toast.warning("Changes needed", "Our safety team flagged 3 fields."); } },
-        { label: "Back to ‘under review’", onClick: () => setStatus("pending") },
-      ]}
-    />
-  );
 
   if (status === "live") {
     if (!justLive) return null;
@@ -88,6 +76,7 @@ export function VerificationPanel() {
   const rejected = status === "changes";
   const current = 3; // index of "Safety review"
   const name = draft?.firstName || "there";
+  const reviewedOn = new Date().toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
 
   return (
     <>
@@ -95,7 +84,7 @@ export function VerificationPanel() {
         aria-labelledby="kyc-title"
         className={cn(
           "kyc-in relative overflow-hidden rounded-xl border bg-surface-card p-5 shadow-sm sm:p-6",
-          rejected ? "border-error-fg" : "border-premium-line"
+          rejected ? "border-error-bg" : "border-premium-line"
         )}
       >
         {/* tinted top glow */}
@@ -116,7 +105,7 @@ export function VerificationPanel() {
             <div className="flex flex-wrap items-center gap-2">
               <h2 id="kyc-title" className="text-h5 text-ink">
                 {rejected
-                  ? "A few details need your attention"
+                  ? "Your profile needs a few changes"
                   : status === "resubmitted"
                   ? "Thanks — we’re checking your changes"
                   : `Hi ${name}, your profile is under review`}
@@ -125,7 +114,7 @@ export function VerificationPanel() {
             </div>
             <p className="mt-1 text-body-sm text-ink-secondary">
               {rejected
-                ? "Our safety team couldn’t approve your profile yet. Fix the items below and resubmit — it only takes a minute."
+                ? "Please fix the items below and resubmit. Nothing is shown to other members until it’s approved."
                 : <>Every profile is checked by our safety team, usually within <b className="text-ink">24 hours</b>. We’ll SMS you at{" "}
                     <b className="text-ink">{draft?.mobile ? formatPhone(draft.mobile) : "your mobile"}</b> as soon as you’re live.</>}
             </p>
@@ -171,36 +160,49 @@ export function VerificationPanel() {
         </ol>
 
         {rejected ? (
-          /* Rejected fields */
+          /* Rejected fields — Figma 06b · Profile rejected (status rows + Rejected / Approved badges) */
           <div className="mt-6 flex flex-col gap-3">
+            <Alert type="error" title={`${FLAGGED.length} fields need changes`}>
+              Reviewed on {reviewedOn} by our safety team. Everything else is approved.
+            </Alert>
             <ul className="flex flex-col gap-2">
-              {FLAGGED.map(({ key, label, reason, Icon }, i) => (
-                <li
-                  key={key}
-                  className="flex items-center gap-3 rounded-md border border-error-bg bg-error-bg px-4 py-3"
-                  style={{ animation: `fade-up 420ms cubic-bezier(0.22,1,0.36,1) ${300 + i * 80}ms backwards` }}
-                >
-                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-sm bg-surface-card text-error-fg">
-                    <Icon size={20} color="currentColor" />
-                  </span>
-                  <span className="min-w-0 flex-1">
-                    <span className="block text-body-sm font-bold text-ink">{label}</span>
-                    <span className="block text-body-xs text-error-fg">{reason}</span>
-                  </span>
-                  <Link href="/register/status" className="flex shrink-0 items-center gap-1 text-body-sm font-bold text-brand hover:underline">
-                    <Edit2 size={16} color="currentColor" /> Fix
+              {FLAGGED.map(({ key, label, reason, Icon, fix }, i) => (
+                <li key={key} style={{ animation: `fade-up 420ms cubic-bezier(0.22,1,0.36,1) ${250 + i * 70}ms backwards` }}>
+                  <Link
+                    href={`/register/status?fix=${fix}`}
+                    className="group flex items-center gap-3 rounded-md bg-surface-subtle px-4 py-3 transition-colors hover:bg-error-bg"
+                  >
+                    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-sm bg-surface-card text-error-fg">
+                      <Icon size={20} color="currentColor" />
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-body-sm font-bold text-ink">{label}</span>
+                      <span className="block text-body-xs text-ink-tertiary">{reason}</span>
+                    </span>
+                    <Badge tone="error">Rejected</Badge>
+                    <ArrowRight2 size={16} color="currentColor" className="shrink-0 text-ink-tertiary transition-transform group-hover:translate-x-0.5" />
                   </Link>
                 </li>
               ))}
+              <li
+                className="flex items-center gap-3 rounded-md bg-surface-subtle px-4 py-3"
+                style={{ animation: `fade-up 420ms cubic-bezier(0.22,1,0.36,1) ${250 + FLAGGED.length * 70}ms backwards` }}
+              >
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-sm bg-surface-card text-success-fg">
+                  <TickCircle size={20} color="currentColor" />
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block text-body-sm font-bold text-ink">Basic, family &amp; education</span>
+                  <span className="block text-body-xs text-ink-tertiary">All other details look good</span>
+                </span>
+                <Badge tone="success">Approved</Badge>
+              </li>
             </ul>
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-              <Link href="/register/status" className="sm:w-auto">
-                <Button variant="primary" className="w-full rounded-full sm:w-auto" rightIcon={<ArrowRight2 size={18} color="currentColor" />}>
-                  Fix &amp; resubmit
-                </Button>
-              </Link>
-              <p className="text-caption text-ink-tertiary">Only the flagged fields need changing — everything else stays as it is.</p>
-            </div>
+            <Link href="/register/status?fix=details" className="mt-1">
+              <Button variant="primary" fullWidth className="rounded-full" rightIcon={<ArrowRight2 size={18} color="currentColor" />}>
+                Edit &amp; resubmit
+              </Button>
+            </Link>
           </div>
         ) : (
           /* What we check / what you can do now */
@@ -216,7 +218,7 @@ export function VerificationPanel() {
             </div>
             <div className="flex flex-col gap-3 rounded-md bg-surface-subtle p-4">
               <p className="text-label-md text-ink">While you wait</p>
-              <QuickAction href="/register/status" Icon={Edit2} title="Review your profile" sub="Add more photos or polish your bio" />
+              <QuickAction href="/search" Icon={SearchNormal1} title="Browse profiles" sub="Look around — sending interest unlocks soon" />
               <QuickAction href="/plans" Icon={Crown1} title="Explore Gold" sub="Unlimited interests once you’re live" tone="premium" />
               <QuickAction href="/terms" Icon={ShieldTick} title="Safety tips" sub="How to connect safely on Vikasitha" />
             </div>
@@ -245,7 +247,6 @@ export function VerificationPanel() {
           ))}
         </div>
       </section>
-      {demo}
     </>
   );
 }

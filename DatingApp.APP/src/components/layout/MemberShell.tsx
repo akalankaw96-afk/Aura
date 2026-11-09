@@ -4,6 +4,7 @@ import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { HeartPattern } from "@/components/ui/Decor";
 import { BackButton } from "@/components/ui/BackButton";
+import { KycGuard } from "@/components/auth/KycGuard";
 
 /**
  * Signed-in page frame — Figma: Requests / Messages — Desktop 1440.
@@ -30,6 +31,8 @@ export function MemberShell({
     <div className="relative isolate bg-page-gradient">
       <HeartPattern className="-z-10" />
       <Navbar variant="member" />
+      {/* Requests etc. need an approved profile */}
+      <KycGuard />
       <main className="container-page flex flex-col gap-6 pb-16 pt-6 lg:pb-24 lg:pt-8">
         <div className="enter flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           {/* Figma: Page header — Back Button sits left of the title, breadcrumb + subtitle align with the title */}

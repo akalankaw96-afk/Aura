@@ -8,7 +8,7 @@ import { SectionHeader } from "@/components/ui/SectionHeader";
 import { useToast } from "@/components/ui/Toast";
 import { useLanguage } from "@/context/LanguageContext";
 import { ProfileCard } from "@/components/cards/ProfileCard";
-import { ProfileDetailModal, type ProposalDetail } from "@/components/profile/ProfileDetailModal";
+import { useRouter } from "next/navigation";
 import { FEATURED, type FeaturedProfile } from "@/content/home";
 
 /**
@@ -21,29 +21,11 @@ export function FeaturedProfiles() {
   const toast = useToast();
   const { t, lang } = useLanguage();
   const [filter, setFilter] = useState<"all" | "bride" | "groom">("all");
-  const [activeModalProfile, setActiveModalProfile] = useState<ProposalDetail | null>(null);
   const list = useMemo(() => FEATURED.profiles.filter((p) => filter === "all" || p.gender === filter), [filter]);
 
-  const handleOpenDetail = (p: FeaturedProfile) => {
-    setActiveModalProfile({
-      id: p.id,
-      code: p.id,
-      gender: p.gender,
-      age: p.age,
-      height: p.height,
-      profession: p.profession,
-      education: p.profession.includes("Doctor") ? "MBBS, Colombo" : p.profession.includes("Engineer") ? "BSc Eng (Hons)" : "Bachelor's Degree",
-      location: p.location,
-      country: p.country.toUpperCase(),
-      religion: p.religion,
-      photo: p.photo,
-      bio: `Verified candidate proposal (${p.id}). Dedicated professional with family values, balanced lifestyle, and cultural harmony.`,
-      aboutFamily: "Respected, traditional Sri Lankan family background with high social esteem and strong community values.",
-      horoscope: p.horoscope,
-      rasi: p.horoscope ? "Mesha (Aries)" : undefined,
-      nakshatra: p.horoscope ? "Aswida" : undefined,
-    });
-  };
+  const router = useRouter();
+  // Profile details open as a full page (search results list + profile)
+  const handleOpenDetail = (p: FeaturedProfile) => router.push(`/search?for=${p.gender}&id=${p.id}`);
 
   return (
     <section id="profiles" className="scroll-mt-28 overflow-hidden pb-16 pt-12 lg:pb-24">
@@ -91,15 +73,6 @@ export function FeaturedProfiles() {
         </Link>
       </div>
 
-      {activeModalProfile && (
-        <ProfileDetailModal
-          profile={activeModalProfile}
-          onClose={() => setActiveModalProfile(null)}
-          onConnect={(p) => {
-            toast.success("Interest Sent!", `Your introductory request has been delivered to ${p.id}.`);
-          }}
-        />
-      )}
     </section>
   );
 }

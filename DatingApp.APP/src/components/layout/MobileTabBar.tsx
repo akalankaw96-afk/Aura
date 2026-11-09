@@ -3,11 +3,12 @@
 import React, { useLayoutEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Element3, Messages2, Profile2User, SearchNormal1 } from "iconsax-react";
+import { Element3, Lock1, Messages2, Profile2User, SearchNormal1 } from "iconsax-react";
 import { cn } from "@/lib/cn";
 import { useLanguage } from "@/context/LanguageContext";
 import { useSignedIn } from "@/lib/session";
 import { MESSAGES, REQUESTS } from "@/content/dashboard";
+import { useKyc } from "@/lib/verification";
 
 /** Public / auth pages never show the member tab bar */
 const HIDDEN_ON = [/^\/$/, /^\/login/, /^\/register/, /^\/forgot-password/, /^\/admin/, /^\/components/];
@@ -23,6 +24,7 @@ export function MobileTabBar() {
   const pathname = usePathname() || "/";
   const signedIn = useSignedIn();
   const { t } = useLanguage();
+  const { locked } = useKyc();
   const navRef = useRef<HTMLDivElement>(null);
   const [pad, setPad] = useState<{ left: number; width: number } | null>(null);
 
@@ -30,8 +32,8 @@ export function MobileTabBar() {
   const tabs = [
     { href: "/dashboard", label: t.nav.dashboard, Icon: Element3, badge: 0 },
     { href: "/search", label: t.nav.search, Icon: SearchNormal1, badge: 0 },
-    { href: "/requests", label: t.nav.requests, Icon: Profile2User, badge: REQUESTS.length },
-    { href: "/messages", label: t.nav.messages, Icon: Messages2, badge: unreadMessages },
+    { href: "/requests", label: t.nav.requests, Icon: Profile2User, badge: REQUESTS.length, needsApproval: true },
+    { href: "/messages", label: t.nav.messages, Icon: Messages2, badge: unreadMessages, needsApproval: true },
   ];
   const activeIndex = tabs.findIndex((tab) => pathname.startsWith(tab.href));
   const hidden = !signedIn || HIDDEN_ON.some((r) => r.test(pathname));
@@ -73,8 +75,9 @@ export function MobileTabBar() {
             />
           )}
 
-          {tabs.map(({ href, label, Icon, badge }, i) => {
+          {tabs.map(({ href, label, Icon, badge, needsApproval }, i) => {
             const active = i === activeIndex;
+            const lockedTab = locked && !!needsApproval;
             return (
               <Link
                 key={href}
@@ -96,7 +99,11 @@ export function MobileTabBar() {
                     className={cn(active && "tabbar-icon-pop")}
                     key={active ? "on" : "off"}
                   />
-                  {badge > 0 && (
+                  {lockedTab ? (
+                    <span className="absolute -right-1 -top-1 flex h-[18px] w-[18px] items-center justify-center rounded-full border-2 border-surface-card bg-gray-500 text-white">
+                      <Lock1 size={10} color="currentColor" variant="Bold" />
+                    </span>
+                  ) : badge > 0 && (
                     <span
                       className={cn(
                         "absolute -right-1 -top-1 flex h-[18px] min-w-[18px] items-center justify-center rounded-full border-2 px-1 text-[10px] font-bold leading-none",

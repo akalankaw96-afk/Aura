@@ -7,6 +7,7 @@ import {
   ArrowDown2,
   CloseCircle,
   Crown,
+  Lock1,
   Logout,
   LogoutCurve,
   Setting2,
@@ -18,6 +19,7 @@ import { cn } from "@/lib/cn";
 import { LanguageSwitch, Logo, ThemeToggle } from "@/components/ui/Brand";
 import { useLanguage } from "@/context/LanguageContext";
 import { MEMBER, MESSAGES, REQUESTS } from "@/content/dashboard";
+import { useKyc } from "@/lib/verification";
 import { apiService, type AuthSession } from "@/services/api";
 
 /**
@@ -110,6 +112,7 @@ export function Navbar({ variant = "light" }: { variant?: NavbarVariant }) {
     : { label: t.nav.createOrLogin, href: "/login" };
 
   // unread counts shown next to Requests / Messages (same source as the mobile tab bar)
+  const { locked: kycLocked } = useKyc();
   const requestCount = REQUESTS.length;
   const messageCount = MESSAGES.reduce((n, m) => n + m.unread, 0);
 
@@ -168,7 +171,7 @@ export function Navbar({ variant = "light" }: { variant?: NavbarVariant }) {
                 )}
               >
                 {l.label}
-                {!!l.count && <NavCount count={l.count} />}
+                {!!l.count && <NavCount count={l.count} locked={kycLocked} />}
               </Link>
             );
           })}
@@ -222,7 +225,7 @@ export function Navbar({ variant = "light" }: { variant?: NavbarVariant }) {
                 className="flex items-center justify-between rounded-md px-3 py-3 text-label-lg text-ink hover:bg-brand-subtle"
               >
                 {l.label}
-                {!!l.count && <NavCount count={l.count} />}
+                {!!l.count && <NavCount count={l.count} locked={kycLocked} />}
               </Link>
             ))}
             <div className="mt-4 flex items-center justify-between rounded-md bg-surface-subtle px-3 py-2">
@@ -267,7 +270,14 @@ export function Navbar({ variant = "light" }: { variant?: NavbarVariant }) {
 }
 
 /** Unread count chip next to a nav link — brand pill, pops in when the number changes */
-function NavCount({ count }: { count: number }) {
+function NavCount({ count, locked }: { count: number; locked?: boolean }) {
+  // profile under review → these pages are locked: show a lock instead of the count
+  if (locked)
+    return (
+      <span aria-label="Locked until approval" className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-surface-muted text-ink-tertiary">
+        <Lock1 size={11} color="currentColor" variant="Bold" />
+      </span>
+    );
   return (
     <span
       key={count}

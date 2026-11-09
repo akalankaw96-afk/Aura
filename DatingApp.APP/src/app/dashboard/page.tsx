@@ -5,6 +5,8 @@ import { HeartPattern } from "@/components/ui/Decor";
 import { BestMatches, DashboardHero, Inbox, SearchCard, StatsRow } from "@/components/sections/dashboard";
 import { VerificationPanel } from "@/components/sections/dashboard/VerificationPanel";
 import { FeatureGate } from "@/components/sections/dashboard/FeatureGate";
+import { PlanUsageCard } from "@/components/sections/dashboard/PlanUsageCard";
+import { DashboardDemo } from "@/components/sections/dashboard/DashboardDemo";
 
 export const metadata: Metadata = { title: "Dashboard | Aura Matrimony" };
 
@@ -25,7 +27,12 @@ export default function DashboardPage() {
           {/* new members: profile review status (pending / changes needed) — hidden once live */}
           <VerificationPanel />
           <DashboardHero />
-          <StatsRow />
+          {/* approved Free members: allowance + what Gold unlocks (hidden for paid members) */}
+          <PlanUsageCard />
+          {/* profile insights are a paid feature */}
+          <FeatureGate requires="paid" title="See who viewed & shortlisted you" text="Profile insights are included with Gold and Platinum.">
+            <StatsRow />
+          </FeatureGate>
           {/* locked (blurred + lock card) until the profile is approved */}
           <FeatureGate title="Requests & messages unlock after approval">
             <Inbox />
@@ -39,6 +46,8 @@ export default function DashboardPage() {
         </FeatureGate>
       </main>
       <Footer />
+      {/* demo only: switch KYC pending / rejected / approved Free / approved Pro */}
+      <DashboardDemo />
     </div>
   );
 }

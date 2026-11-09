@@ -446,8 +446,33 @@ const OPTIONS = {
 type ProfileKey = "firstName" | "lastName" | "displayNameFormat" | "createdBy" | "email" | "whatsapp" | "height" | "dob" | "gender" | "civilStatus" | "religion" | "ethnicity" | "caste" | "country";
 const REQUIRED: ProfileKey[] = ["firstName", "lastName", "displayNameFormat", "createdBy", "height", "dob", "gender", "civilStatus", "religion", "ethnicity", "country"];
 
-function ProfileStep({ draft, update, onBack, onNext }: { draft: RegistrationDraft; update: (p: Partial<RegistrationDraft>) => void; onBack: () => void; onNext: () => void }) {
+/** Review mode (Figma 06d · Edit profile — fix rejected fields): flagged fields + their values when rejected */
+export interface ProfileReview {
+  reasons: Partial<Record<"dob" | "about", string>>;
+  original: { dob: string; about: string };
+  reviewedOn: string;
+}
+
+export function ProfileStep({
+  draft,
+  update,
+  onBack,
+  onNext,
+  review,
+}: {
+  draft: RegistrationDraft;
+  update: (p: Partial<RegistrationDraft>) => void;
+  onBack: () => void;
+  onNext: () => void;
+  review?: ProfileReview;
+}) {
   const toast = useToast();
+  // a rejected field stays "Rejected" until its value changes (and passes the safety check)
+  const stillRejected = {
+    dob: !!review?.reasons.dob && draft.dob === review.original.dob,
+    about: !!review?.reasons.about && (draft.about === review.original.about || containsContactDetails(draft.about)),
+  };
+  const flaggedCount = review ? Object.keys(review.reasons).length : 0;
   const [errors, setErrors] = useState<Partial<Record<ProfileKey | "about", string>>>({});
   const [showMissing, setShowMissing] = useState(false);
   const age = ageFrom(draft.dob);
@@ -477,6 +502,10 @@ function ProfileStep({ draft, update, onBack, onNext }: { draft: RegistrationDra
     }
     if (underage) er.dob = "You must be at least 18 years old";
     if (aboutError) er.about = aboutError;
+    if (review) {
+      if (stillRejected.dob) er.dob = `Rejected: ${review.reasons.dob}`;
+      if (stillRejected.about) er.about = `Rejected: ${review.reasons.about}`;
+    }
     setErrors(er);
     setShowMissing(Object.values(er).includes("Required"));
     if (Object.keys(er).length) {
@@ -488,7 +517,25 @@ function ProfileStep({ draft, update, onBack, onNext }: { draft: RegistrationDra
 
   return (
     <form onSubmit={submit} noValidate className="flex flex-col gap-5">
-      <CardTitle title="Tell us about yourself" subtitle="These details help families find the right match. You can edit them anytime." />
+      {review ? (
+        <>
+          <CardTitle
+            title="Fix the highlighted fields"
+            subtitle={`Our safety team flagged ${flaggedCount} field${flaggedCount === 1 ? "" : "s"}. Only these need changing — the rest is already approved.`}
+          />
+          {stillRejected.dob || stillRejected.about ? (
+            <Alert type="error" title={`${[stillRejected.dob, stillRejected.about].filter(Boolean).length} field${[stillRejected.dob, stillRejected.about].filter(Boolean).length === 1 ? "" : "s"} need changes`}>
+              Reviewed on {review.reviewedOn} · Update them and tap Resubmit.
+            </Alert>
+          ) : (
+            <Alert type="success" title="All highlighted fields updated">
+              Looks good — tap Resubmit for review.
+            </Alert>
+          )}
+        </>
+      ) : (
+        <CardTitle title="Tell us about yourself" subtitle="These details help families find the right match. You can edit them anytime." />
+      )}
 
       {underage && (
         <Alert type="error" title="Registration not allowed">
@@ -543,7 +590,7 @@ function ProfileStep({ draft, update, onBack, onNext }: { draft: RegistrationDra
           value={draft.dob}
           onChange={set("dob")}
           max={new Date().toISOString().slice(0, 10)}
-          error={errors.dob ?? (underage ? "You must be at least 18 years old" : undefined)}
+          error={errors.dob ?? (underage ? "You must be at least 18 years old" : stillRejected.dob ? `Rejected: ${review?.reasons.dob}` : undefined)}
           helper={age !== null && !underage ? `${age} years` : undefined}
         />
         <Select label="Gender" options={OPTIONS.gender} value={draft.gender} onChange={pick("gender")} error={errors.gender} />
@@ -562,7 +609,7 @@ function ProfileStep({ draft, update, onBack, onNext }: { draft: RegistrationDra
         value={draft.about}
         onChange={(v) => update({ about: v })}
         helper="Tip: profiles with a short, warm description get more replies. Don’t add phone numbers here."
-        error={errors.about ?? aboutError}
+        error={errors.about ?? (stillRejected.about ? `Rejected: ${review?.reasons.about}` : aboutError)}
       />
 
       <div className="flex gap-3">
@@ -570,13 +617,16 @@ function ProfileStep({ draft, update, onBack, onNext }: { draft: RegistrationDra
           Back
         </Button>
         <Button type="submit" fullWidth disabled={underage} rightIcon={<ArrowRight2 size={18} color="currentColor" />}>
-          Continue
+          {review ? "Resubmit for review" : "Continue"}
         </Button>
       </div>
-      <button type="button" onClick={() => toast.success("Progress saved", "You can come back and finish anytime.")} className="text-center text-body-sm font-semibold text-brand hover:underline">
-        Save &amp; finish later
-      </button>
+      {!review && (
+        <button type="button" onClick={() => toast.success("Progress saved", "You can come back and finish anytime.")} className="text-center text-body-sm font-semibold text-brand hover:underline">
+          Save &amp; finish later
+        </button>
+      )}
 
+      {!review && (
       <DemoTips
         tips={[{ label: "Birthday under 18 → blocked" }, { label: "Phone number in About you → error" }, { label: "Continue with empty fields → missing" }]}
         actions={[
@@ -606,6 +656,7 @@ function ProfileStep({ draft, update, onBack, onNext }: { draft: RegistrationDra
           },
         ]}
       />
+      )}
     </form>
   );
 }
@@ -615,8 +666,28 @@ function ProfileStep({ draft, update, onBack, onNext }: { draft: RegistrationDra
 const MAX_MB = 5;
 const OK_TYPES = ["image/jpeg", "image/png", "image/webp"];
 
-function PhotosStep({ draft, update, onBack, onFinish }: { draft: RegistrationDraft; update: (p: Partial<RegistrationDraft>) => void; onBack: () => void; onFinish: () => void }) {
+/** Review mode (Figma 06e · Edit photos — main photo rejected) */
+export interface PhotoReview {
+  reason: string;
+  original: string | null;
+  reviewedOn: string;
+}
+
+export function PhotosStep({
+  draft,
+  update,
+  onBack,
+  onFinish,
+  review,
+}: {
+  draft: RegistrationDraft;
+  update: (p: Partial<RegistrationDraft>) => void;
+  onBack: () => void;
+  onFinish: () => void;
+  review?: PhotoReview;
+}) {
   const toast = useToast();
+  const photoRejected = !!review && (draft.photo === review.original || !draft.photo);
   const fileRef = useRef<HTMLInputElement>(null);
   const [extra, setExtra] = useState<(string | null)[]>([null, null, null, null]);
   const [target, setTarget] = useState<number>(-1); // -1 main, 0..3 extra
@@ -665,6 +736,14 @@ function PhotosStep({ draft, update, onBack, onFinish }: { draft: RegistrationDr
   };
 
   const finish = () => {
+    if (review) {
+      if (photoRejected) {
+        toast.error("Replace your main photo", review.reason);
+        return;
+      }
+      onFinish();
+      return;
+    }
     if (mode === "illustration" && !isIllustration(draft.photo)) {
       toast.error("Pick an illustration", "Choose one of the illustrations, or switch to Upload photos.");
       return;
@@ -678,7 +757,22 @@ function PhotosStep({ draft, update, onBack, onFinish }: { draft: RegistrationDr
 
   return (
     <div className="flex flex-col gap-5">
-      <CardTitle title="Add your best photos" subtitle="Profiles with clear photos receive more interest — every photo is checked by our team." />
+      {review ? (
+        <>
+          <CardTitle title="Replace your main photo" subtitle="Your main photo wasn’t approved. Your other details are fine — just upload a new one." />
+          {photoRejected ? (
+            <Alert type="error" title="Main photo rejected">
+              {review.reason}. Reviewed on {review.reviewedOn}.
+            </Alert>
+          ) : (
+            <Alert type="success" title="New main photo added">
+              Looks good — tap Resubmit for review.
+            </Alert>
+          )}
+        </>
+      ) : (
+        <CardTitle title="Add your best photos" subtitle="Profiles with clear photos receive more interest — every photo is checked by our team." />
+      )}
 
       {/* Upload real photos ↔ use an illustration */}
       <PhotoModeSwitch value={mode} onChange={(m) => { setMode(m); setConfirmSkip(false); }} />
@@ -709,7 +803,14 @@ function PhotosStep({ draft, update, onBack, onFinish }: { draft: RegistrationDr
       <>
       {/* Figma: Photo slots — row 260 high, gap 12: Main photo 200 × 260 + More photos 2 × 2 of 146 × 124 */}
       <div key="upload" className="flex animate-fade-up flex-col gap-3 sm:h-[260px] sm:flex-row">
-        <PhotoSlot main src={draft.photo} onPick={() => pick(-1)} onRemove={() => update({ photo: null })} className="aspect-[200/260] w-full sm:aspect-auto sm:h-full sm:w-[200px] sm:shrink-0" />
+        <PhotoSlot
+          main
+          rejected={photoRejected && !!draft.photo}
+          src={draft.photo}
+          onPick={() => pick(-1)}
+          onRemove={() => update({ photo: null })}
+          className="aspect-[200/260] w-full sm:aspect-auto sm:h-full sm:w-[200px] sm:shrink-0"
+        />
         <div className="grid grid-cols-2 grid-rows-2 gap-3 sm:w-[304px] sm:shrink-0">
           {extra.map((src, i) => (
             <PhotoSlot
@@ -740,15 +841,16 @@ function PhotosStep({ draft, update, onBack, onFinish }: { draft: RegistrationDr
           Back
         </Button>
         <Button fullWidth onClick={finish} rightIcon={<ArrowRight2 size={18} color="currentColor" />}>
-          Finish &amp; go live
+          {review ? "Resubmit for review" : <>Finish &amp; go live</>}
         </Button>
       </div>
-      {mode === "upload" && (
+      {mode === "upload" && !review && (
         <button type="button" onClick={() => setConfirmSkip(true)} className="text-left text-body-sm font-semibold text-brand hover:underline">
           Skip for now — I’ll add photos later
         </button>
       )}
 
+      {!review && (
       <DemoTips
         tips={[{ label: "Upload any JPG/PNG under 5 MB" }, { label: "Other file types or > 5 MB → upload failed" }, { label: "Finish without a photo → warning" }]}
         actions={[
@@ -756,6 +858,7 @@ function PhotosStep({ draft, update, onBack, onFinish }: { draft: RegistrationDr
           { label: "Use sample photo", onClick: () => { update({ photo: "/brand/bride.png" }); setFailed(undefined); toast.success("Photo uploaded", "Looking great! It’ll be checked by our team."); } },
         ]}
       />
+      )}
     </div>
   );
 }
@@ -883,15 +986,19 @@ function IllustrationPicker({ gender, value, onPick }: { gender?: AvatarGender; 
 }
 
 /** Figma: Main photo (filled: Badge + 32px Edit button, padding 10) / Empty slot (radius lg, brand-subtle, 1.5px dashed rose-300). Size comes from `className`. */
-function PhotoSlot({ src, main, label = "Add photo", onPick, onRemove, className }: { src: string | null; main?: boolean; label?: string; onPick: () => void; onRemove: () => void; className?: string }) {
+function PhotoSlot({ src, main, rejected, label = "Add photo", onPick, onRemove, className }: { src: string | null; main?: boolean; rejected?: boolean; label?: string; onPick: () => void; onRemove: () => void; className?: string }) {
   if (src) {
     return (
-      <div className={cn("group relative overflow-hidden rounded-lg bg-surface-muted", className)}>
+      <div className={cn("group relative overflow-hidden rounded-lg bg-surface-muted", rejected && "ring-2 ring-error-fg ring-offset-2 ring-offset-surface-card", className)}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src={src} alt={main ? "Main photo" : "Photo"} className="h-full w-full object-cover" />
         {main && (
           <span className="absolute left-2.5 top-2.5">
-            <Badge tone={isIllustration(src) ? "info" : "success"}>{isIllustration(src) ? "Illustration" : "Main photo"}</Badge>
+            {rejected ? (
+              <Badge tone="error">Rejected</Badge>
+            ) : (
+              <Badge tone={isIllustration(src) ? "info" : "success"}>{isIllustration(src) ? "Illustration" : "Main photo"}</Badge>
+            )}
           </span>
         )}
         <div className="absolute bottom-2.5 left-2.5 flex gap-2">

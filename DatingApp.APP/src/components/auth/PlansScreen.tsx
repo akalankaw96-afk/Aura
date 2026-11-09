@@ -1,11 +1,12 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { Add, Minus, Card as CardIcon, Crown1, Lock1, TickCircle } from "iconsax-react";
 import { Alert, Badge, Button, Card, Input, useToast } from "@/components/ui";
 import { cn } from "@/lib/cn";
 import { saveDraft } from "@/lib/demo";
+import { readPlan, setPlan } from "@/lib/verification";
 import { AuthShell } from "./AuthShell";
 import { BackButton } from "@/components/ui/BackButton";
 import { DemoTips } from "./DemoTips";
@@ -42,6 +43,7 @@ export function PlansScreen() {
   const toast = useToast();
   const [period, setPeriod] = useState<Period>(3);
   const [current, setCurrent] = useState<PlanId>("free");
+  useEffect(() => setCurrent(readPlan()), []);
   const [paying, setPaying] = useState<Exclude<PlanId, "free"> | null>(null);
   const [openFaq, setOpenFaq] = useState(0);
 
@@ -180,6 +182,7 @@ export function PlansScreen() {
           onPaid={() => {
             setCurrent(paying);
             saveDraft({ plan: paying });
+            setPlan(paying); // unlocks the paid features on the Dashboard
             setPaying(null);
             toast.success(`You’re now ${paying === "gold" ? "Gold" : "Platinum"}!`, "Unlimited interests are unlocked. Happy matching!");
             window.scrollTo({ top: 0, behavior: "smooth" });

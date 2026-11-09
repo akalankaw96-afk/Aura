@@ -17,6 +17,8 @@ export interface DemoTip {
 export interface DemoAction {
   label: string;
   onClick: () => void;
+  /** highlights the current state when actions act as a switcher */
+  active?: boolean;
 }
 
 export function DemoTips({ tips, actions }: { tips: DemoTip[]; actions?: DemoAction[] }) {
@@ -48,7 +50,11 @@ export function DemoTips({ tips, actions }: { tips: DemoTip[]; actions?: DemoAct
                   key={a.label}
                   type="button"
                   onClick={a.onClick}
-                  className="rounded-full bg-brand-subtle px-3 py-1.5 text-body-xs font-bold text-brand hover:bg-brand hover:text-white"
+                  aria-pressed={a.active}
+                  className={cn(
+                    "rounded-full px-3 py-1.5 text-body-xs font-bold transition-colors",
+                    a.active ? "bg-brand text-white" : "bg-brand-subtle text-brand hover:bg-brand hover:text-white",
+                  )}
                 >
                   {a.label}
                 </button>

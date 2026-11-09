@@ -13,10 +13,13 @@ import { cn } from "@/lib/cn";
 export function BackButton({
   fallback = "/dashboard",
   label = "Back",
+  onClick,
   className,
 }: {
   fallback?: string;
   label?: string;
+  /** custom action (e.g. close an in-page view) instead of history back */
+  onClick?: () => void;
   className?: string;
 }) {
   const router = useRouter();
@@ -26,6 +29,7 @@ export function BackButton({
       aria-label={label}
       title={label}
       onClick={() => {
+        if (onClick) return onClick();
         if (typeof window !== "undefined" && window.history.length > 1) router.back();
         else router.push(fallback);
       }}

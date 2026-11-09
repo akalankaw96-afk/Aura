@@ -42,7 +42,8 @@ export function ProfileCardList({
   bio?: string;
   promoted?: boolean;
   onView: (p: FeaturedProfile) => void;
-  onInterest: (p: FeaturedProfile) => void;
+  /** return false when the interest couldn’t be sent (e.g. free limit reached) */
+  onInterest: (p: FeaturedProfile) => boolean | void;
   style?: React.CSSProperties;
 }) {
   const [saved, setSaved] = useState(false);
@@ -164,8 +165,7 @@ export function ProfileCardList({
               disabled={sent}
               leftIcon={<HeartAdd size={18} color="currentColor" />}
               onClick={() => {
-                setSent(true);
-                onInterest(profile);
+                if (onInterest(profile) !== false) setSent(true);
               }}
             >
               {sent ? "Interest sent" : "Send interest"}
