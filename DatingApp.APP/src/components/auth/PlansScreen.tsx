@@ -2,11 +2,12 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
-import { Add, ArrowLeft2, Minus, Card as CardIcon, Crown1, Lock1, TickCircle } from "iconsax-react";
+import { Add, Minus, Card as CardIcon, Crown1, Lock1, TickCircle } from "iconsax-react";
 import { Alert, Badge, Button, Card, Input, useToast } from "@/components/ui";
 import { cn } from "@/lib/cn";
 import { saveDraft } from "@/lib/demo";
 import { AuthShell } from "./AuthShell";
+import { BackButton } from "@/components/ui/BackButton";
 import { DemoTips } from "./DemoTips";
 import { DEMO } from "./shared";
 
@@ -45,14 +46,19 @@ export function PlansScreen() {
   const [openFaq, setOpenFaq] = useState(0);
 
   return (
-    <AuthShell
-      wide
-      action="avatar"
-    >
-      <div className="w-full">
-        <Link href="/register/status" className="inline-flex items-center gap-1 text-link-sm text-brand-link underline">
-          <ArrowLeft2 size={16} color="currentColor" /> Back to my profile
-        </Link>
+    <AuthShell wide frame="member">
+      {/* Page header — same as other member pages: Back Button + breadcrumb */}
+      <div className="enter flex w-full items-center gap-4">
+        <BackButton />
+        <nav aria-label="Breadcrumb" className="flex items-center gap-1.5 text-body-sm text-ink-tertiary">
+          <Link href="/dashboard" className="hover:text-brand-text">
+            Dashboard
+          </Link>
+          <span aria-hidden>/</span>
+          <span aria-current="page" className="font-semibold text-brand-text">
+            Plans
+          </span>
+        </nav>
       </div>
 
       <div className="flex flex-col items-center gap-3 text-center">

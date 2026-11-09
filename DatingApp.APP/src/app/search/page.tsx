@@ -1,33 +1,47 @@
 "use client";
 
-import React, { Suspense, useEffect, useMemo, useState } from "react";
-import { useSearchParams, useRouter } from "next/navigation";
-import {
-  SearchNormal1,
-  Filter,
-  CloseCircle,
-  Refresh2,
-  Verify,
-  Star1,
-  Heart,
-  ArrowRight2,
-  User,
-  Briefcase,
-  Location,
-  NoteText
-} from "iconsax-react";
+import React, { Suspense, useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
+import { useSearchParams } from "next/navigation";
+import { ArrowRight2, Crown1, SearchNormal1, Setting4, TextalignLeft, CloseCircle } from "iconsax-react";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
-import { Chip } from "@/components/ui/Chip";
-import { ProfileCard } from "@/components/cards/ProfileCard";
-import { ProfileDetailModal, type ProposalDetail } from "@/components/profile/ProfileDetailModal";
-import { useToast } from "@/components/ui/Toast";
 import { HeartPattern } from "@/components/ui/Decor";
+import { Button } from "@/components/ui/Button";
+import { Flag, type CountryCode } from "@/components/ui/Flag";
+import { Pagination } from "@/components/ui/Pagination";
+import { RemovableFilterChip } from "@/components/ui/RemovableFilterChip";
+import { SortDropdown } from "@/components/ui/SortDropdown";
+import { ViewToggle, type ResultsView } from "@/components/ui/ViewToggle";
+import { useToast } from "@/components/ui/Toast";
+import { useSignedIn } from "@/lib/session";
+import { ProfileCard } from "@/components/cards/ProfileCard";
+import { ProfileCardList } from "@/components/cards/ProfileCardList";
+import { ProfileDetailModal, type ProposalDetail } from "@/components/profile/ProfileDetailModal";
+import {
+  AGE_MAX,
+  AGE_MIN,
+  FiltersSidebar,
+  defaultFilters,
+  type SearchFilters,
+} from "@/components/sections/search/FiltersSidebar";
 import { FEATURED, MARQUEE_PROFILES, type FeaturedProfile } from "@/content/home";
+import {
+  COUNTRY_OPTIONS,
+  HEIGHT_MAX,
+  HEIGHT_MIN,
+  MORE_COUNTRIES,
+  MORE_SECTIONS,
+  SORT_OPTIONS,
+  fmtHeight,
+  matchesProfession,
+  parseHeight,
+  profileExtras,
+  type MoreKey,
+  type SortKey,
+} from "@/content/search";
 import { mockProfiles } from "@/data/mockData";
-import { apiService } from "@/services/api";
 import type { Profile } from "@/types";
-import type { CountryCode } from "@/components/ui/Flag";
 
 // Unified Candidate Proposal Interface
 interface CandidateProposal extends FeaturedProfile {
@@ -41,56 +55,46 @@ interface CandidateProposal extends FeaturedProfile {
   district?: string;
 }
 
-const RELIGIONS = ["All", "Buddhist", "Hindu", "Catholic", "Christian", "Muslim"];
-const PROFESSIONS = [
-  "All",
-  "Doctors & Healthcare",
-  "Engineers & IT",
-  "Teachers & Academia",
-  "Finance & Banking",
-  "Legal & Law",
-  "Business & Executives",
-  "Overseas / Expats",
-];
-const LOCATIONS = [
-  "All",
-  "Colombo",
-  "Kandy",
-  "Galle",
-  "Gampaha",
-  "Kurunegala",
-  "Jaffna",
-  "Kalutara",
-  "Matara",
-  "Australia (Melbourne/Sydney)",
-  "United Kingdom (London)",
-  "Canada (Toronto)",
-  "Middle East (Doha/Dubai)",
-];
+const COUNTRY_LABEL: Partial<Record<CountryCode, string>> = Object.fromEntries(
+  [...COUNTRY_OPTIONS, ...MORE_COUNTRIES].map((c) => [c.code, c.label])
+);
+const PAGE_SIZE: Record<ResultsView, number> = { grid: 12, list: 6 };
 
+/**
+ * Search proposals — Figma "🔍 Search Results" (87:15052):
+ * "Search — Desktop 1440" (grid) and "(List view)". Breadcrumb band, then
+ * Filters sidebar (296) + Results (952): header (title, count, view toggle, sort),
+ * Active filters, Promoted profiles (grid view), results, pagination row.
+ * Query params: ?for=bride|groom, ?min/max (age), ?category, ?id (opens a profile), ?view=list.
+ */
 function SearchPageContent() {
   const searchParams = useSearchParams();
-  const router = useRouter();
   const toast = useToast();
+  const signedIn = useSignedIn();
+  const topRef = useRef<HTMLDivElement>(null);
 
-  // Query parameter initializers
-  const queryFor = searchParams.get("for")?.toLowerCase();
-  const initialGender = queryFor === "bride" ? "bride" : queryFor === "groom" ? "groom" : "all";
-  const initialCategory = searchParams.get("category") || "";
-  const initialMinAge = searchParams.get("min") || "18";
-  const initialMaxAge = searchParams.get("max") || "60";
+  const initialFor = searchParams.get("for")?.toLowerCase() === "groom" ? "groom" : "bride";
   const initialId = searchParams.get("id") || "";
+  const initialCategory = (searchParams.get("category") || "").toLowerCase();
 
-  // Filter States
-  const [genderFilter, setGenderFilter] = useState<"all" | "bride" | "groom">(initialGender as any);
-  const [minAge, setMinAge] = useState<number>(Number(initialMinAge) || 18);
-  const [maxAge, setMaxAge] = useState<number>(Number(initialMaxAge) || 60);
-  const [selectedReligion, setSelectedReligion] = useState<string>("All");
-  const [selectedProfession, setSelectedProfession] = useState<string>("All");
-  const [selectedLocation, setSelectedLocation] = useState<string>("All");
-  const [verifiedOnly, setVerifiedOnly] = useState<boolean>(false);
-  const [horoscopeOnly, setHoroscopeOnly] = useState<boolean>(false);
-  const [searchKeyword, setSearchKeyword] = useState<string>("");
+  const [filters, setFilters] = useState<SearchFilters>(() => {
+    const f = defaultFilters(initialFor);
+    const min = Number(searchParams.get("min"));
+    const max = Number(searchParams.get("max"));
+    if (min) f.age = [Math.max(AGE_MIN, min), f.age[1]];
+    if (max) f.age = [f.age[0], Math.min(AGE_MAX, max)];
+    if (/doctor|health/.test(initialCategory)) f.professions = ["Doctor"];
+    else if (/engineer/.test(initialCategory)) f.professions = ["Engineer"];
+    else if (/teacher/.test(initialCategory)) f.professions = ["Teacher"];
+    else if (/\bit\b|software/.test(initialCategory)) f.professions = ["IT"];
+    else if (/overseas|expat/.test(initialCategory)) f.countries = ["au", "gb", "ca", "qa"];
+    else if (/kandy|colombo|galle/.test(initialCategory)) f.district = initialCategory.replace(/^\w/, (c) => c.toUpperCase());
+    return f;
+  });
+  const [view, setView] = useState<ResultsView>(searchParams.get("view") === "list" ? "list" : "grid");
+  const [sort, setSort] = useState<SortKey>("newest");
+  const [page, setPage] = useState(1);
+  const [drawerOpen, setDrawerOpen] = useState(false);
   const [activeModalProfile, setActiveModalProfile] = useState<ProposalDetail | null>(null);
 
   // Live Database Connectivity State
@@ -118,28 +122,6 @@ function SearchPageContent() {
       isMounted = false;
     };
   }, []);
-
-  // Sync category parameter if provided
-  useEffect(() => {
-    if (initialCategory) {
-      if (initialCategory.toLowerCase().includes("teacher")) {
-        setSelectedProfession("Teachers & Academia");
-        setGenderFilter("bride");
-      } else if (initialCategory.toLowerCase().includes("doctor") || initialCategory.toLowerCase().includes("health")) {
-        setSelectedProfession("Doctors & Healthcare");
-      } else if (initialCategory.toLowerCase().includes("engineer") || initialCategory.toLowerCase().includes("it")) {
-        setSelectedProfession("Engineers & IT");
-      } else if (initialCategory.toLowerCase().includes("overseas") || initialCategory.toLowerCase().includes("expat")) {
-        setSelectedProfession("Overseas / Expats");
-      } else if (initialCategory.toLowerCase().includes("kandy")) {
-        setSelectedLocation("Kandy");
-      } else if (initialCategory.toLowerCase().includes("colombo")) {
-        setSelectedLocation("Colombo");
-      } else {
-        setSearchKeyword(initialCategory);
-      }
-    }
-  }, [initialCategory]);
 
   // Master Pool of Candidates combining Live SQL Server DB, Featured, Mock, and Marquee data
   const candidatePool: CandidateProposal[] = useMemo(() => {
@@ -246,89 +228,79 @@ function SearchPageContent() {
     return list;
   }, []);
 
-  // Check initial id query parameter to auto-open modal
-  useEffect(() => {
-    if (initialId) {
-      const match = candidatePool.find((c) => c.id.toLowerCase() === initialId.toLowerCase());
-      if (match) {
-        handleOpenDetail(match);
+  // Extra list-card details (demo) per profile
+  const extrasById = useMemo(
+    () => Object.fromEntries(candidatePool.map((p) => [p.id, profileExtras(p.id, p.location, p.religion)])),
+    [candidatePool]
+  );
+
+  // Filtered + sorted results
+  const results = useMemo(() => {
+    const f = filters;
+    const list = candidatePool.filter((p) => {
+      if (p.gender !== f.lookingFor) return false;
+      if (p.age < f.age[0] || p.age > f.age[1]) return false;
+      const h = parseHeight(p.height);
+      if (h !== null && (f.height[0] > HEIGHT_MIN || f.height[1] < HEIGHT_MAX) && (h < f.height[0] || h > f.height[1])) return false;
+      if (f.withPhoto && !p.photo) return false;
+      if (f.religions.length) {
+        const rel = p.religion.toLowerCase();
+        const known = ["buddhist", "catholic", "christian", "hindu", "muslim"];
+        const ok = f.religions.some((r) =>
+          r === "Other" ? !known.some((k) => rel.includes(k)) : rel.includes(r.toLowerCase()) || (r === "Muslim" && rel.includes("islam"))
+        );
+        if (!ok) return false;
       }
-    }
-  }, [initialId, candidatePool]);
-
-  // Filtered List
-  const filteredProfiles = useMemo(() => {
-    return candidatePool.filter((p) => {
-      // Gender filter
-      if (genderFilter !== "all" && p.gender !== genderFilter) return false;
-
-      // Age range
-      if (p.age < minAge || p.age > maxAge) return false;
-
-      // Religion
-      if (selectedReligion !== "All" && !p.religion.toLowerCase().includes(selectedReligion.toLowerCase())) {
-        return false;
-      }
-
-      // Profession Category
-      if (selectedProfession !== "All") {
-        const prof = p.profession.toLowerCase();
-        if (selectedProfession === "Doctors & Healthcare" && !prof.includes("doctor") && !prof.includes("nurse") && !prof.includes("pharmacist") && !prof.includes("dental")) {
-          return false;
-        }
-        if (selectedProfession === "Engineers & IT" && !prof.includes("engineer") && !prof.includes("software") && !prof.includes("tech")) {
-          return false;
-        }
-        if (selectedProfession === "Teachers & Academia" && !prof.includes("teacher") && !prof.includes("lecturer") && !prof.includes("bed")) {
-          return false;
-        }
-        if (selectedProfession === "Finance & Banking" && !prof.includes("accountant") && !prof.includes("bank") && !prof.includes("finance")) {
-          return false;
-        }
-        if (selectedProfession === "Overseas / Expats" && p.country === "lk") {
-          return false;
-        }
-      }
-
-      // Location
-      if (selectedLocation !== "All") {
-        const loc = p.location.toLowerCase();
-        if (selectedLocation.includes("Australia") && !loc.includes("australia") && !loc.includes("melbourne") && p.country !== "au") {
-          return false;
-        }
-        if (selectedLocation.includes("United Kingdom") && !loc.includes("uk") && !loc.includes("london") && p.country !== "gb") {
-          return false;
-        }
-        if (selectedLocation.includes("Canada") && !loc.includes("canada") && !loc.includes("toronto") && p.country !== "ca") {
-          return false;
-        }
-        if (selectedLocation.includes("Middle East") && !loc.includes("doha") && !loc.includes("dubai") && p.country !== "qa") {
-          return false;
-        }
-        if (!selectedLocation.includes("(") && !loc.includes(selectedLocation.toLowerCase())) {
-          return false;
-        }
-      }
-
-      // Horoscope
-      if (horoscopeOnly && !p.horoscope) return false;
-
-      // Keyword search
-      if (searchKeyword.trim()) {
-        const kw = searchKeyword.toLowerCase();
-        const matches =
-          p.id.toLowerCase().includes(kw) ||
-          p.profession.toLowerCase().includes(kw) ||
-          p.location.toLowerCase().includes(kw) ||
-          p.religion.toLowerCase().includes(kw) ||
-          (p.bio && p.bio.toLowerCase().includes(kw)) ||
-          (p.education && p.education.toLowerCase().includes(kw));
-        if (!matches) return false;
-      }
-
+      if (f.countries.length && !f.countries.includes(p.country)) return false;
+      const x = extrasById[p.id];
+      if (f.district && x.district !== f.district) return false;
+      if (f.professions.length && !f.professions.some((pr) => matchesProfession(p.profession, pr))) return false;
+      const more = f.more;
+      if (more.ethnicity?.length && !more.ethnicity.includes(x.ethnicity)) return false;
+      if (more.civil?.length && !more.civil.includes(x.civil)) return false;
+      if (more.education?.length && !more.education.includes(x.education)) return false;
+      if (more.postedBy?.length && !more.postedBy.includes(x.postedBy)) return false;
+      if (more.horoscope?.length && !p.horoscope) return false;
       return true;
     });
-  }, [candidatePool, genderFilter, minAge, maxAge, selectedReligion, selectedProfession, selectedLocation, horoscopeOnly, searchKeyword]);
+    const sorted = [...list];
+    if (sort === "best") sorted.sort((a, b) => extrasById[b.id].match - extrasById[a.id].match);
+    if (sort === "age-asc") sorted.sort((a, b) => a.age - b.age);
+    if (sort === "age-desc") sorted.sort((a, b) => b.age - a.age);
+    return sorted;
+  }, [candidatePool, filters, sort, extrasById]);
+
+  // Promoted = the three best-matching results (demo); shown in their own band in grid view
+  const promotedIds = useMemo(
+    () => new Set([...results].sort((a, b) => extrasById[b.id].match - extrasById[a.id].match).slice(0, 3).map((p) => p.id)),
+    [results, extrasById]
+  );
+  const promoted = results.filter((p) => promotedIds.has(p.id));
+  const pool = view === "grid" ? results.filter((p) => !promotedIds.has(p.id)) : [...promoted, ...results.filter((p) => !promotedIds.has(p.id))];
+  const size = PAGE_SIZE[view];
+  const pageCount = Math.max(1, Math.ceil(pool.length / size));
+  const current = pool.slice((page - 1) * size, page * size);
+  const from = pool.length ? (page - 1) * size + 1 : 0;
+  const to = Math.min(page * size, pool.length);
+
+  // Back to page 1 whenever the filters, sort or view change
+  useEffect(() => setPage(1), [filters, sort, view]);
+
+  // Auto-open ?id=
+  useEffect(() => {
+    if (!initialId) return;
+    const match = candidatePool.find((c) => c.id.toLowerCase() === initialId.toLowerCase());
+    if (match) handleOpenDetail(match);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialId, candidatePool]);
+
+  // Lock page scroll while the mobile filter drawer is open
+  useEffect(() => {
+    document.body.style.overflow = drawerOpen ? "hidden" : "";
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [drawerOpen]);
 
   const handleOpenDetail = (p: CandidateProposal) => {
     setActiveModalProfile({
@@ -352,282 +324,233 @@ function SearchPageContent() {
     });
   };
 
-  const handleResetFilters = () => {
-    setGenderFilter("all");
-    setMinAge(18);
-    setMaxAge(60);
-    setSelectedReligion("All");
-    setSelectedProfession("All");
-    setSelectedLocation("All");
-    setVerifiedOnly(false);
-    setHoroscopeOnly(false);
-    setSearchKeyword("");
-    router.push("/search");
+  const goToPage = (p: number) => {
+    setPage(p);
+    topRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
+  const clearAll = () => setFilters(defaultFilters(filters.lookingFor));
+  const sendInterest = (p: FeaturedProfile) => toast.success("Interest sent", `${p.id} will be notified. You can chat once they accept.`);
+  const saveSearch = () => toast.success("Search saved", "We’ll let you know when new matches join.");
+
+  /* ---------- active filter chips ---------- */
+  const chips: { key: string; label: string; value: React.ReactNode; icon?: React.ReactNode; remove: () => void }[] = [];
+  const set = (patch: Partial<SearchFilters>) => setFilters((f) => ({ ...f, ...patch }));
+  chips.push({ key: "for", label: "Looking for", value: filters.lookingFor === "bride" ? "Bride" : "Groom", remove: () => set({ lookingFor: filters.lookingFor === "bride" ? "groom" : "bride" }) });
+  if (filters.age[0] !== AGE_MIN || filters.age[1] !== AGE_MAX)
+    chips.push({ key: "age", label: "Age", value: `${filters.age[0]}–${filters.age[1]}`, remove: () => set({ age: [AGE_MIN, AGE_MAX] }) });
+  if (filters.height[0] !== HEIGHT_MIN || filters.height[1] !== HEIGHT_MAX)
+    chips.push({ key: "height", label: "Height", value: `${fmtHeight(filters.height[0])}–${fmtHeight(filters.height[1])}`, remove: () => set({ height: [HEIGHT_MIN, HEIGHT_MAX] }) });
+  filters.religions.forEach((r) => chips.push({ key: `rel-${r}`, label: "Religion", value: r, remove: () => set({ religions: filters.religions.filter((x) => x !== r) }) }));
+  filters.countries.forEach((c) =>
+    chips.push({ key: `c-${c}`, label: "Country", icon: <Flag country={c} className="h-4 w-4" />, value: COUNTRY_LABEL[c], remove: () => set({ countries: filters.countries.filter((x) => x !== c) }) })
+  );
+  if (filters.district) chips.push({ key: "district", label: "District", value: filters.district, remove: () => set({ district: "" }) });
+  filters.professions.forEach((p) => chips.push({ key: `p-${p}`, label: "Profession", value: p, remove: () => set({ professions: filters.professions.filter((x) => x !== p) }) }));
+  (Object.keys(filters.more) as MoreKey[]).forEach((k) =>
+    (filters.more[k] ?? []).forEach((v) =>
+      chips.push({ key: `${k}-${v}`, label: MORE_SECTIONS[k].title.replace(/ \(.*\)/, ""), value: v, remove: () => set({ more: { ...filters.more, [k]: (filters.more[k] ?? []).filter((x) => x !== v) } }) })
+    )
+  );
+  if (filters.verifiedOnly) chips.push({ key: "verified", label: "", value: "Verified only", remove: () => set({ verifiedOnly: false }) });
+  if (filters.withPhoto) chips.push({ key: "photo", label: "", value: "With photo", remove: () => set({ withPhoto: false }) });
+  const activeCount = chips.length;
+
+  const countryTitle =
+    filters.countries.length === 1 ? COUNTRY_LABEL[filters.countries[0]] : filters.countries.length > 1 ? "selected countries" : "Sri Lanka & abroad";
+  const title = `${filters.lookingFor === "bride" ? "Brides" : "Grooms"} in ${filters.district || countryTitle}`;
+  const listKey = `${view}-${page}-${sort}-${results.length}`;
+
+  const sidebar = (
+    <FiltersSidebar value={filters} onChange={setFilters} onClear={clearAll} onSave={saveSearch} />
+  );
 
   return (
-    <div className="relative isolate min-h-screen bg-page-gradient text-ink flex flex-col">
+    <div className="relative isolate flex min-h-screen flex-col bg-page-gradient text-ink">
       <HeartPattern className="-z-10" />
       <Navbar variant="light" />
 
-      {/* Hero Search Header */}
-      <section className="border-b border-line bg-surface-card/60 backdrop-blur-md pt-8 pb-10 shadow-sm">
-        <div className="container-page flex flex-col gap-6">
-          <div className="flex flex-col gap-2 max-w-2xl">
-            <div className="flex items-center gap-2 text-label-sm text-brand-text">
-              <Verify size={16} color="currentColor" />
-              <span>Sri Lanka’s Verified Marriage Directory</span>
+      {/* Search band — breadcrumb */}
+      <div className="container-page flex h-[68px] items-center">
+        <nav aria-label="Breadcrumb" className="enter flex items-center gap-1.5 text-body-sm text-ink-tertiary">
+          <Link href={signedIn ? "/dashboard" : "/"} className="transition-colors hover:text-brand-text">
+            {signedIn ? "Dashboard" : "Home"}
+          </Link>
+          <ArrowRight2 size={14} color="currentColor" />
+          <span aria-current="page" className="text-ink-secondary">
+            Search proposals
+          </span>
+        </nav>
+      </div>
+
+      <main className="container-page flex flex-1 gap-8 pb-20">
+        {/* Filters sidebar (desktop) */}
+        <div className="enter hidden w-[296px] shrink-0 lg:block">{sidebar}</div>
+
+        {/* Results */}
+        <section ref={topRef} className="flex min-w-0 flex-1 scroll-mt-28 flex-col gap-6" aria-label="Results">
+          {/* Results header */}
+          <div className="enter flex flex-wrap items-end justify-between gap-4">
+            <div className="flex flex-col gap-1">
+              <h1 className="text-h3 text-ink md:text-h2">{title}</h1>
+              <p className="text-body-sm text-ink-secondary">
+                Showing {from}–{to} of{" "}
+                <span key={results.length} className="inline-block animate-pop-in font-semibold text-brand-text">
+                  {results.length.toLocaleString()} proposals
+                </span>
+              </p>
             </div>
-            <h1 className="text-h2 md:text-display-sm text-ink font-extrabold tracking-tight">
-              Find Genuine Proposals
-            </h1>
-            <p className="text-body-md text-ink-secondary">
-              Explore photo-verified proposals across Sri Lanka and expats abroad. Contact details unlock only upon mutual consent.
-            </p>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setDrawerOpen(true)}
+                className="flex h-10 items-center gap-2 rounded-[12px] border border-line bg-surface-card px-3.5 text-label-md text-ink transition-colors hover:border-brand lg:hidden"
+              >
+                <Setting4 size={18} color="currentColor" /> Filters
+                {activeCount > 0 && (
+                  <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-brand px-1.5 text-label-sm text-ink-on-brand">{activeCount}</span>
+                )}
+              </button>
+              <ViewToggle value={view} onChange={setView} />
+              <SortDropdown value={sort} options={SORT_OPTIONS} onChange={setSort} />
+            </div>
           </div>
 
-          {/* Quick Gender Chips & Results Count */}
-          <div className="flex flex-wrap items-center justify-between gap-4 pt-2">
-            <div role="tablist" aria-label="Gender filter" className="flex items-center gap-2">
-              <Chip
-                role="tab"
-                aria-selected={genderFilter === "all"}
-                selected={genderFilter === "all"}
-                avatar="/brand/couple.png"
-                onClick={() => setGenderFilter("all")}
-              >
-                All Proposals
-              </Chip>
-              <Chip
-                role="tab"
-                aria-selected={genderFilter === "bride"}
-                selected={genderFilter === "bride"}
-                avatar="/brand/bride.png"
-                onClick={() => setGenderFilter("bride")}
-              >
-                Brides Only
-              </Chip>
-              <Chip
-                role="tab"
-                aria-selected={genderFilter === "groom"}
-                selected={genderFilter === "groom"}
-                avatar="/brand/groom.png"
-                onClick={() => setGenderFilter("groom")}
-              >
-                Grooms Only
-              </Chip>
-            </div>
-
-            <div className="flex flex-wrap items-center gap-3">
-              {dbStatus === "connected" ? (
-                <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-3 py-1.5 text-xs font-semibold text-emerald-700 dark:text-emerald-400 shadow-sm">
-                  <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-                  SQL Server: AuraMatrimonyDb (Live)
-                </span>
-              ) : (
-                <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-500/20 bg-amber-500/10 px-3 py-1.5 text-xs font-semibold text-amber-700 dark:text-amber-400 shadow-sm" title="API server is stopped. Showing resilient local fallback dataset.">
-                  <span className="h-2 w-2 rounded-full bg-amber-500" />
-                  API Offline: Fallback Dataset
-                </span>
-              )}
-
-              <div className="inline-flex items-center gap-2 rounded-full border border-line bg-surface-card px-4 py-1.5 text-label-md text-ink-secondary shadow-sm">
-                <span>Showing <strong>{filteredProfiles.length}</strong> verified proposals</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Main Content Area: Filters Sidebar + Proposals Grid */}
-      <main className="container-page flex-1 py-10">
-        <div className="grid grid-cols-1 gap-8 lg:grid-cols-4">
-          {/* Filters Sidebar */}
-          <aside className="lg:col-span-1 flex flex-col gap-6">
-            <div className="sticky top-28 rounded-2xl border border-line bg-surface-card p-6 shadow-sm flex flex-col gap-5">
-              <div className="flex items-center justify-between border-b border-line pb-3">
-                <span className="flex items-center gap-2 text-h6 font-bold text-ink">
-                  <Filter size={20} color="currentColor" className="text-icon-brand" />
-                  Filter Proposals
-                </span>
-                <button
-                  type="button"
-                  onClick={handleResetFilters}
-                  className="flex items-center gap-1 text-label-sm text-brand-link hover:underline"
-                >
-                  <Refresh2 size={14} color="currentColor" /> Reset
-                </button>
-              </div>
-
-              {/* Keyword Search */}
-              <div className="flex flex-col gap-1.5">
-                <label className="text-label-sm text-ink-secondary">Keyword Search</label>
-                <div className="relative">
-                  <input
-                    type="text"
-                    value={searchKeyword}
-                    onChange={(e) => setSearchKeyword(e.target.value)}
-                    placeholder="Search by ID, job, city..."
-                    className="w-full h-10 rounded-lg border border-line bg-surface-card px-9 text-body-sm text-ink placeholder:text-ink-tertiary focus:border-brand-focus focus:outline-none focus:ring-1 focus:ring-brand"
-                  />
-                  <SearchNormal1 size={16} color="currentColor" className="absolute left-3 top-3 text-ink-tertiary" />
-                  {searchKeyword && (
-                    <button
-                      type="button"
-                      onClick={() => setSearchKeyword("")}
-                      className="absolute right-3 top-3 text-ink-tertiary hover:text-ink"
-                    >
-                      <CloseCircle size={16} color="currentColor" />
-                    </button>
-                  )}
-                </div>
-              </div>
-
-              {/* Age Range Slider */}
-              <div className="flex flex-col gap-2">
-                <div className="flex items-center justify-between text-label-sm">
-                  <span className="text-ink-secondary">Age Range</span>
-                  <span className="font-semibold text-ink">{minAge} – {maxAge} years</span>
-                </div>
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <span className="text-[11px] text-ink-tertiary">Min Age</span>
-                    <select
-                      value={minAge}
-                      onChange={(e) => setMinAge(Number(e.target.value))}
-                      className="w-full h-9 rounded-md border border-line bg-surface-card px-2 text-body-sm text-ink focus:border-brand-focus focus:outline-none"
-                    >
-                      {[18, 21, 24, 27, 30, 35, 40, 45].map((a) => (
-                        <option key={a} value={a}>{a} yrs</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <span className="text-[11px] text-ink-tertiary">Max Age</span>
-                    <select
-                      value={maxAge}
-                      onChange={(e) => setMaxAge(Number(e.target.value))}
-                      className="w-full h-9 rounded-md border border-line bg-surface-card px-2 text-body-sm text-ink focus:border-brand-focus focus:outline-none"
-                    >
-                      {[25, 30, 35, 40, 45, 50, 60].map((a) => (
-                        <option key={a} value={a}>{a} yrs</option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-              </div>
-
-              {/* Religion Dropdown */}
-              <div className="flex flex-col gap-1.5">
-                <label className="text-label-sm text-ink-secondary">Religion / Faith</label>
-                <select
-                  value={selectedReligion}
-                  onChange={(e) => setSelectedReligion(e.target.value)}
-                  className="w-full h-10 rounded-lg border border-line bg-surface-card px-3 text-body-sm text-ink focus:border-brand-focus focus:outline-none"
-                >
-                  {RELIGIONS.map((r) => (
-                    <option key={r} value={r}>{r}</option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Profession Category */}
-              <div className="flex flex-col gap-1.5">
-                <label className="text-label-sm text-ink-secondary">Profession Sector</label>
-                <select
-                  value={selectedProfession}
-                  onChange={(e) => setSelectedProfession(e.target.value)}
-                  className="w-full h-10 rounded-lg border border-line bg-surface-card px-3 text-body-sm text-ink focus:border-brand-focus focus:outline-none"
-                >
-                  {PROFESSIONS.map((p) => (
-                    <option key={p} value={p}>{p}</option>
-                  ))}
-                </select>
-              </div>
-
-              {/* District & Location */}
-              <div className="flex flex-col gap-1.5">
-                <label className="text-label-sm text-ink-secondary">District / Location</label>
-                <select
-                  value={selectedLocation}
-                  onChange={(e) => setSelectedLocation(e.target.value)}
-                  className="w-full h-10 rounded-lg border border-line bg-surface-card px-3 text-body-sm text-ink focus:border-brand-focus focus:outline-none"
-                >
-                  {LOCATIONS.map((loc) => (
-                    <option key={loc} value={loc}>{loc}</option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Checkbox Toggles */}
-              <div className="flex flex-col gap-2 pt-2 border-t border-line">
-                <label className="flex items-center gap-2 cursor-pointer select-none">
-                  <input
-                    type="checkbox"
-                    checked={horoscopeOnly}
-                    onChange={(e) => setHoroscopeOnly(e.target.checked)}
-                    className="h-4 w-4 rounded border-line text-brand focus:ring-brand"
-                  />
-                  <span className="text-body-sm text-ink flex items-center gap-1">
-                    <Star1 size={14} color="currentColor" className="text-gold-500" /> Horoscope available
-                  </span>
-                </label>
-              </div>
-            </div>
-          </aside>
-
-          {/* Proposals Grid Column */}
-          <div className="lg:col-span-3 flex flex-col gap-6">
-            {filteredProfiles.length > 0 ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
-                {filteredProfiles.map((profile) => (
-                  <ProfileCard
-                    key={profile.id}
-                    profile={profile}
-                    onView={handleOpenDetail}
-                    onInterest={() => {
-                      toast.success(
-                        "Interest Sent!",
-                        `${profile.id} has been notified. You will be alerted as soon as they respond.`
-                      );
-                    }}
-                  />
-                ))}
-              </div>
-            ) : (
-              <div className="flex flex-col items-center justify-center gap-4 rounded-2xl border border-dashed border-line bg-surface-card/60 p-12 text-center">
-                <div className="flex h-16 w-16 items-center justify-center rounded-full bg-brand-subtle text-icon-brand">
-                  <SearchNormal1 size={32} color="currentColor" />
-                </div>
-                <h3 className="text-h4 text-ink font-bold">No Matching Proposals Found</h3>
-                <p className="max-w-md text-body-md text-ink-secondary">
-                  We could not find any proposals matching your exact search filters. Try broadening your age range or clearing specific profession filters.
-                </p>
-                <button
-                  type="button"
-                  onClick={handleResetFilters}
-                  className="mt-2 flex h-11 items-center gap-2 rounded-full bg-brand-gradient px-6 text-button-md text-ink-on-brand shadow-sm hover:shadow-glow"
-                >
-                  <Refresh2 size={18} color="currentColor" /> Clear All Filters
-                </button>
-              </div>
+          {/* Active filters */}
+          <div className="enter flex flex-wrap items-center gap-2 rounded-[16px] border border-line bg-surface-card px-4 py-3 shadow-xs">
+            <span className="mr-1 flex items-center gap-1.5 text-label-md text-ink-secondary">
+              <TextalignLeft size={16} color="currentColor" /> Active filters ({activeCount})
+            </span>
+            {chips.map((c, i) => (
+              <RemovableFilterChip
+                key={c.key}
+                label={c.label || undefined}
+                value={c.value}
+                icon={c.icon}
+                onRemove={c.remove}
+                className="animate-pop-in"
+                style={{ animationDelay: `${Math.min(i, 10) * 25}ms`, animationFillMode: "backwards" }}
+              />
+            ))}
+            {activeCount > 1 && (
+              <button type="button" onClick={clearAll} className="text-label-md text-brand underline-offset-2 hover:underline">
+                Clear all
+              </button>
             )}
           </div>
-        </div>
+
+          {results.length === 0 ? (
+            <EmptyResults onClear={clearAll} />
+          ) : (
+            <>
+              {/* Promoted profiles — grid view, first page */}
+              {view === "grid" && page === 1 && promoted.length > 0 && (
+                <div className="reveal flex flex-col gap-4 rounded-[24px] border border-premium-line bg-premium-bg p-5">
+                  <div className="flex items-center gap-2">
+                    <Crown1 size={20} color="currentColor" className="text-premium-fg" />
+                    <h2 className="flex-1 text-h6 text-premium-fg">Promoted profiles</h2>
+                    <Link href="/plans" className="group text-label-md text-premium-fg">
+                      Promote your profile <span className="inline-block transition-transform group-hover:translate-x-0.5">›</span>
+                    </Link>
+                  </div>
+                  <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-3">
+                    {promoted.map((p, i) => (
+                      <ProfileCard
+                        key={p.id}
+                        profile={p}
+                        promoted
+                        onView={handleOpenDetail}
+                        style={{ animation: `fade-up 500ms cubic-bezier(0.22,1,0.36,1) ${i * 80}ms backwards` }}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {view === "grid" ? (
+                <div key={listKey} className="grid grid-cols-1 gap-8 sm:grid-cols-2 xl:grid-cols-3">
+                  {current.map((p, i) => (
+                    <ProfileCard
+                      key={p.id}
+                      profile={p}
+                      onView={handleOpenDetail}
+                      style={{ animation: `fade-up 500ms cubic-bezier(0.22,1,0.36,1) ${Math.min(i, 8) * 60}ms backwards` }}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <div key={listKey} className="flex flex-col gap-4">
+                  {current.map((p, i) => (
+                    <ProfileCardList
+                      key={p.id}
+                      profile={p}
+                      extras={extrasById[p.id]}
+                      bio={p.bio}
+                      promoted={promotedIds.has(p.id)}
+                      onView={handleOpenDetail}
+                      onInterest={sendInterest}
+                      style={{ animation: `fade-up 500ms cubic-bezier(0.22,1,0.36,1) ${i * 70}ms backwards` }}
+                    />
+                  ))}
+                </div>
+              )}
+
+              {/* Pagination row */}
+              <div className="flex flex-col items-center justify-between gap-4 pt-4 sm:flex-row">
+                <p className="text-body-sm text-ink-secondary">
+                  Showing {from}–{to} of {pool.length.toLocaleString()}
+                </p>
+                <Pagination page={page} pageCount={pageCount} onChange={goToPage} />
+                <Button variant="outline" size="sm" className="rounded-full" onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}>
+                  Back to top
+                </Button>
+              </div>
+            </>
+          )}
+        </section>
       </main>
 
       <Footer />
 
-      {/* Candidate Profile Detail Inspection Modal */}
+      {/* Mobile / tablet filter drawer */}
+      {drawerOpen && (
+        <div className="fixed inset-0 z-[70] lg:hidden">
+          <div className="absolute inset-0 animate-fade-in bg-black/40" onClick={() => setDrawerOpen(false)} aria-hidden />
+          <div className="absolute inset-y-0 left-0 flex w-[min(340px,92vw)] drawer-in flex-col overflow-y-auto bg-page p-3 shadow-xl [&>aside]:shrink-0">
+            <div className="mb-2 flex justify-end">
+              <button type="button" aria-label="Close filters" onClick={() => setDrawerOpen(false)} className="rounded-full p-2 text-ink-secondary hover:bg-surface-subtle">
+                <CloseCircle size={24} color="currentColor" />
+              </button>
+            </div>
+            {sidebar}
+            <Button variant="primary" className="sticky bottom-0 mt-3 shrink-0 rounded-full shadow-lg" onClick={() => setDrawerOpen(false)}>
+              Show {results.length} proposals
+            </Button>
+          </div>
+        </div>
+      )}
+
       {activeModalProfile && (
         <ProfileDetailModal
           profile={activeModalProfile}
           onClose={() => setActiveModalProfile(null)}
-          onConnect={(p, note) => {
-            toast.success("Interest Sent!", `Your introductory request has been delivered to ${p.id}.`);
-          }}
+          onConnect={(p) => toast.success("Interest sent", `Your introductory request has been delivered to ${p.id}.`)}
         />
       )}
+    </div>
+  );
+}
+
+function EmptyResults({ onClear }: { onClear: () => void }) {
+  return (
+    <div className="flex animate-fade-up flex-col items-center gap-3 rounded-[24px] border border-line bg-surface-card px-6 py-16 text-center">
+      <span className="flex h-16 w-16 items-center justify-center rounded-full bg-brand-subtle text-icon-brand">
+        <SearchNormal1 size={30} color="currentColor" />
+      </span>
+      <h2 className="text-h5 text-ink">No proposals match these filters</h2>
+      <p className="max-w-md text-body-md text-ink-secondary">Try a wider age range, another district, or remove a filter or two.</p>
+      <Button variant="primary" className="mt-2 rounded-full" onClick={onClear}>
+        Clear all filters
+      </Button>
     </div>
   );
 }
@@ -636,11 +559,8 @@ export default function SearchPage() {
   return (
     <Suspense
       fallback={
-        <div className="min-h-screen flex items-center justify-center bg-page-gradient">
-          <div className="flex flex-col items-center gap-3 text-ink-secondary">
-            <div className="h-8 w-8 animate-spin rounded-full border-4 border-brand border-t-transparent" />
-            <p className="text-body-md font-medium">Loading marriage proposals...</p>
-          </div>
+        <div className="flex min-h-screen items-center justify-center bg-page-gradient">
+          <div className="h-8 w-8 animate-spin rounded-full border-4 border-brand border-t-transparent" />
         </div>
       }
     >

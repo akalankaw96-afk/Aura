@@ -6,8 +6,10 @@ import { cn } from "@/lib/cn";
 /**
  * Figma: Range Slider (86:19394) — two thumbs on one track.
  * Built from two native range inputs (keyboard + screen-reader friendly),
- * styled to the Figma thumb (white, 3px brand border) and brand fill.
+ * styled to the Figma thumb (22px circle, white, 3px brand border) and brand fill.
+ * The fill is offset by the thumb radius so its ends sit exactly under the thumb centres.
  */
+const THUMB = 22;
 export interface RangeSliderProps {
   min: number;
   max: number;
@@ -29,7 +31,14 @@ export function RangeSlider({ min, max, value, onChange, step = 1, labels, class
     <div className={cn("flex flex-col gap-2", className)}>
       <div className="relative h-6">
         <div className="absolute inset-x-0 top-1/2 h-1.5 -translate-y-1/2 rounded-full bg-surface-muted" />
-        <div className="absolute top-1/2 h-1.5 -translate-y-1/2 rounded-full bg-brand-gradient" style={{ left: `${pct(lo)}%`, right: `${100 - pct(hi)}%` }} />
+        <div
+          className="absolute top-1/2 h-1.5 -translate-y-1/2 rounded-full bg-brand-gradient"
+          style={{
+            // a native thumb centre travels from THUMB/2 to (width − THUMB/2)
+            left: `calc(${pct(lo)}% + ${THUMB / 2 - (pct(lo) / 100) * THUMB}px)`,
+            right: `calc(${100 - pct(hi)}% + ${THUMB / 2 - ((100 - pct(hi)) / 100) * THUMB}px)`,
+          }}
+        />
         <input
           type="range"
           aria-label="Minimum"

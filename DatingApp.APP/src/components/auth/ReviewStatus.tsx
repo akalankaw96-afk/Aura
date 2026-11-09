@@ -102,7 +102,7 @@ export function ReviewStatus() {
           />
         )}
         {view === "resubmitted" && <Resubmitted onBrowse={() => router.push("/")} />}
-        {view === "live" && <Live name={name} onMatches={() => router.push("/")} />}
+        {view === "live" && <Live name={name} onMatches={() => router.push("/dashboard")} />}
       </Card>
 
       <DemoTips

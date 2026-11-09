@@ -33,6 +33,12 @@ export interface RegistrationDraft {
   displayNameFormat: string;
   createdBy: string;
   email: string;
+  /** WhatsApp number (digits only, no country code) — shared only after a match accepts */
+  whatsapp: string;
+  /** dial country for the WhatsApp number, e.g. "lk" */
+  whatsappCountry: string;
+  /** true = WhatsApp is the same as the verified mobile number */
+  whatsappSameAsMobile: boolean;
   height: string;
   /** yyyy-mm-dd, built from the Year / Month / Day selects */
   dob: string;
@@ -59,6 +65,9 @@ export const emptyDraft: RegistrationDraft = {
   displayNameFormat: "",
   createdBy: "",
   email: "",
+  whatsapp: "",
+  whatsappCountry: "lk",
+  whatsappSameAsMobile: true,
   height: "",
   dob: "",
   gender: "",

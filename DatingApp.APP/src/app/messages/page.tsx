@@ -2,6 +2,7 @@
 
 import React, { useMemo, useRef, useState, useEffect, useCallback } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   ArrowLeft,
   AttachCircle,
@@ -18,10 +19,6 @@ import {
   Unlock,
   CheckCheck,
   Check,
-  Sparkles,
-  Wifi,
-  WifiOff,
-  AlertTriangle,
   MessageSquare,
 } from "lucide-react";
 import { cn } from "@/lib/cn";
@@ -29,6 +26,18 @@ import { Button } from "@/components/ui/Button";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { useLanguage } from "@/context/LanguageContext";
+import { BackButton } from "@/components/ui/BackButton";
+import { FilterChip } from "@/components/ui/FilterChip";
+import { useToast } from "@/components/ui/Toast";
+import {
+  BlockConfirmDialog,
+  BlockedComposer,
+  BlockedEmpty,
+  BlockedNotice,
+  BlockedRow,
+  ChatActionMenu,
+} from "@/components/sections/member/ChatSafety";
+import { DEMO_BLOCKED_CONV, DEMO_CONVERSATIONS, demoHistory, type BlockInfo } from "@/content/demoChat";
 import {
   signalrService,
   getConversations,
@@ -42,6 +51,7 @@ import {
 
 export default function MessagesPage() {
   const { t, lang } = useLanguage();
+  const router = useRouter();
 
   // Current logged in user context
   const currentProfileId = "5272b78c-df15-4c1e-9fa0-c3b9e6ed9fc2";
@@ -51,7 +61,15 @@ export default function MessagesPage() {
   const [conversations, setConversations] = useState<ConversationDto[]>([]);
   const [activeConvId, setActiveConvId] = useState<string>("");
   const [messages, setMessages] = useState<ChatMessageDto[]>([]);
-  const [filter, setFilter] = useState<"all" | "unread">("all");
+  const [filter, setFilter] = useState<"all" | "unread" | "blocked">("all");
+  const toast = useToast();
+  // Block / mute state (Figma: Messages — Blocked list / Block confirm).
+  // TODO(api): persist via the backend once block/report endpoints exist.
+  const [blocked, setBlocked] = useState<Record<string, BlockInfo>>({});
+  const [muted, setMuted] = useState<Record<string, boolean>>({});
+  const [blockTargetId, setBlockTargetId] = useState<string | null>(null);
+  const [leavingId, setLeavingId] = useState<string | null>(null);
+  const demoModeRef = useRef(false);
   const [search, setSearch] = useState("");
   const [inputText, setInputText] = useState("");
   const [mobileChatOpen, setMobileChatOpen] = useState(false);
@@ -79,7 +97,15 @@ export default function MessagesPage() {
 
   // Load conversations from backend
   const loadData = useCallback(async () => {
-    const list = await getConversations(currentProfileCode);
+    let list = await getConversations(currentProfileCode);
+    // Offline / no backend → demo conversations so the UI flows can be reviewed.
+    if (!list || list.length === 0) {
+      if (!demoModeRef.current) {
+        demoModeRef.current = true;
+        setBlocked((b) => ({ ...DEMO_BLOCKED_CONV, ...b }));
+      }
+      list = DEMO_CONVERSATIONS;
+    }
     setConversations(list || []);
     if (list && list.length > 0) {
       if (!list.some((c) => c.conversationId === activeConvId)) {
@@ -97,7 +123,7 @@ export default function MessagesPage() {
       setMessages([]);
       return;
     }
-    const history = await getChatHistory(convId, currentProfileId);
+    const history = demoModeRef.current ? demoHistory(convId) : await getChatHistory(convId, currentProfileId);
     if (history && history.length > 0) {
       setMessages(history);
 
@@ -377,6 +403,8 @@ export default function MessagesPage() {
 
   const filteredConversations = useMemo(() => {
     return conversations.filter((c) => {
+      const isBlocked = !!blocked[c.conversationId];
+      if (filter === "blocked" ? !isBlocked : isBlocked) return false;
       if (filter === "unread" && c.unreadCount === 0) return false;
       if (!search.trim()) return true;
       const q = search.toLowerCase();
@@ -385,86 +413,93 @@ export default function MessagesPage() {
         c.lastMessageText.toLowerCase().includes(q)
       );
     });
-  }, [conversations, filter, search]);
+  }, [conversations, filter, search, blocked]);
 
   const unreadTotal = useMemo(() => {
-    return conversations.reduce((acc, c) => acc + (c.unreadCount || 0), 0);
-  }, [conversations]);
+    return conversations.reduce((acc, c) => acc + (blocked[c.conversationId] ? 0 : c.unreadCount || 0), 0);
+  }, [conversations, blocked]);
+  const unreadChats = useMemo(
+    () => conversations.filter((c) => !blocked[c.conversationId] && c.unreadCount > 0).length,
+    [conversations, blocked]
+  );
+  const blockedCount = useMemo(
+    () => conversations.filter((c) => blocked[c.conversationId]).length,
+    [conversations, blocked]
+  );
+  const activeBlocked = activeConv ? blocked[activeConv.conversationId] : undefined;
+  // Bring the Blocked Notice into view when a chat is blocked
+  useEffect(() => {
+    if (activeBlocked) window.setTimeout(scrollToBottom, 60);
+  }, [activeBlocked, scrollToBottom]);
+  const blockTarget = conversations.find((c) => c.conversationId === blockTargetId);
+
+  const todayLabel = () =>
+    new Date().toLocaleDateString(lang === "si" ? "si-LK" : "en-GB", { day: "numeric", month: "short" });
+
+  const confirmBlock = (opts: { reason: string; report: boolean }) => {
+    const target = blockTarget;
+    setBlockTargetId(null);
+    if (!target) return;
+    setBlocked((b) => ({ ...b, [target.conversationId]: { date: todayLabel(), reason: opts.reason } }));
+    setActiveConvId(target.conversationId);
+    toast.success(t.messages.blockedToast(target.partnerName), opts.report ? t.messages.reportedToast : undefined);
+  };
+
+  const unblock = (id: string) => {
+    const conv = conversations.find((c) => c.conversationId === id);
+    const done = () => {
+      setBlocked((b) => {
+        const next = { ...b };
+        delete next[id];
+        return next;
+      });
+      setLeavingId(null);
+      if (conv) toast.success(t.messages.unblockedToast(conv.partnerName));
+    };
+    if (filter === "blocked") {
+      setLeavingId(id); // collapse the row first (Blocked Row → leaving)
+      window.setTimeout(done, 320);
+    } else done();
+  };
+
+  const reportMember = () => toast.info(t.messages.reportedToast);
+
+  const toggleMute = (id: string) => {
+    const next = !muted[id];
+    setMuted((m) => ({ ...m, [id]: next }));
+    toast.info(next ? t.messages.mutedToast : t.messages.unmutedToast);
+  };
 
   return (
     <div className="min-h-screen bg-page-gradient">
       <Navbar variant="member" />
 
       <main className="container-page pb-20 pt-6 lg:pt-8">
-        {/* Header & Breadcrumb & Live SignalR Status */}
-        <div className="mb-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-          <div>
-            <nav aria-label="Breadcrumb" className="mb-2 flex items-center gap-2 text-body-sm text-ink-tertiary">
+        {/* Page header */}
+        <div className="mb-6">
+          {/* Figma: Page header — Back Button left of the title */}
+          <div className="enter grid grid-cols-[44px_minmax(0,1fr)] items-center gap-x-4 gap-y-1">
+            <nav aria-label="Breadcrumb" className="col-start-2 flex items-center gap-2 text-body-sm text-ink-tertiary">
               <Link href="/dashboard" className="transition-colors hover:text-brand">
                 {t.nav.dashboard}
               </Link>
               <span>/</span>
-              <span className="font-semibold text-ink">{t.nav.messages}</span>
+              <span className="font-semibold text-brand-text">{t.nav.messages}</span>
             </nav>
-            <h1 className="text-h2 text-ink flex items-center gap-3">
+            <BackButton label={t.messages.back} />
+            <h1 className="text-h3 text-ink md:text-h2">
               {t.messages.title}
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-brand-subtle text-brand border border-brand/20">
-                <Sparkles className="w-3.5 h-3.5" /> Flow 3 • Real-Time WebSockets
-              </span>
             </h1>
-            <p className="mt-1 text-body-md text-ink-secondary">
+            <p className="col-start-2 text-body-md text-ink-secondary">
               {t.messages.subtitle}
             </p>
           </div>
 
-          {/* SignalR Connection Status Beacon */}
-          <div className="flex items-center gap-2 self-start md:self-auto">
-            <div
-              className={cn(
-                "flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-medium border transition-all shadow-xs",
-                connectionStatus === "connected"
-                  ? "bg-emerald-50 text-emerald-800 border-emerald-200"
-                  : connectionStatus === "connecting" || connectionStatus === "reconnecting"
-                  ? "bg-amber-50 text-amber-800 border-amber-200"
-                  : "bg-zinc-100 text-zinc-600 border-zinc-200"
-              )}
-            >
-              {connectionStatus === "connected" ? (
-                <>
-                  <span className="relative flex h-2 w-2">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-600"></span>
-                  </span>
-                  <Wifi className="w-3.5 h-3.5 text-emerald-600" />
-                  <span>SignalR Live WebSocket</span>
-                </>
-              ) : connectionStatus === "connecting" || connectionStatus === "reconnecting" ? (
-                <>
-                  <span className="h-2 w-2 rounded-full bg-amber-500 animate-pulse" />
-                  <span>Connecting Hub...</span>
-                </>
-              ) : (
-                <>
-                  <WifiOff className="w-3.5 h-3.5 text-zinc-400" />
-                  <span>Local Mode (Auto-Reconnect)</span>
-                </>
-              )}
-            </div>
-
-            {/* Quick Demo Simulator Buttons */}
-            <button
-              onClick={() => handleSend(undefined, "Can you transfer emergency cash to my bank account for urgent travel?")}
-              title="Test Flow 3 Anti-Scam Filter"
-              className="text-xs px-2.5 py-1.5 rounded-md border border-amber-300 bg-amber-50 text-amber-900 hover:bg-amber-100 transition-colors flex items-center gap-1 font-medium"
-            >
-              <AlertTriangle className="w-3 h-3 text-amber-600" />
-              <span>Simulate Scam Trigger</span>
-            </button>
-          </div>
         </div>
 
         {/* Chat Split Window */}
-        <div className="flex h-[720px] overflow-hidden rounded-xl border border-line bg-surface-card shadow-sm">
+        {/* mobile: fills the screen between the top bar and the floating tab bar */}
+        <div className="flex h-[calc(100dvh-200px)] min-h-[460px] overflow-hidden rounded-xl border border-line bg-surface-card shadow-sm lg:h-[720px]">
           {/* Left Panel: Conversation List */}
           <aside
             className={cn(
@@ -485,59 +520,67 @@ export default function MessagesPage() {
                 />
               </div>
 
-              {/* Filter Pills */}
-              <div className="mt-3 flex gap-2">
-                <button
-                  type="button"
-                  onClick={() => setFilter("all")}
-                  className={cn(
-                    "rounded-full px-3 py-1 text-label-sm transition-all",
-                    filter === "all"
-                      ? "bg-brand-gradient text-ink-on-brand shadow-xs"
-                      : "bg-surface-subtle text-ink-secondary hover:text-ink"
-                  )}
-                >
+              {/* Filter Pills — Figma: Filter Chip / Size = Wide (16px sides) */}
+              <div className="mt-3 flex gap-2 overflow-x-auto pb-0.5">
+                <FilterChip selected={filter === "all"} onClick={() => setFilter("all")}>
                   {t.messages.all}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setFilter("unread")}
-                  className={cn(
-                    "flex items-center gap-1.5 rounded-full px-3 py-1 text-label-sm transition-all",
-                    filter === "unread"
-                      ? "bg-brand-gradient text-ink-on-brand shadow-xs"
-                      : "bg-surface-subtle text-ink-secondary hover:text-ink"
-                  )}
+                </FilterChip>
+                <FilterChip selected={filter === "unread"} count={unreadChats} onClick={() => setFilter("unread")}>
+                  {t.messages.unread}
+                </FilterChip>
+                <FilterChip
+                  selected={filter === "blocked"}
+                  count={blockedCount}
+                  onClick={() => setFilter("blocked")}
+                  className={filter === "blocked" ? "!bg-none bg-error-fg" : undefined}
                 >
-                  <span>{t.messages.unread}</span>
-                  {unreadTotal > 0 && (
-                    <span
-                      className={cn(
-                        "flex h-4 min-w-[16px] items-center justify-center rounded-full px-1 text-[10px] font-bold",
-                        filter === "unread" ? "bg-white/20 text-white" : "bg-brand text-ink-on-brand"
-                      )}
-                    >
-                      {unreadTotal}
-                    </span>
-                  )}
-                </button>
+                  {t.messages.blocked}
+                </FilterChip>
               </div>
             </div>
 
             {/* Conversation Items List */}
-            <div className="flex-1 overflow-y-auto p-2">
-              {filteredConversations.length === 0 ? (
+            <div key={filter} className="flex-1 overflow-y-auto p-2">
+              {filter === "blocked" ? (
+                <div className="flex flex-col">
+                  <div className="animate-fade-up px-2 pb-3 pt-1">
+                    <p className="text-label-lg text-ink">{t.messages.blockedMembers}</p>
+                    <p className="mt-1 text-body-xs text-ink-secondary">{t.messages.blockedHelp}</p>
+                  </div>
+                  {filteredConversations.length === 0 ? (
+                    <BlockedEmpty />
+                  ) : (
+                    filteredConversations.map((c, i) => {
+                      const info = blocked[c.conversationId];
+                      return (
+                        <BlockedRow
+                          key={c.conversationId}
+                          index={i}
+                          name={c.partnerName}
+                          photo={c.partnerPhotoUrl}
+                          meta={[t.messages.blockedOn(info?.date ?? ""), info?.reason].filter(Boolean).join(" · ")}
+                          selected={activeConv?.conversationId === c.conversationId}
+                          leaving={leavingId === c.conversationId}
+                          onSelect={() => handleSelectConv(c.conversationId)}
+                          onUnblock={() => unblock(c.conversationId)}
+                        />
+                      );
+                    })
+                  )}
+                </div>
+              ) : filteredConversations.length === 0 ? (
                 <div className="py-12 text-center text-body-sm text-ink-tertiary">
                   No accepted match conversations found.
                 </div>
               ) : (
-                filteredConversations.map((c) => {
+                filteredConversations.map((c, i) => {
                   const isSelected = activeConv?.conversationId === c.conversationId;
                   return (
                     <button
                       key={c.conversationId}
                       type="button"
                       onClick={() => handleSelectConv(c.conversationId)}
+                      style={{ animation: `fade-up 450ms cubic-bezier(0.22,1,0.36,1) ${i * 60}ms backwards` }}
                       className={cn(
                         "flex w-full items-center gap-3 rounded-lg p-3 text-left transition-all",
                         isSelected
@@ -598,23 +641,23 @@ export default function MessagesPage() {
           {activeConv ? (
             <section
               className={cn(
-                "flex flex-1 flex-col bg-surface-card",
+                "flex min-w-0 flex-1 flex-col bg-surface-card",
                 !mobileChatOpen ? "hidden lg:flex" : "flex"
               )}
             >
               {/* Chat Header */}
-              <div className="flex h-[76px] items-center justify-between border-b border-line px-6">
-                <div className="flex items-center gap-3">
+              <div className="flex h-[68px] items-center justify-between gap-2 border-b border-line px-2 sm:h-[76px] sm:px-6">
+                <div className="flex min-w-0 items-center gap-2 sm:gap-3">
                   <button
                     type="button"
                     onClick={() => setMobileChatOpen(false)}
                     aria-label="Back to conversations"
-                    className="flex h-9 w-9 items-center justify-center rounded-full text-ink-tertiary hover:bg-surface-subtle lg:hidden"
+                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-ink-tertiary hover:bg-surface-subtle lg:hidden"
                   >
                     <ArrowLeft size={20} color="currentColor" />
                   </button>
 
-                  <div className="relative">
+                  <div className="relative shrink-0">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
                       src={activeConv.partnerPhotoUrl}
@@ -626,28 +669,38 @@ export default function MessagesPage() {
                     )}
                   </div>
 
-                  <div>
+                  <div className="min-w-0">
                     <h2 className="flex items-center gap-1.5 text-label-lg text-ink">
-                      {activeConv.partnerName}
-                      <Verify size={16} color="currentColor" variant="Bold" className="text-icon-brand" />
+                      <span className="truncate">{activeConv.partnerName}</span>
+                      <Verify size={16} color="currentColor" variant="Bold" className="shrink-0 text-icon-brand" />
                     </h2>
-                    <p className="text-caption text-ink-tertiary">
-                      {activeConv.partnerProfession || "Verified Candidate"} • Active Now
-                    </p>
+                    {activeBlocked ? (
+                      <p className="animate-fade-in truncate text-caption text-error-fg">{t.messages.blockedStatus}</p>
+                    ) : (
+                      <p className="truncate text-caption text-ink-tertiary">
+                        {activeConv.partnerProfession || "Verified Candidate"} • Active Now
+                      </p>
+                    )}
                   </div>
                 </div>
 
-                <div className="flex items-center gap-3">
+                <div className="flex shrink-0 items-center gap-1.5 sm:gap-3">
+                  {activeBlocked ? (
+                    <Button variant="outline" size="sm" className="animate-pop-in rounded-full" onClick={() => unblock(activeConv.conversationId)}>
+                      {t.messages.unblock}
+                    </Button>
+                  ) : (
+                  <>
                   {/* Flow 3 Mutual Contact Unlock Action */}
                   {unlockedPhone || activeConv.isContactShared ? (
-                    <div className="flex items-center gap-2 px-3 py-1.5 bg-emerald-50 text-emerald-800 rounded-lg border border-emerald-200 text-xs font-medium">
+                    <div className="hidden md:flex items-center gap-2 px-3 py-1.5 bg-emerald-50 text-emerald-800 rounded-lg border border-emerald-200 text-caption font-medium">
                       <Unlock className="w-3.5 h-3.5 text-emerald-600" />
                       <span>{unlockedPhone || activeConv.partnerPhoneNumber || "+94 77 123 4567"}</span>
                       <a
                         href={`https://wa.me/${(unlockedPhone || activeConv.partnerPhoneNumber || "94771234567").replace(/\D/g, "")}`}
                         target="_blank"
                         rel="noreferrer"
-                        className="ml-1 px-2 py-0.5 rounded bg-emerald-600 text-white text-[11px] font-semibold hover:bg-emerald-700 transition-colors"
+                        className="ml-1 px-2 py-0.5 rounded bg-emerald-600 text-white text-caption font-semibold hover:bg-emerald-700 transition-colors"
                       >
                         WhatsApp
                       </a>
@@ -657,41 +710,63 @@ export default function MessagesPage() {
                       variant="outline"
                       size="sm"
                       onClick={handleRequestContact}
-                      className="text-xs flex items-center gap-1.5 border-brand/30 text-brand hover:bg-brand/5"
+                      className="hidden md:inline-flex text-caption items-center gap-1.5 border-brand/30 text-brand hover:bg-brand/5"
                     >
                       <Lock className="w-3.5 h-3.5" />
                       <span>Request Contact Exchange</span>
                     </Button>
                   )}
 
-                  <Link href="/requests">
+                  <Link href="/requests" className="hidden md:block">
                     <Button variant="outline" size="sm">
                       {t.messages.viewProfile}
                     </Button>
                   </Link>
+                  </>
+                  )}
 
-                  <button
-                    type="button"
-                    aria-label="Conversation options"
-                    className="flex h-9 w-9 items-center justify-center rounded-full text-ink-tertiary hover:bg-surface-subtle"
-                  >
-                    <More size={20} color="currentColor" />
-                  </button>
+                  {/* Figma: Action Menu (⋯) — Mute, Block, Report */}
+                  <ChatActionMenu
+                    muted={!!muted[activeConv.conversationId]}
+                    onToggleMute={() => toggleMute(activeConv.conversationId)}
+                    onBlock={() => (activeBlocked ? undefined : setBlockTargetId(activeConv.conversationId))}
+                    onReport={reportMember}
+                    compactItems={
+                      activeBlocked
+                        ? []
+                        : [
+                            { key: "profile", label: t.messages.viewProfile, onClick: () => router.push("/requests") },
+                            unlockedPhone || activeConv.isContactShared
+                              ? { key: "whatsapp", label: `WhatsApp ${unlockedPhone || activeConv.partnerPhoneNumber || ""}`.trim(), onClick: () => window.open(`https://wa.me/${(unlockedPhone || activeConv.partnerPhoneNumber || "94771234567").replace(/\D/g, "")}`, "_blank") }
+                              : { key: "contact", label: "Request contact exchange", onClick: handleRequestContact },
+                          ]
+                    }
+                    trigger={({ open, toggle }) => (
+                      <button
+                        type="button"
+                        aria-label={t.messages.moreOptions}
+                        aria-haspopup="menu"
+                        aria-expanded={open}
+                        onClick={toggle}
+                        className={cn(
+                          "flex h-9 w-9 items-center justify-center rounded-full text-ink-tertiary transition-all hover:bg-surface-subtle",
+                          open && "bg-brand-subtle text-brand rotate-90"
+                        )}
+                      >
+                        <More size={20} color="currentColor" />
+                      </button>
+                    )}
+                  />
                 </div>
               </div>
 
               {/* Messages Thread */}
-              <div className="flex-1 overflow-y-auto p-6 space-y-4">
-                {/* Flow 3 Safety Notice Banner */}
-                <div className="mx-auto flex max-w-xl items-center gap-2 rounded-xl border border-warning-line/40 bg-warning-bg/60 p-3 text-body-xs text-warning-fg">
-                  <ShieldTick size={20} color="currentColor" className="shrink-0 text-amber-600" />
-                  <div>
-                    <span className="font-semibold text-amber-900 block">Flow 3 Guardrail Active</span>
-                    <span className="text-ink-secondary">
-                      Outgoing messages are actively protected. Solicitations for cash or unverified banking transfers are strictly prohibited.
-                    </span>
-                  </div>
-                </div>
+              <div className={cn("relative flex-1 overflow-y-auto overflow-x-hidden p-3 space-y-4 sm:p-6 transition-colors duration-300", activeBlocked && "bg-surface-subtle")}>
+                <div className={cn("space-y-4 transition-opacity duration-500", activeBlocked && "pointer-events-none select-none opacity-40 grayscale")}>
+                {/* Figma: Safety note */}
+                <p className="mx-auto flex w-fit max-w-full items-center gap-2 rounded-[12px] bg-info-bg px-3.5 py-2 text-body-xs font-semibold text-info-fg">
+                  <ShieldTick size={16} color="currentColor" className="shrink-0" /> {t.messages.safetyNote}
+                </p>
 
                 {/* Contact Request Pending Banner if partner requested contact */}
                 {contactRequestPending && (
@@ -702,7 +777,7 @@ export default function MessagesPage() {
                       </div>
                       <div>
                         <span className="font-semibold text-ink block">Contact Exchange Requested</span>
-                        <span className="text-ink-secondary text-xs">
+                        <span className="text-ink-secondary text-caption">
                           {activeConv.partnerName} requested to unlock direct WhatsApp and phone numbers.
                         </span>
                       </div>
@@ -734,7 +809,7 @@ export default function MessagesPage() {
                     >
                       <div
                         className={cn(
-                          "max-w-[500px] p-3.5 text-body-md transition-all shadow-xs relative",
+                          "max-w-[85%] break-words p-3.5 text-body-md transition-all shadow-xs relative sm:max-w-[500px]",
                           m.isFlaggedBySafety
                             ? "rounded-2xl border-2 border-amber-400 bg-amber-50/90 text-amber-950"
                             : isMe
@@ -744,7 +819,7 @@ export default function MessagesPage() {
                       >
                         {/* Anti-Scam Alert Banner */}
                         {m.isFlaggedBySafety && (
-                          <div className="mb-2 flex items-center gap-1.5 text-xs font-bold text-amber-800 bg-amber-200/70 px-2 py-1 rounded">
+                          <div className="mb-2 flex items-center gap-1.5 text-caption font-bold text-amber-800 bg-amber-200/70 px-2 py-1 rounded">
                             <ShieldAlert className="w-4 h-4 text-amber-700 shrink-0" />
                             <span>{m.safetyFlagReason || "Safety Warning: Potential risk detected."}</span>
                           </div>
@@ -771,7 +846,7 @@ export default function MessagesPage() {
 
                 {/* Typing Indicator Bubble */}
                 {partnerTyping && (
-                  <div className="flex items-center gap-2 text-ink-tertiary text-xs bg-surface-subtle px-3 py-1.5 rounded-full w-fit animate-pulse">
+                  <div className="flex items-center gap-2 text-ink-tertiary text-caption bg-surface-subtle px-3 py-1.5 rounded-full w-fit animate-pulse">
                     <MessageSquare className="w-3.5 h-3.5 text-brand" />
                     <span>{partnerTyping} is typing...</span>
                     <span className="flex gap-1">
@@ -782,15 +857,28 @@ export default function MessagesPage() {
                   </div>
                 )}
 
+                </div>
+
+                {activeBlocked && (
+                  <BlockedNotice
+                    name={activeConv.partnerName}
+                    onReport={reportMember}
+                    onUnblock={() => unblock(activeConv.conversationId)}
+                  />
+                )}
+
                 <div ref={messagesEndRef} />
               </div>
 
-              {/* Composer */}
-              <form onSubmit={handleSend} className="flex items-center gap-3 border-t border-line p-4">
+              {/* Composer — read-only when blocked */}
+              {activeBlocked ? (
+                <BlockedComposer />
+              ) : (
+              <form onSubmit={handleSend} className="flex items-center gap-2 border-t border-line p-2.5 sm:gap-3 sm:p-4">
                 <button
                   type="button"
                   aria-label="Attach document or photo"
-                  className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-ink-tertiary transition-colors hover:bg-surface-subtle hover:text-brand"
+                  className="flex h-10 w-10 shrink-0 sm:h-11 sm:w-11 items-center justify-center rounded-full text-ink-tertiary transition-colors hover:bg-surface-subtle hover:text-brand"
                 >
                   <AttachCircle size={24} color="currentColor" />
                 </button>
@@ -808,11 +896,14 @@ export default function MessagesPage() {
                   variant="primary"
                   size="md"
                   disabled={!inputText.trim()}
+                  aria-label={t.messages.send}
+                  className="shrink-0 max-sm:h-11 max-sm:w-11 max-sm:rounded-full max-sm:px-0"
                   rightIcon={<Send2 size={18} color="currentColor" />}
                 >
-                  {t.messages.send}
+                  <span className="hidden sm:inline">{t.messages.send}</span>
                 </Button>
               </form>
+              )}
             </section>
           ) : (
             <div className="flex flex-1 items-center justify-center text-body-md text-ink-tertiary">
@@ -821,6 +912,13 @@ export default function MessagesPage() {
           )}
         </div>
       </main>
+
+      <BlockConfirmDialog
+        open={!!blockTarget}
+        name={blockTarget?.partnerName ?? ""}
+        onCancel={() => setBlockTargetId(null)}
+        onConfirm={confirmBlock}
+      />
 
       <Footer />
     </div>

@@ -7,7 +7,9 @@ import { StatusIcon, type StatusType } from "./StatusIcon";
 
 /**
  * Figma: Toast (Type = Success / Error / Warning / Info)
- * Shown top-centre (agreed in the design review), auto-dismiss after 4s.
+ * Shown top-centre (agreed in the design review). The accent line at the top
+ * fills left → right over 4s (pauses on hover); when it is full the toast
+ * slides out and closes.
  * Usage: const toast = useToast(); toast.success("Title", "Message")
  */
 export interface ToastItem {
@@ -30,7 +32,24 @@ const iconBg: Record<StatusType, string> = {
   info: "bg-info-bg",
 };
 
-export function ToastCard({ item, onClose, static: isStatic }: { item: Omit<ToastItem, "id">; onClose?: () => void; static?: boolean }) {
+export const TOAST_DURATION = 4000;
+
+export function ToastCard({
+  item,
+  onClose,
+  static: isStatic,
+  duration = TOAST_DURATION,
+  paused,
+  onProgressEnd,
+}: {
+  item: Omit<ToastItem, "id">;
+  onClose?: () => void;
+  static?: boolean;
+  /** ms for the progress line to fill (live toasts only) */
+  duration?: number;
+  paused?: boolean;
+  onProgressEnd?: () => void;
+}) {
   return (
     <div
       role={item.type === "error" ? "alert" : "status"}
@@ -39,8 +58,22 @@ export function ToastCard({ item, onClose, static: isStatic }: { item: Omit<Toas
         !isStatic && "pointer-events-auto"
       )}
     >
-      <span className={cn("absolute left-0 top-0 h-[3px] w-1/4 rounded-br-full", accent[item.type])} />
-      <span className={cn("flex h-9 w-9 shrink-0 items-center justify-center rounded-full", iconBg[item.type])}>
+      {isStatic ? (
+        <span className={cn("absolute left-0 top-0 h-[3px] w-1/4 rounded-br-full", accent[item.type])} />
+      ) : (
+        <>
+          {/* track */}
+          <span aria-hidden className={cn("absolute inset-x-0 top-0 h-[3px] opacity-15", accent[item.type])} />
+          {/* progress — fills left → right, then the toast closes */}
+          <span
+            aria-hidden
+            onAnimationEnd={onProgressEnd}
+            className={cn("toast-progress absolute left-0 top-0 h-[3px] w-full rounded-r-full", accent[item.type])}
+            style={{ ["--toast-duration" as string]: `${duration}ms`, animationPlayState: paused ? "paused" : "running" } as React.CSSProperties}
+          />
+        </>
+      )}
+      <span className={cn("toast-icon flex h-9 w-9 shrink-0 items-center justify-center rounded-full", iconBg[item.type])}>
         <StatusIcon type={item.type} size={20} />
       </span>
       <div className="min-w-0 flex-1 pt-0.5">
@@ -77,9 +110,8 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
       const id = ++idRef.current;
       // newest on top, max 2 visible
       setItems((s) => [{ id, type, title, message }, ...s].slice(0, 2));
-      window.setTimeout(() => remove(id), 4000);
     },
-    [remove]
+    []
   );
 
   const api: ToastApi = {
@@ -95,12 +127,30 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
       {children}
       <div aria-live="polite" className="pointer-events-none fixed left-1/2 top-5 z-[100] flex -translate-x-1/2 flex-col items-center gap-2">
         {items.map((t) => (
-          <div key={t.id} className="animate-toast-in">
-            <ToastCard item={t} onClose={() => remove(t.id)} />
-          </div>
+          <LiveToast key={t.id} item={t} onDone={() => remove(t.id)} />
         ))}
       </div>
     </ToastContext.Provider>
+  );
+}
+
+/** One on-screen toast: enter → progress fills (pauses on hover) → exit → removed. */
+function LiveToast({ item, onDone }: { item: ToastItem; onDone: () => void }) {
+  const [hover, setHover] = useState(false);
+  const [leaving, setLeaving] = useState(false);
+  const close = () => {
+    if (leaving) return;
+    setLeaving(true);
+    window.setTimeout(onDone, 280);
+  };
+  return (
+    <div
+      className={leaving ? "toast-leave" : "toast-enter"}
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
+    >
+      <ToastCard item={item} paused={hover || leaving} onProgressEnd={close} onClose={close} />
+    </div>
   );
 }
 
