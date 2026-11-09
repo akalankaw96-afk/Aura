@@ -83,8 +83,21 @@ export interface ProfileExtras {
   match: number;
   active: string;
   posted: string;
+  /** exact posting time, e.g. "8 Nov · 9:30 AM" (demo) */
+  postedAt: string;
   photos: number;
   district: string;
+}
+
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+function postedAt(id: string, daysAgo: number) {
+  const d = new Date();
+  d.setDate(d.getDate() - daysAgo);
+  const h = hash(id + "t");
+  const hour = 7 + (h % 14); // 7 AM – 8 PM
+  const min = (h % 4) * 15;
+  const h12 = hour % 12 || 12;
+  return `${d.getDate()} ${MONTHS[d.getMonth()]} · ${h12}:${String(min).padStart(2, "0")} ${hour < 12 ? "AM" : "PM"}`;
 }
 
 export function profileExtras(id: string, location: string, religion: string): ProfileExtras {
@@ -98,6 +111,7 @@ export function profileExtras(id: string, location: string, religion: string): P
     match: 72 + (h % 27),
     active: pick(["Active now", "Active today", "Active 2h ago", "Active yesterday", "Active 3 days ago"], id, 4),
     posted: pick(["Posted today", "Posted 2 days ago", "Posted 5 days ago", "Posted last week"], id, 5),
+    postedAt: postedAt(id, pick([0, 2, 5, 7], id, 5)),
     photos: 2 + (h % 5),
     district,
   };

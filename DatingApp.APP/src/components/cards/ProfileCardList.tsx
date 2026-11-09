@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import {
   Book1,
   Briefcase,
+  Clock,
   Crown1,
   Gallery,
   Heart,
@@ -151,8 +152,12 @@ export function ProfileCardList({
               <Star1 size={14} color="currentColor" /> Horoscope
             </span>
           )}
-          <span className="inline-flex h-[26px] items-center gap-1 rounded-full bg-surface-subtle px-2.5 text-label-sm text-ink-secondary">
-            <Profile size={14} color="currentColor" /> {extras.posted}
+          {/* posted time — list (landscape) card only */}
+          <span title={`Posted on ${extras.postedAt}`} className="inline-flex h-[26px] items-center gap-1.5 rounded-full bg-surface-subtle px-2.5 text-label-sm text-ink-secondary">
+            <Clock size={14} color="currentColor" className="text-icon-brand" />
+            {extras.posted}
+            <span aria-hidden className="text-ink-disabled">·</span>
+            <span className="text-ink-tertiary">{extras.postedAt}</span>
           </span>
           <div className="ml-auto flex gap-2">
             <Button variant="outline" size="md" className="rounded-full" onClick={() => onView(profile)}>
