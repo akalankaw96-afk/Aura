@@ -2,11 +2,12 @@
 
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
-import { AddCircle, Lovely, TickCircle } from "iconsax-react";
+import { AddCircle, Lock1, Lovely, TickCircle } from "iconsax-react";
 import { cn } from "@/lib/cn";
 import { DASH_HERO, MEMBER } from "@/content/dashboard";
 import { HERO } from "@/content/home";
 import { useLanguage } from "@/context/LanguageContext";
+import { useKyc } from "@/lib/verification";
 
 /**
  * Figma: Dashboard → Hero — 1280 wide, padding 48, gap 40, radius 2xl.
@@ -15,6 +16,7 @@ import { useLanguage } from "@/context/LanguageContext";
  */
 export function DashboardHero() {
   const { t, lang } = useLanguage();
+  const { locked } = useKyc();
   const [hello, setHello] = useState("Welcome");
 
   useEffect(() => {
@@ -42,12 +44,28 @@ export function DashboardHero() {
             {hello}, {MEMBER.firstName}
           </h1>
           <p className="enter text-body-md text-ink-on-brand-muted md:text-body-lg" style={{ "--enter-delay": "160ms" } as React.CSSProperties}>
-            {lang === "si" ? `අද දිනයේ නව ගැළපීම් 12ක් සහ යෝජනා 3ක් ඔබ වෙනුවෙන් සූදානම්ව ඇත.` : DASH_HERO.subtitle}
+            {locked
+              ? lang === "si"
+                ? "ඔබේ පැතිකඩ සමාලෝචනය වෙමින් පවතී — අතරතුර ඔබේ පාලක පුවරුව බලන්න."
+                : "Your profile is being reviewed — take a look around while we get your matches ready."
+              : lang === "si"
+              ? `අද දිනයේ නව ගැළපීම් 12ක් සහ යෝජනා 3ක් ඔබ වෙනුවෙන් සූදානම්ව ඇත.`
+              : DASH_HERO.subtitle}
           </p>
           <div className="enter flex flex-wrap gap-3 pt-2" style={{ "--enter-delay": "240ms" } as React.CSSProperties}>
-            <Link href={DASH_HERO.primary.href} className="flex h-11 items-center rounded-full bg-brand-gradient px-6 text-button-md text-ink-on-brand transition-shadow hover:shadow-glow">
-              {t.dashboard.seeMatches}
-            </Link>
+            {locked ? (
+              <span
+                aria-disabled
+                title="Unlocks after your profile is approved"
+                className="flex h-11 cursor-not-allowed items-center gap-2 rounded-full bg-[rgba(255,255,255,0.18)] px-6 text-button-md text-ink-on-brand-muted"
+              >
+                <Lock1 size={16} color="currentColor" /> {t.dashboard.seeMatches}
+              </span>
+            ) : (
+              <Link href={DASH_HERO.primary.href} className="flex h-11 items-center rounded-full bg-brand-gradient px-6 text-button-md text-ink-on-brand transition-shadow hover:shadow-glow">
+                {t.dashboard.seeMatches}
+              </Link>
+            )}
             <Link href={DASH_HERO.secondary.href} className="flex h-11 items-center rounded-full bg-brand-subtle px-6 text-button-md text-brand-text ring-1 ring-inset ring-brand">
               {t.dashboard.completeProfile}
             </Link>
@@ -63,6 +81,7 @@ export function DashboardHero() {
 /** Figma: Hero → Profile strength — glass card, 340 wide, padding 20, gap 16, radius xl */
 function ProfileStrength() {
   const { t, lang } = useLanguage();
+  const { locked } = useKyc();
   const [w, setW] = useState(0);
   useEffect(() => {
     const tTimer = window.setTimeout(() => setW(MEMBER.strength), 500);
@@ -87,7 +106,7 @@ function ProfileStrength() {
         <img src={MEMBER.photo} alt="" className="h-14 w-14 rounded-full border-2 border-white object-cover" />
         <div className="flex flex-col gap-0.5">
           <p className="text-h6">{MEMBER.fullName}</p>
-          <p className="text-caption text-ink-on-brand-muted">{MEMBER.id} · {t.featured.verified}</p>
+          <p className="text-caption text-ink-on-brand-muted">{locked ? "Pending review" : `${MEMBER.id} · ${t.featured.verified}`}</p>
         </div>
       </div>
       <div className="flex flex-col gap-2">

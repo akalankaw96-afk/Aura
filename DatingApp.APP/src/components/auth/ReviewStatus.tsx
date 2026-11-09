@@ -35,6 +35,7 @@ import {
 import { cn } from "@/lib/cn";
 import { ageFrom, containsContactDetails, loadDraft, saveDraft, type RegistrationDraft } from "@/lib/demo";
 import { AuthShell } from "./AuthShell";
+import { setKyc } from "@/lib/verification";
 import { DemoTips } from "./DemoTips";
 
 /**
@@ -48,7 +49,7 @@ import { DemoTips } from "./DemoTips";
  */
 type View = "submitted" | "changes" | "edit" | "resubmitted" | "live";
 
-const FLAGGED = [
+export const FLAGGED = [
   { key: "photo", label: "Main photo", reason: "Face not clearly visible — upload a clear photo", Icon: Gallery },
   { key: "about", label: "About you", reason: "Contains a phone number — please remove it", Icon: MessageText1 },
   { key: "dob", label: "Date of birth", reason: "Doesn’t match your ID — check and update", Icon: Calendar },
@@ -69,7 +70,11 @@ export function ReviewStatus() {
 
   const setStatus = (v: View) => {
     setView(v);
-    if (v !== "edit") setDraft(saveDraft({ reviewStatus: v }));
+    if (v !== "edit") {
+      setDraft(saveDraft({ reviewStatus: v }));
+      // keep the Dashboard verification panel in step
+      setKyc(v === "submitted" ? "pending" : v);
+    }
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
@@ -88,7 +93,7 @@ export function ReviewStatus() {
     <AuthShell action="avatar">
       <Stepper step={5} className="max-w-[680px]" />
       <Card className="w-full max-w-[680px] p-5 sm:p-8">
-        {view === "submitted" && <Submitted onBrowse={() => router.push("/")} />}
+        {view === "submitted" && <Submitted onBrowse={() => router.push("/dashboard")} />}
         {view === "changes" && <ChangesNeeded onFix={() => setStatus("edit")} />}
         {view === "edit" && draft && (
           <FixFields
@@ -101,7 +106,7 @@ export function ReviewStatus() {
             }}
           />
         )}
-        {view === "resubmitted" && <Resubmitted onBrowse={() => router.push("/")} />}
+        {view === "resubmitted" && <Resubmitted onBrowse={() => router.push("/dashboard")} />}
         {view === "live" && <Live name={name} onMatches={() => router.push("/dashboard")} />}
       </Card>
 

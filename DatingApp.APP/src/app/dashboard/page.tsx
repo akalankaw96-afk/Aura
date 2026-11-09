@@ -3,6 +3,8 @@ import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { HeartPattern } from "@/components/ui/Decor";
 import { BestMatches, DashboardHero, Inbox, SearchCard, StatsRow } from "@/components/sections/dashboard";
+import { VerificationPanel } from "@/components/sections/dashboard/VerificationPanel";
+import { FeatureGate } from "@/components/sections/dashboard/FeatureGate";
 
 export const metadata: Metadata = { title: "Dashboard | Aura Matrimony" };
 
@@ -20,12 +22,21 @@ export default function DashboardPage() {
       <Navbar variant="member" />
       <main>
         <div className="container-page flex flex-col gap-6 pb-12 pt-6 lg:pt-8">
+          {/* new members: profile review status (pending / changes needed) — hidden once live */}
+          <VerificationPanel />
           <DashboardHero />
           <StatsRow />
-          <Inbox />
-          <SearchCard />
+          {/* locked (blurred + lock card) until the profile is approved */}
+          <FeatureGate title="Requests & messages unlock after approval">
+            <Inbox />
+          </FeatureGate>
+          <FeatureGate title="Search unlocks after approval">
+            <SearchCard />
+          </FeatureGate>
         </div>
-        <BestMatches />
+        <FeatureGate title="Your matches are almost ready" text="Once you’re approved you can view profiles and send interests.">
+          <BestMatches />
+        </FeatureGate>
       </main>
       <Footer />
     </div>

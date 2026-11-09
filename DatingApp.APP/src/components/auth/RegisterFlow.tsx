@@ -41,6 +41,7 @@ import { ageFrom, containsContactDetails, emptyDraft, loadDraft, saveDraft, type
 import { AuthShell } from "./AuthShell";
 import { DemoTips } from "./DemoTips";
 import { DEMO, formatPhone } from "./shared";
+import { setKyc } from "@/lib/verification";
 import { AVATARS, avatarDataUri, isIllustration, type AvatarGender } from "@/content/avatars";
 import type { CountryCode } from "@/components/ui/Flag";
 
@@ -79,8 +80,19 @@ export function RegisterFlow({ initialStep = 1, embedded, onComplete }: Register
       onComplete(d);
       return;
     }
-    flashToast("success", "Profile submitted", "We’ll SMS you when it’s approved.");
-    router.push("/register/status");
+    flashToast("success", "Profile submitted", "You can explore your dashboard while we review it.");
+    // signed in with a pending profile → Dashboard (features unlock after review)
+    try {
+      if (!localStorage.getItem("aura_session")) {
+        localStorage.setItem(
+          "aura_session",
+          JSON.stringify({ fullName: d.fullName || d.firstName || "New member", email: d.email, mobile: d.mobile, profileStatus: "PendingAdminApproval" })
+        );
+        window.dispatchEvent(new Event("aura_auth_change"));
+      }
+    } catch {}
+    setKyc("pending");
+    router.push("/dashboard");
   };
 
   return (
