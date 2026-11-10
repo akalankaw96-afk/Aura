@@ -28,15 +28,18 @@ import {
 import { createPortal } from "react-dom";
 import { Share2 } from "lucide-react";
 import { cn } from "@/lib/cn";
+import { ShareProfileDialog } from "@/components/profile/ShareProfileDialog";
 import { ProfileActions } from "@/components/profile/ProfileActions";
 import { favouriteProfile, useFavourites, useSentInterests } from "@/lib/connections";
-import { allowVerificationAction, requireMember } from "@/lib/session";
+import { requireMember, useSignedIn } from "@/lib/session";
 import { Badge } from "@/components/ui/Badge";
 import { BackButton } from "@/components/ui/BackButton";
 import { Button } from "@/components/ui/Button";
 import { Select } from "@/components/ui/Select";
 import { Textarea } from "@/components/ui/Textarea";
 import { Flag, type CountryCode } from "@/components/ui/Flag";
+import { COUNTRIES } from "@/components/ui/PhoneField";
+import type { ProfileKycDetails } from "@/types";
 import { useToast } from "@/components/ui/Toast";
 import { matchLabel, type ProfileExtras } from "@/content/search";
 
@@ -51,6 +54,8 @@ export interface ViewProfile {
   religion: string;
   location: string;
   country: CountryCode;
+  countryName?: string;
+  details?: ProfileKycDetails | null;
   photo: string;
   horoscope: boolean;
   bio?: string;
@@ -218,39 +223,48 @@ function Photo({ p, className }: { p: ViewProfile; className?: string }) {
 
 function Detail({ p, x, onInterest }: { p: ViewProfile; x?: ProfileExtras; onInterest: (p: ViewProfile) => boolean }) {
   const toast = useToast();
+  const signedIn = useSignedIn();
   const { profiles: favourites, save } = useFavourites();
   const saved = favourites.some((profile) => profile.id === p.id);
   const { profiles: sentInterests } = useSentInterests();
   const sent = sentInterests.some((profile) => profile.id === p.id);
-  const [note, setNote] = useState("");
+  const [shareUrl, setShareUrl] = useState<string | null>(null);
   const [reportOpen, setReportOpen] = useState(false);
   const [viewer, setViewer] = useState<number | null>(null);
   // Demo gallery: the API will return each member’s photos; for now the main photo is shown in a few framings
   const photos = useMemo(() => galleryOf(p, x?.photos ?? 1), [p, x?.photos]);
   const [reported, setReported] = useState(false);
-  const blocked = /(\+?\d[\d\s-]{6,}\d)|(https?:\/\/|www\.)/i.test(note);
 
   const details: { icon: React.ElementType; label: string; value: string }[] = [
+    { icon: Profile, label: "Profile ID", value: p.id },
     { icon: Calendar, label: "Age", value: `${p.age} years` },
+    { icon: People, label: "Gender", value: p.gender === "groom" ? "Male" : "Female" },
     { icon: Ruler, label: "Height", value: p.height },
+    { icon: Ruler, label: "Weight", value: signedIn ? p.details?.weightKg ? `${p.details.weightKg} kg` : "—" : "Unlock with login" },
     { icon: Book1, label: "Religion", value: p.religion },
     { icon: People, label: "Ethnicity", value: x?.ethnicity ?? "—" },
+    { icon: People, label: "Caste", value: p.details?.caste || "—" },
     { icon: Briefcase, label: "Profession", value: p.profession },
+    { icon: Briefcase, label: "Monthly salary range", value: signedIn ? p.details?.monthlySalaryRange || "—" : "Unlock with login" },
     { icon: Teacher, label: "Education", value: p.education || x?.education || "—" },
     { icon: Heart, label: "Civil status", value: x?.civil ?? "Never married" },
     { icon: Location, label: "Lives in", value: p.location },
+    { icon: Location, label: "Resident country", value: p.countryName || COUNTRIES.find((country) => country.iso === p.country)?.name || "—" },
+    { icon: Location, label: "District", value: p.details?.district || x?.district || "—" },
     { icon: Profile, label: "Posted by", value: x?.postedBy ?? "Self" },
     { icon: Star1, label: "Horoscope", value: p.horoscope ? "Available" : "On request" },
+    { icon: Star1, label: "Zodiac sign", value: signedIn ? p.details?.zodiacSign || "—" : "Unlock with login" },
   ];
 
   const share = () => {
     if (!requireMember("share profiles")) return;
-    navigator.clipboard?.writeText(`${window.location.origin}/search?id=${p.id}`);
-    toast.success("Link copied", `Share ${p.id} with your family.`);
+    const url = new URL("/search", window.location.origin);
+    url.searchParams.set("id", p.id);
+    setShareUrl(url.toString());
   };
   const send = () => {
     if (!requireMember("send an interest")) return;
-    if (blocked || sent) return;
+    if (sent) return;
     onInterest(p);
   };
 
@@ -298,7 +312,7 @@ function Detail({ p, x, onInterest }: { p: ViewProfile; x?: ProfileExtras; onInt
           <div className="flex items-start gap-3">
             <div className="flex min-w-0 flex-1 flex-col gap-1.5">
               <h1 className="flex items-center gap-2 text-h4 text-ink md:text-h3">
-                {p.id} <Verify size={22} color="currentColor" variant="Bold" className="shrink-0 text-gold-500" />
+                {p.name || p.id} <Verify size={22} color="currentColor" variant="Bold" className="shrink-0 text-gold-500" />
               </h1>
               <p className="flex flex-wrap items-center gap-1.5 text-body-md text-ink-secondary">
                 <Flag country={p.country} /> {p.location}
@@ -325,7 +339,7 @@ function Detail({ p, x, onInterest }: { p: ViewProfile; x?: ProfileExtras; onInt
                 </div>
               )}
               {/* Share — design-system Button / Secondary, size sm */}
-              <Button variant="secondary" size="sm" className="rounded-full" leftIcon={<Share2 size={18} strokeWidth={2} />} onClick={share}>
+              <Button variant="secondary" size="sm" className="rounded-full" aria-haspopup="dialog" leftIcon={<Share2 size={18} strokeWidth={2} />} onClick={share}>
                 Share
               </Button>
             </div>
@@ -350,12 +364,10 @@ function Detail({ p, x, onInterest }: { p: ViewProfile; x?: ProfileExtras; onInt
         </div>
       </div>
 
-      {p.bio && (
-        <section className="flex flex-col gap-2">
-          <h2 className="text-h6 text-ink">About</h2>
-          <p className="text-body-md text-ink-secondary">{p.bio}</p>
-        </section>
-      )}
+      <section className="flex flex-col gap-2">
+        <h2 className="text-h6 text-ink">About</h2>
+        <p className="text-body-md text-ink-secondary">{p.bio?.trim() || "No bio provided"}</p>
+      </section>
 
       {p.aboutFamily && (
         <section className="flex flex-col gap-2">
@@ -399,8 +411,7 @@ function Detail({ p, x, onInterest }: { p: ViewProfile; x?: ProfileExtras; onInt
         </p>
       </section>
 
-      {/* Interest note */}
-      {sent ? (
+      {sent && (
         <div className="flex animate-fade-up items-center gap-3 rounded-[16px] bg-success-bg p-4 text-success-fg">
           <TickCircle size={22} color="currentColor" variant="Bold" />
           <p className="text-body-sm">
@@ -408,29 +419,6 @@ function Detail({ p, x, onInterest }: { p: ViewProfile; x?: ProfileExtras; onInt
             We’ll let you know as soon as {p.id} replies.
           </p>
         </div>
-      ) : (
-        <label className="flex flex-col gap-2">
-          <span className="text-label-md text-ink">Add a short note (optional)</span>
-          <textarea
-            rows={2}
-            maxLength={150}
-            value={note}
-            onFocus={(e) => {
-              if (!allowVerificationAction("add a note")) e.currentTarget.blur();
-            }}
-            onChange={(e) => {
-              if (allowVerificationAction("add a note")) setNote(e.target.value);
-            }}
-            placeholder="Our family liked your profile and would love to connect."
-            className={cn(
-              "w-full resize-none rounded-md border bg-surface-subtle px-4 py-3 text-body-md text-ink outline-none transition-colors placeholder:text-ink-disabled focus:border-brand-focus",
-              blocked ? "border-error-fg" : "border-line",
-            )}
-          />
-          <span className={cn("text-caption", blocked ? "text-error-fg" : "text-ink-tertiary")}>
-            {blocked ? "Phone numbers and links can’t be shared before you both accept." : `${note.length}/150`}
-          </span>
-        </label>
       )}
 
       <div className="h-px bg-line" />
@@ -446,8 +434,10 @@ function Detail({ p, x, onInterest }: { p: ViewProfile; x?: ProfileExtras; onInt
           {reported ? "Reported" : "Report profile"}
         </button>
         <div className="flex-1" />
-        <ProfileActions profileId={p.id} sent={sent} blocked={blocked} onSend={send} />
+        <ProfileActions profileId={p.id} sent={sent} onSend={send} />
       </div>
+
+      {shareUrl && <ShareProfileDialog url={shareUrl} onClose={() => setShareUrl(null)} />}
 
       {/* portals: the article animates (transform), which would trap position:fixed */}
       {viewer !== null && createPortal(<PhotoViewer id={p.id} photos={photos} start={viewer} onClose={() => setViewer(null)} />, document.body)}

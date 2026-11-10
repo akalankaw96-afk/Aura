@@ -44,6 +44,7 @@ import {
   type SortKey,
 } from "@/content/search";
 import { mockProfiles } from "@/data/mockData";
+import { apiService } from "@/services/api";
 import type { Profile } from "@/types";
 
 // Unified Candidate Proposal Interface
@@ -56,6 +57,8 @@ interface CandidateProposal extends FeaturedProfile {
   nakshatra?: string;
   professionCategory?: string;
   district?: string;
+  countryName?: string;
+  details?: Profile["details"];
 }
 
 const COUNTRY_LABEL: Partial<Record<CountryCode, string>> = Object.fromEntries(
@@ -106,30 +109,17 @@ function SearchPageContent() {
   const pushedRef = useRef(false);
 
   // Live Database Connectivity State
-  const [dbStatus, setDbStatus] = useState<"checking" | "connected" | "offline">("checking");
   const [liveDbProfiles, setLiveDbProfiles] = useState<Profile[]>([]);
 
   useEffect(() => {
     let isMounted = true;
-    fetch("http://localhost:5000/api/profiles", { cache: "no-store" })
-      .then(async (res) => {
-        if (res.ok) {
-          const data: Profile[] = await res.json();
-          if (isMounted) {
-            setDbStatus("connected");
-            setLiveDbProfiles(data);
-          }
-        } else {
-          if (isMounted) setDbStatus("offline");
-        }
-      })
-      .catch(() => {
-        if (isMounted) setDbStatus("offline");
-      });
+    apiService.getProfiles().then((profiles) => {
+      if (isMounted) setLiveDbProfiles(profiles);
+    });
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [signedIn]);
 
   // Master Pool of Candidates combining Live SQL Server DB, Featured, Mock, and Marquee data
   const candidatePool: CandidateProposal[] = useMemo(() => {
@@ -143,7 +133,7 @@ function SearchPageContent() {
         if (!seenIds.has(code)) {
           seenIds.add(code);
           const isBride = p.gender === "female";
-          const cCode = (p.country?.toLowerCase() === "australia" ? "au" : p.country?.toLowerCase() === "united kingdom" ? "gb" : "lk") as CountryCode;
+          const cCode = [...COUNTRY_OPTIONS, ...MORE_COUNTRIES].find((country) => country.label.toLowerCase() === p.country?.toLowerCase())?.code ?? "lk";
           list.push({
             id: code,
             name: p.name,
@@ -152,8 +142,11 @@ function SearchPageContent() {
             height: p.height,
             profession: p.profession,
             religion: p.religion,
-            location: `${p.location}, ${p.country}`,
+            location: [p.location, p.country].filter(Boolean).join(", "),
             country: cCode,
+            countryName: p.country,
+            district: p.details?.district || undefined,
+            details: p.details,
             photo: p.photoUrl,
             horoscope: p.horoscopeAvailable,
             bio: p.bio,
@@ -238,7 +231,15 @@ function SearchPageContent() {
 
   // Extra list-card details (demo) per profile
   const extrasById = useMemo(
-    () => Object.fromEntries(candidatePool.map((p) => [p.id, profileExtras(p.id, p.location, p.religion)])),
+    () => Object.fromEntries(candidatePool.map((p) => {
+      const extras = profileExtras(p.id, p.location, p.religion);
+      return [p.id, {
+        ...extras,
+        district: p.district || extras.district,
+        civil: p.details?.civilStatus || extras.civil,
+        postedBy: p.details?.createdBy || extras.postedBy,
+      }];
+    })),
     [candidatePool]
   );
 

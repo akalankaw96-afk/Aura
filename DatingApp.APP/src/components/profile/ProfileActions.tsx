@@ -8,10 +8,9 @@ import { useIsConnected } from "@/lib/connections";
 import { requirePaidAction } from "@/lib/usage";
 
 /** The Message and Send interest actions shared by profile details and favourites. */
-export function ProfileActions({ profileId, sent, blocked = false, onSend }: {
+export function ProfileActions({ profileId, sent, onSend }: {
   profileId: string;
   sent: boolean;
-  blocked?: boolean;
   onSend: () => void;
 }) {
   const router = useRouter();
@@ -33,7 +32,7 @@ export function ProfileActions({ profileId, sent, blocked = false, onSend }: {
       <Button variant="outline" size="md" className="max-sm:flex-1" leftIcon={<MessageText size={18} color="currentColor" />} onClick={message}>
         Message
       </Button>
-      <Button size="md" className="max-sm:flex-1" disabled={interestExists || blocked} onClick={onSend} leftIcon={interestExists ? <TickCircle size={18} color="currentColor" /> : <HeartAdd size={18} color="currentColor" />}>
+      <Button size="md" className="max-sm:flex-1" disabled={interestExists} onClick={onSend} leftIcon={interestExists ? <TickCircle size={18} color="currentColor" /> : <HeartAdd size={18} color="currentColor" />}>
         {connected ? "Interest accepted" : sent ? "Interest sent" : "Send interest"}
       </Button>
     </div>

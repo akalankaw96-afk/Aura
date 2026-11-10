@@ -134,7 +134,7 @@ export function ProPlanCard() {
             {m.daysLeft === 0 ? "Expires today" : `${m.daysLeft} day${m.daysLeft === 1 ? "" : "s"} left`} · Plans don’t auto-renew
           </p>
         </div>
-              {/* expand / collapse plan details */}
+        {/* expand / collapse plan details */}
         <button
           type="button"
           onClick={toggle}
@@ -149,10 +149,15 @@ export function ProPlanCard() {
 
       {/* renew reminder stays visible even when collapsed */}
       {soon && (
-        <div className="mx-4 mt-4 flex flex-wrap items-center gap-3 rounded-[16px] border border-premium-line bg-premium-bg px-4 py-3 text-body-sm text-premium-fg sm:mx-6">
-          <Timer1 size={18} color="currentColor" />
-          <span className="flex-1">Your {name} plan ends on {fmt(m.expires)}. Renew now to keep every feature.</span>
-          <ButtonLink href="/plans" size="sm">
+        <div className={cn(
+          "mx-4 mt-4 flex flex-col gap-3 rounded-lg border border-premium-line bg-premium-bg px-4 py-3 text-body-sm text-premium-fg sm:mx-6 sm:flex-row sm:items-center",
+          !open && "mb-4",
+        )}>
+          <p className="flex min-w-0 flex-1 items-center gap-3">
+            <Timer1 size={18} color="currentColor" className="shrink-0" />
+            <span>Your {name} plan ends on {fmt(m.expires)}. Renew now to keep every feature.</span>
+          </p>
+          <ButtonLink href="/plans" size="sm" className="self-start sm:shrink-0 sm:self-auto">
             Renew now
           </ButtonLink>
         </div>

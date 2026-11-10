@@ -25,6 +25,7 @@ export const MORE_COUNTRIES: { code: CountryCode; label: string }[] = [
 export const DISTRICT_OPTIONS = [
   "Colombo", "Gampaha", "Kalutara", "Kandy", "Matale", "Nuwara Eliya", "Galle", "Matara", "Hambantota",
   "Jaffna", "Kurunegala", "Puttalam", "Anuradhapura", "Polonnaruwa", "Badulla", "Ratnapura", "Kegalle", "Trincomalee", "Batticaloa",
+  "Ampara", "Kilinochchi", "Mannar", "Monaragala", "Mullaitivu", "Vavuniya",
 ];
 
 export const PROFESSION_OPTIONS = ["Doctor", "Engineer", "Teacher", "Nurse", "IT", "Accountant", "Lawyer"];

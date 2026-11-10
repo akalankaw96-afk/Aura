@@ -48,6 +48,10 @@ export interface RegistrationDraft {
   ethnicity: string;
   caste: string;
   country: string;
+  district: string;
+  zodiacSign: string;
+  monthlySalaryRange: string;
+  weightKg: string;
   about: string;
   photo: string | null;
   plan: "free" | "gold" | "platinum";
@@ -76,6 +80,10 @@ export const emptyDraft: RegistrationDraft = {
   ethnicity: "",
   caste: "",
   country: "Sri Lanka",
+  district: "",
+  zodiacSign: "",
+  monthlySalaryRange: "",
+  weightKg: "",
   about: "",
   photo: null,
   plan: "free",

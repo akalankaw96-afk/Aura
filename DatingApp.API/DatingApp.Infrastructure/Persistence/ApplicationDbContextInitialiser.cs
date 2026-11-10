@@ -26,6 +26,9 @@ public class ApplicationDbContextInitialiser
             if (_context.Database.IsSqlServer())
             {
                 await _context.Database.ExecuteSqlRawAsync(@"
+                IF COL_LENGTH('dbo.CandidateProfiles', 'SubmittedDetailsJson') IS NULL
+                    ALTER TABLE [dbo].[CandidateProfiles] ADD [SubmittedDetailsJson] NVARCHAR(MAX) NULL;
+
                 IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'ChatMessages')
                 BEGIN
                     CREATE TABLE [dbo].[ChatMessages] (

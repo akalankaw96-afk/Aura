@@ -16,6 +16,7 @@ import "./globals.css";
 import { ToastProvider } from "@/components/ui/Toast";
 import { LanguageProvider } from "@/context/LanguageContext";
 import { PageLoader, RevealObserver } from "@/components/motion";
+import { FloatingHearts } from "@/components/motion/FloatingHearts";
 import { MobileTabBar } from "@/components/layout/MobileTabBar";
 import { InstallAppBanner } from "@/components/layout/InstallAppBanner";
 import { UpgradePrompt } from "@/components/layout/UpgradePrompt";
@@ -51,6 +52,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
       <body>
         <PageLoader />
         <RevealObserver />
+        <FloatingHearts />
         <LanguageProvider>
           <ToastProvider>
             {/* phones: "Get the Vikasitha app" install banner + how-to sheet (PWA) */}

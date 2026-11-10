@@ -7,9 +7,11 @@ import {
   ArrowDown2,
   CloseCircle,
   Crown,
+  Heart,
   Lock1,
   Logout,
   LogoutCurve,
+  Messages2,
   Setting2,
   ShieldTick,
   TextalignJustifycenter,
@@ -18,6 +20,8 @@ import {
 import { cn } from "@/lib/cn";
 import { ButtonLink } from "@/components/ui/Button";
 import { LanguageSwitch, Logo, ThemeToggle } from "@/components/ui/Brand";
+import { Toggle } from "@/components/ui/Toggle";
+import { useBackgroundAnimation } from "@/lib/backgroundAnimation";
 import { useLanguage } from "@/context/LanguageContext";
 import { MEMBER, MESSAGES, REQUESTS } from "@/content/dashboard";
 import { useKyc } from "@/lib/verification";
@@ -232,6 +236,7 @@ export function Navbar({ variant = "light" }: { variant?: NavbarVariant }) {
               <span className="text-label-md text-ink-secondary">Theme</span>
               <ThemeToggle />
             </div>
+            <BackgroundAnimationSetting className="rounded-md bg-surface-subtle px-3 py-2" />
 
             {isMember ? (
               <div className="mt-4 grid gap-2">
@@ -267,6 +272,19 @@ export function Navbar({ variant = "light" }: { variant?: NavbarVariant }) {
         </div>
       )}
     </header>
+  );
+}
+
+function BackgroundAnimationSetting({ className, inMenu = false }: { className?: string; inMenu?: boolean }) {
+  const { lang } = useLanguage();
+  const { enabled, reducedMotion, setEnabled } = useBackgroundAnimation();
+  const label = lang === "si" ? "පසුබිම් සජීවිකරණය" : "Background animation";
+  return (
+    <div className={cn("flex items-center gap-2.5 text-body-sm text-ink", className)}>
+      <Heart size={18} color="currentColor" aria-hidden="true" className="shrink-0 text-icon-brand" />
+      <span className="min-w-0 flex-1">{label}</span>
+      <Toggle label={label} checked={enabled} onChange={setEnabled} disabled={reducedMotion} role={inMenu ? "menuitemcheckbox" : "switch"} />
+    </div>
   );
 }
 
@@ -354,15 +372,15 @@ function AccountMenu({ session, onLogout }: { session: AuthSession | null; onLog
             </Link>
           </li>
           <li role="none">
-            <Link role="menuitem" href="/search" onClick={() => setOpen(false)} className="flex items-center gap-2.5 px-3 py-2 text-body-sm text-ink hover:bg-brand-subtle">
-              <ShieldTick size={18} color="currentColor" className="text-icon-brand" />
-              <span>{lang === "si" ? "යෝජනා සොයන්න" : "Search Proposals"}</span>
-            </Link>
-          </li>
-          <li role="none">
             <Link role="menuitem" href="/plans" onClick={() => setOpen(false)} className="flex items-center gap-2.5 px-3 py-2 text-body-sm text-ink hover:bg-brand-subtle">
               <Crown size={18} color="currentColor" className="text-icon-brand" />
               <span>{lang === "si" ? "මිල සැලසුම්" : "Plans & Billing"}</span>
+            </Link>
+          </li>
+          <li role="none">
+            <Link role="menuitem" href="/support" onClick={() => setOpen(false)} className="flex items-center gap-2.5 px-3 py-2 text-body-sm text-ink hover:bg-brand-subtle focus-visible:shadow-ring-brand">
+              <Messages2 size={18} color="currentColor" className="text-icon-brand" />
+              <span>{t.footer.contact}</span>
             </Link>
           </li>
           <li role="none">
@@ -373,6 +391,10 @@ function AccountMenu({ session, onLogout }: { session: AuthSession | null; onLog
           </li>
 
           <div className="my-1 border-t border-line" />
+
+          <li role="none">
+            <BackgroundAnimationSetting inMenu className="px-3 py-2" />
+          </li>
 
           <li role="none">
             <button

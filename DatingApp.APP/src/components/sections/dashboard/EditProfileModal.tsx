@@ -1,17 +1,21 @@
 "use client";
 
 import React, { useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { createPortal } from "react-dom";
 import { CloseCircle, Lock1 } from "iconsax-react";
 import { cn } from "@/lib/cn";
 import { Button } from "@/components/ui/Button";
 import { SegmentedTabs } from "@/components/ui/SegmentedTabs";
 import { PhotoSlot } from "@/components/ui/PhotoSlot";
-import { containsContactDetails } from "@/lib/demo";
+import { ageFrom, containsContactDetails } from "@/lib/demo";
+import { readSubmittedKycDetails } from "@/lib/kycDetails";
+import { COUNTRIES } from "@/components/ui/PhoneField";
 import { Textarea } from "@/components/ui/Textarea";
 import { useToast } from "@/components/ui/Toast";
 import { MEMBER } from "@/content/dashboard";
 import { useKyc } from "@/lib/verification";
+import { useAuthSession } from "@/lib/session";
 
 /**
  * Edit profile — approved members can change ONLY their description and photos.
@@ -19,7 +23,7 @@ import { useKyc } from "@/lib/verification";
  * and locked; changes go through support. New photos go to a quick review.
  * Demo storage: localStorage "vk-profile".
  */
-type Tab = "about" | "photos";
+type Tab = "about" | "photos" | "details";
 const OPEN_EVENT = "vk-edit-profile";
 const KEY = "vk-profile";
 const MAX_PHOTOS = 6;
@@ -195,6 +199,7 @@ export function EditProfileModal() {
             tabs={[
               { id: "about", label: "About me" },
               { id: "photos", label: "Photos", count: photos.length },
+              { id: "details", label: "Details" },
             ]}
           />
         </div>
@@ -213,7 +218,7 @@ export function EditProfileModal() {
               placeholder="Share your values, interests and what you’re looking for in a partner."
               error={tried && aboutError ? aboutError : undefined}
             />
-          ) : (
+          ) : tab === "photos" ? (
             <div key="photos" className="flex animate-fade-in flex-col gap-3">
               <div className="grid grid-cols-3 gap-3">
                 {photos.map((ph, i) => (
@@ -243,7 +248,7 @@ export function EditProfileModal() {
               />
               <p className="text-body-xs text-ink-tertiary">JPG or PNG up to 5 MB · clear face photos only · new photos are checked before they go live.</p>
             </div>
-          )}
+          ) : <ProfileDetails />}
 
           {/* Locked, verified details */}
           <div className="flex gap-3 rounded-[16px] bg-surface-subtle p-4">
@@ -251,11 +256,18 @@ export function EditProfileModal() {
               <Lock1 size={18} color="currentColor" />
             </span>
             <p className="text-body-sm text-ink-secondary">
-              <span className="block font-semibold text-ink">Other details are verified</span>
-              Name, date of birth, religion, location and contact details can’t be changed here.{" "}
-              <a href="mailto:support@vikasitha.lk" className="font-semibold text-brand-link underline-offset-2 hover:underline">
+              <span className="block font-semibold text-ink">Profile details are read-only</span>
+              {tab !== "details" && (
+                <>
+                  <button type="button" onClick={() => setTab("details")} className="font-semibold text-brand-link underline-offset-2 hover:underline">
+                    View details
+                  </button>
+                  {" · "}
+                </>
+              )}
+              <Link href="/support" onClick={close} className="font-semibold text-brand-link underline-offset-2 hover:underline">
                 Contact support
-              </a>{" "}
+              </Link>{" "}
               to update them.
             </p>
           </div>
@@ -263,15 +275,87 @@ export function EditProfileModal() {
 
         {/* Footer */}
         <div className="flex gap-3 border-t border-line p-5 sm:px-6">
-          <Button variant="outline" size="md" className="flex-1" onClick={close}>
-            Cancel
-          </Button>
-          <Button size="md" className="flex-1" disabled={!dirty} onClick={save}>
-            Save changes
-          </Button>
+          {tab === "details" && !dirty ? (
+            <Button size="md" fullWidth onClick={close}>Done</Button>
+          ) : (
+            <>
+              <Button variant="outline" size="md" className="flex-1" onClick={close}>
+                Cancel
+              </Button>
+              <Button size="md" className="flex-1" disabled={!dirty} onClick={save}>
+                Save changes
+              </Button>
+            </>
+          )}
         </div>
       </div>
     </div>,
     document.body,
+  );
+}
+
+function displayBirthDate(value?: string) {
+  if (!value) return undefined;
+  const date = new Date(`${value}T00:00:00Z`);
+  if (Number.isNaN(date.getTime())) return undefined;
+  return date.toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" });
+}
+
+function ProfileDetails() {
+  const { session, profile, profileCode, loading } = useAuthSession();
+  const registration = readSubmittedKycDetails(session);
+  const age = (registration?.dob ? ageFrom(registration.dob) : null) ?? profile?.age;
+  const gender = registration?.gender || (profile?.gender === "male" ? "Male" : profile?.gender === "female" ? "Female" : undefined);
+  const mobile = registration?.mobile ? `+94 ${registration.mobile}` : session?.phoneNumber;
+  const dialCode = COUNTRIES.find((country) => country.iso === registration?.whatsappCountry)?.dial;
+  const whatsapp = registration?.whatsappSameAsMobile
+    ? mobile
+    : registration?.whatsapp ? [dialCode, registration.whatsapp].filter(Boolean).join(" ") : undefined;
+  const details = [
+    ...(registration ? [
+      { label: "First name", value: registration.firstName },
+      { label: "Last name", value: registration.lastName },
+    ] : [{ label: "Full name", value: profile?.name || session?.fullName }]),
+    { label: "Profile ID", value: profileCode },
+    { label: "Profile created for", value: registration?.profileFor },
+    { label: "Display name format", value: registration?.displayNameFormat },
+    { label: "Profile created by", value: registration?.createdBy },
+    { label: "Date of birth", value: displayBirthDate(registration?.dob) },
+    { label: "Age", value: age ? `${age} years` : undefined },
+    { label: "Gender", value: gender },
+    { label: "Height", value: registration?.height || profile?.height },
+    { label: "Weight", value: (registration?.weightKg || profile?.details?.weightKg) ? `${registration?.weightKg || profile?.details?.weightKg} kg` : undefined },
+    { label: "Civil status", value: registration?.civilStatus || profile?.details?.civilStatus },
+    { label: "Religion", value: registration?.religion || profile?.religion },
+    { label: "Ethnicity", value: registration?.ethnicity || profile?.community },
+    { label: "Caste", value: registration?.caste || profile?.details?.caste },
+    { label: "Zodiac sign", value: registration?.zodiacSign || profile?.details?.zodiacSign },
+    { label: "Location", value: profile?.location },
+    { label: "Country of residence", value: registration?.country || profile?.country },
+    { label: "District", value: registration?.district || profile?.details?.district },
+    { label: "Profession", value: profile?.profession },
+    { label: "Monthly salary range", value: registration?.monthlySalaryRange || profile?.details?.monthlySalaryRange },
+    { label: "Education", value: profile?.education },
+    { label: "Mobile number", value: mobile },
+    { label: "Email", value: registration?.email || session?.email },
+    { label: "WhatsApp", value: whatsapp },
+  ];
+
+  return (
+    <section aria-labelledby="profile-details-title" className="flex flex-col gap-3">
+      <h3 id="profile-details-title" className="text-h6 text-ink">Profile details</h3>
+      {session || profile ? (
+        <dl className="grid gap-3 sm:grid-cols-2">
+          {details.map(({ label, value }) => (
+            <div key={label} className="min-w-0 rounded-md bg-surface-subtle px-4 py-3">
+              <dt className="text-caption text-ink-tertiary">{label}</dt>
+              <dd className="break-words text-body-sm font-semibold text-ink-secondary">{value?.trim() || "Not available"}</dd>
+            </div>
+          ))}
+        </dl>
+      ) : (
+        <p className="text-body-sm text-ink-secondary">{loading ? "Loading your profile details…" : "No profile details available yet."}</p>
+      )}
+    </section>
   );
 }

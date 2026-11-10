@@ -31,6 +31,7 @@ public class CandidateProfile : BaseEntity
     public bool Premium { get; set; } = false;
     public string PhotoUrl { get; set; } = string.Empty;
     public string Interests { get; set; } = string.Empty; // Comma-separated list
+    public string? SubmittedDetailsJson { get; set; }
 
     // Match Requests
     public ICollection<MatchRequest> SentMatchRequests { get; set; } = new List<MatchRequest>();

@@ -18,7 +18,7 @@ public class ProfilesController : BaseApiController
     [ProducesResponseType(typeof(List<ProfileDto>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetProfiles([FromQuery] ProfileFilterDto filter, CancellationToken ct)
     {
-        var profiles = await _profileService.GetProfilesAsync(filter, ct);
+        var profiles = await _profileService.GetProfilesAsync(filter, ct, includeMemberDetails: CurrentUserId.HasValue);
         return Ok(profiles);
     }
 
@@ -42,7 +42,7 @@ public class ProfilesController : BaseApiController
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetProfileById(Guid id, CancellationToken ct)
     {
-        var profile = await _profileService.GetProfileByIdAsync(id, ct);
+        var profile = await _profileService.GetProfileByIdAsync(id, ct, includeMemberDetails: CurrentUserId.HasValue);
         if (profile == null) return NotFound(new { message = $"Profile with ID {id} was not found." });
 
         return Ok(profile);

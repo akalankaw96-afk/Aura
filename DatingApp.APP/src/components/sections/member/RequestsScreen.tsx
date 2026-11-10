@@ -18,7 +18,7 @@ import {
 } from "iconsax-react";
 import { requirePaidAction } from "@/lib/usage";
 import { requireMember } from "@/lib/session";
-import { useAddedFriends, useFavourites, useSentInterests, type ConnectionProfile } from "@/lib/connections";
+import { useAddedFriends, useDeclinedInterests, useFavourites, useSentInterests, type ConnectionProfile } from "@/lib/connections";
 import { ProfileActions } from "@/components/profile/ProfileActions";
 import { cn } from "@/lib/cn";
 import { Badge } from "@/components/ui/Badge";
@@ -51,12 +51,13 @@ export function RequestsScreen({ initialTab, initialProfileId }: { initialTab: C
   const { profiles: favourites } = useFavourites();
   const { profiles: addedFriends, save: addFriend } = useAddedFriends();
   const { profiles: sentInterests, save: saveInterest } = useSentInterests();
-  const [declined, setDeclined] = useState<string[]>([]);
+  const { profiles: declined, save: declineInterest } = useDeclinedInterests();
+  const declinedIds = new Set(declined.map((profile) => profile.id));
   const accepted = new Set(addedFriends.map((profile) => profile.id));
   const inTab = (t: ConnectionTab): ConnectionProfile[] => {
     if (t === "friends") return [...addedFriends, ...FRIEND_PROFILES.filter((profile) => !accepted.has(profile.id))];
     if (t === "favourites") return favourites;
-    const requests = REQUEST_PROFILES.filter((profile) => !declined.includes(profile.id) && !accepted.has(profile.id) && profile.tab === t);
+    const requests = REQUEST_PROFILES.filter((profile) => !declinedIds.has(profile.id) && !accepted.has(profile.id) && profile.tab === t);
     if (t === "sent") {
       const sent = sentInterests.filter((profile) => !accepted.has(profile.id));
       return [...sent, ...requests.filter((profile) => !sent.some((entry) => entry.id === profile.id))];
@@ -68,7 +69,7 @@ export function RequestsScreen({ initialTab, initialProfileId }: { initialTab: C
   const noSearchMatches = tabProfiles.length > 0 && list.length === 0;
   const [selectedId, setSelectedId] = useState<string | null>(initialProfileId ?? null);
   const [mobileOpen, setMobileOpen] = useState(Boolean(initialProfileId));
-  const selected = list.find((p) => p.id === selectedId) ?? list[0] ?? null;
+  const selected = selectedId ? list.find((p) => p.id === selectedId) : list[0];
 
   const pick = (id: string) => {
     setSelectedId(id);
@@ -90,7 +91,7 @@ export function RequestsScreen({ initialTab, initialProfileId }: { initialTab: C
   };
   const decline = (p: ConnectionProfile) => {
     if (!requirePaidAction("interests", "decline a request")) return;
-    setDeclined((ids) => [...ids, p.id]);
+    if (!declineInterest({ id: p.id })) return;
     setSelectedId(null);
     setMobileOpen(false);
     toast.info("Request declined", `${p.name} won’t be notified.`);
@@ -268,7 +269,7 @@ function Detail({
               <Heart size={16} color="currentColor" variant="Bold" />
               {tab === "received" ? `Sent you an interest · ${p.time}` : `You sent an interest · ${p.time}`}
             </p>
-            <p className="text-body-md text-ink">{tab === "received" ? `“${p.note}”` : p.note}</p>
+            {p.note && <p className="text-body-md text-ink">{tab === "received" ? `“${p.note}”` : p.note}</p>}
           </div>}
 
           <dl className="grid gap-x-3 gap-y-4 sm:grid-cols-2">
@@ -290,10 +291,10 @@ function Detail({
         </div>
       </div>
 
-      <div className="flex flex-col gap-2">
+      {p.about && <div className="flex flex-col gap-2">
         <h3 className="text-h6 text-ink">About {p.name}</h3>
         <p className="text-body-md text-ink-secondary">{p.about}</p>
-      </div>
+      </div>}
 
       <div className="h-px bg-line" />
 

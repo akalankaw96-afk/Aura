@@ -36,12 +36,14 @@ import {
 } from "@/components/ui";
 import { cn } from "@/lib/cn";
 import { ageFrom, containsContactDetails, emptyDraft, loadDraft, saveDraft, type RegistrationDraft } from "@/lib/demo";
+import { profileDetailsFromKyc, saveSubmittedKycDetails } from "@/lib/kycDetails";
 import { AuthShell } from "./AuthShell";
 import { DemoTips } from "./DemoTips";
 import { GoogleSignInButton } from "./GoogleSignInButton";
 import { DEMO, formatPhone } from "./shared";
 import { setKyc } from "@/lib/verification";
 import { AVATARS, avatarDataUri, isIllustration, type AvatarGender } from "@/content/avatars";
+import { DISTRICT_OPTIONS } from "@/content/search";
 import type { CountryCode } from "@/components/ui/Flag";
 import { apiService } from "@/services/api";
 import { PhotoSlot } from "@/components/ui/PhotoSlot";
@@ -75,7 +77,10 @@ export function RegisterFlow({ initialStep = 1, embedded, onComplete }: Register
   };
 
   const finish = async () => {
-    const d = saveDraft({ reviewStatus: "submitted" });
+    const d = saveDraft({
+      fullName: [draft.firstName.trim(), draft.lastName.trim()].filter(Boolean).join(" "),
+      reviewStatus: "submitted",
+    });
     if (embedded && onComplete) {
       toast.success("Profile submitted", "We’ll review it within 24 hours.");
       onComplete(d);
@@ -90,14 +95,14 @@ export function RegisterFlow({ initialStep = 1, embedded, onComplete }: Register
 
       await apiService.createOrUpdateProfile({
         fullName,
-        gender: (d.gender === "female" ? "female" : "male") as "female" | "male",
+        gender: d.gender.toLowerCase() === "female" ? "female" : "male",
         age: calculatedAge ?? 28,
         height: d.height || "5' 8\"",
         profession: "Professional",
         professionCategory: "Other",
         education: "Bachelor's Degree",
         university: "",
-        location: d.country === "Sri Lanka" ? "Colombo" : "Living abroad",
+        location: d.district,
         country: d.country || "Sri Lanka",
         religion: d.religion || "Buddhist",
         community: d.ethnicity || "Sinhalese",
@@ -106,6 +111,7 @@ export function RegisterFlow({ initialStep = 1, embedded, onComplete }: Register
         horoscopeAvailable: false,
         photoUrl: d.photo || "",
         interests: [],
+        details: profileDetailsFromKyc(d),
       });
     } catch (err) {
       console.warn("Backend profile sync notice:", err);
@@ -125,6 +131,7 @@ export function RegisterFlow({ initialStep = 1, embedded, onComplete }: Register
       localStorage.setItem("aura_session", JSON.stringify(sess));
       window.dispatchEvent(new Event("aura_auth_change"));
     } catch {}
+    saveSubmittedKycDetails(d);
     setKyc("pending");
     router.push("/dashboard");
   };
@@ -465,6 +472,12 @@ function VerifyStep({ mobile, onBack, onNext }: { mobile: string; onBack: () => 
 /* ───────────────────────── Step 3 · Profile (04, 04a–04c) ───────────────────────── */
 
 const OPTIONS = {
+  district: DISTRICT_OPTIONS,
+  zodiacSign: ["Aries", "Taurus", "Gemini", "Cancer", "Leo", "Virgo", "Libra", "Scorpio", "Sagittarius", "Capricorn", "Aquarius", "Pisces"],
+  monthlySalaryRange: [
+    "Below LKR 50,000", "LKR 50,000–99,999", "LKR 100,000–149,999", "LKR 150,000–249,999",
+    "LKR 250,000–499,999", "LKR 500,000 or more", "Prefer not to say",
+  ],
   displayNameFormat: ["First name only", "Last name only", "Full name", "First name and first letter of last name", "First letter of first name and full last name"],
   createdBy: ["Self", "Parent", "Sibling", "Relative", "Friend"],
   height: ["4' 10\"", "4' 11\"", "5' 0\"", "5' 1\"", "5' 2\"", "5' 3\"", "5' 4\"", "5' 5\"", "5' 6\"", "5' 7\"", "5' 8\"", "5' 9\"", "5' 10\"", "5' 11\"", "6' 0\"", "6' 1\"", "6' 2\""],
@@ -475,7 +488,7 @@ const OPTIONS = {
   country: ["Sri Lanka", "Australia", "United Kingdom", "Canada", "USA", "Qatar", "UAE", "Italy", "New Zealand", "Other"],
 };
 
-type ProfileKey = "firstName" | "lastName" | "displayNameFormat" | "createdBy" | "email" | "whatsapp" | "height" | "dob" | "gender" | "civilStatus" | "religion" | "ethnicity" | "caste" | "country";
+type ProfileKey = "firstName" | "lastName" | "displayNameFormat" | "createdBy" | "email" | "whatsapp" | "height" | "dob" | "gender" | "civilStatus" | "religion" | "ethnicity" | "caste" | "country" | "district" | "zodiacSign" | "monthlySalaryRange" | "weightKg";
 const REQUIRED: ProfileKey[] = ["firstName", "lastName", "displayNameFormat", "createdBy", "height", "dob", "gender", "civilStatus", "religion", "ethnicity", "country"];
 
 /** Review mode (Figma 06d · Edit profile — fix rejected fields): flagged fields + their values when rejected */
@@ -513,7 +526,12 @@ export function ProfileStep({
 
   const setValue = (k: ProfileKey, v: string) => {
     const patch: Partial<RegistrationDraft> = { [k]: v };
-    if (k === "firstName" || k === "lastName") patch.fullName = `${k === "firstName" ? v : draft.firstName} ${k === "lastName" ? v : draft.lastName}`.trim();
+    if (k === "firstName" || k === "lastName") {
+      const first = k === "firstName" ? v : draft.firstName;
+      const last = k === "lastName" ? v : draft.lastName;
+      patch.fullName = [first.trim(), last.trim()].filter(Boolean).join(" ");
+    }
+    if (k === "country" && v !== "Sri Lanka") patch.district = "";
     update(patch);
     setErrors((er) => ({ ...er, [k]: undefined }));
   };
@@ -533,6 +551,9 @@ export function ProfileStep({
       if (!ok) er.whatsapp = draft.whatsappCountry === "lk" ? "Enter a valid Sri Lankan mobile number" : "Enter a valid WhatsApp number";
     }
     if (underage) er.dob = "You must be at least 18 years old";
+    if (draft.weightKg && (!Number.isFinite(Number(draft.weightKg)) || Number(draft.weightKg) <= 0)) {
+      er.weightKg = "Enter a valid weight in kilograms";
+    }
     if (aboutError) er.about = aboutError;
     if (review) {
       if (stillRejected.dob) er.dob = `Rejected: ${review.reasons.dob}`;
@@ -631,6 +652,10 @@ export function ProfileStep({
         <Select label="Ethnicity" options={OPTIONS.ethnicity} value={draft.ethnicity} onChange={pick("ethnicity")} error={errors.ethnicity} />
         <Input label="Caste" placeholder="e.g. Govigama" value={draft.caste} onChange={set("caste")} />
         <Select label="Country of residence" options={OPTIONS.country} value={draft.country} onChange={pick("country")} error={errors.country} />
+        {draft.country === "Sri Lanka" && <Select label="District" hint="Optional" options={OPTIONS.district} value={draft.district} onChange={pick("district")} />}
+        <Select label="Zodiac sign" hint="Optional" options={OPTIONS.zodiacSign} value={draft.zodiacSign} onChange={pick("zodiacSign")} />
+        <Select label="Monthly salary range" hint="Optional" options={OPTIONS.monthlySalaryRange} value={draft.monthlySalaryRange} onChange={pick("monthlySalaryRange")} helper="Choose your monthly income in LKR or its equivalent." />
+        <Input label="Weight (kg)" hint="Optional" type="number" min={1} step="any" value={draft.weightKg} onChange={set("weightKg")} error={errors.weightKg} />
       </div>
 
       <Textarea
@@ -777,7 +802,7 @@ export function PhotosStep({
       return;
     }
     if (mode === "illustration" && !isIllustration(draft.photo)) {
-      toast.error("Pick an illustration", "Choose one of the illustrations, or switch to Upload photos.");
+      toast.error("Choose an avatar", "Pick an avatar below, or switch to Upload photos.");
       return;
     }
     if (!draft.photo && !confirmSkip) {
@@ -828,7 +853,7 @@ export function PhotosStep({
           onPick={(uri, name) => {
             update({ photo: uri });
             setConfirmSkip(false);
-            toast.success("Illustration selected", `“${name}” will show on your profile until you add photos.`);
+            toast.success("Avatar selected", `“${name}” will show on your profile until you add photos.`);
           }}
         />
       ) : (
@@ -895,11 +920,11 @@ export function PhotosStep({
   );
 }
 
-/** Segmented switch: Upload photos / Use an illustration — the brand pad slides between them */
+/** Segmented switch for uploading photos or choosing an avatar. */
 function PhotoModeSwitch({ value, onChange }: { value: "upload" | "illustration"; onChange: (v: "upload" | "illustration") => void }) {
   const opts = [
     { id: "upload" as const, label: "Upload photos", Icon: Gallery },
-    { id: "illustration" as const, label: "Use an illustration", Icon: EmojiHappy },
+    { id: "illustration" as const, label: "Choose an avatar", Icon: EmojiHappy },
   ];
   return (
     <div role="radiogroup" aria-label="Profile picture type" className="relative grid grid-cols-2 rounded-full border border-line bg-surface-subtle p-1">
@@ -945,7 +970,7 @@ function IllustrationPicker({ gender, value, onPick }: { gender?: AvatarGender; 
       <div className="flex items-start gap-3 rounded-md bg-info-bg p-3.5 text-body-sm text-info-fg">
         <InfoCircle size={20} color="currentColor" className="mt-px shrink-0" />
         <p>
-          <span className="font-semibold">Not ready to share photos?</span> Pick a friendly illustration for now — members see it instead of a photo, and
+          <span className="font-semibold">Not ready to share photos?</span> Choose an illustrated avatar for now. Members see it instead of a photo, and
           you can switch to real photos anytime from your profile.
         </p>
       </div>
@@ -956,7 +981,7 @@ function IllustrationPicker({ gender, value, onPick }: { gender?: AvatarGender; 
           {selected ? (
             <>
               <span className="absolute left-2.5 top-2.5">
-                <Badge tone="info">Illustration</Badge>
+                <Badge tone="info">Avatar</Badge>
               </span>
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img key={selected.id} src={avatarDataUri(selected)} alt={selected.name} className="h-36 w-36 animate-pop-in rounded-full shadow-lg ring-4 ring-surface-card" />
@@ -965,7 +990,7 @@ function IllustrationPicker({ gender, value, onPick }: { gender?: AvatarGender; 
           ) : (
             <>
               <EmojiHappy size={32} color="currentColor" className="text-brand" />
-              <p className="px-4 text-center text-body-sm font-semibold text-brand">Choose an illustration</p>
+              <p className="px-4 text-center text-body-sm font-semibold text-brand">Choose an avatar</p>
             </>
           )}
         </div>
@@ -980,7 +1005,7 @@ function IllustrationPicker({ gender, value, onPick }: { gender?: AvatarGender; 
               Groom
             </Chip>
           </div>
-          <div key={filter} role="radiogroup" aria-label="Illustrations" className="grid grid-cols-4 gap-2.5">
+          <div key={filter} role="radiogroup" aria-label="Avatars" className="grid grid-cols-4 gap-2.5">
             {list.map((a, i) => {
               const uri = avatarDataUri(a);
               const on = uri === value;

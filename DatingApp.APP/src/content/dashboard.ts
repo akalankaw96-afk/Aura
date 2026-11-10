@@ -64,12 +64,13 @@ export interface InterestRequest {
   photo: string;
   photoHidden?: boolean;
   location: string;
+  country: RequestProfile["country"];
 }
 /** Pending requests on the dashboard. Photos stay hidden until you accept. */
 export const REQUESTS: InterestRequest[] = [
-  { id: "MP-24855", name: "Nuwan", age: 30, meta: "Matara · Buddhist · Banker", time: "2h ago", photo: "/brand/groom.png", photoHidden: true, location: "Matara, Sri Lanka" },
-  { id: "MP-24861", name: "Dinesh", age: 32, meta: "Melbourne · Buddhist · Software Engineer", time: "5h ago", photo: "/brand/groom.png", photoHidden: true, location: "Melbourne, Australia" },
-  { id: "MP-24872", name: "Chamath", age: 29, meta: "Toronto · Catholic · Nurse", time: "Yesterday", photo: "/brand/groom.png", photoHidden: true, location: "Toronto, Canada" },
+  { id: "MP-24855", name: "Nuwan", age: 30, meta: "Matara · Buddhist · Banker", time: "2h ago", photo: "/brand/groom.png", photoHidden: true, location: "Matara, Sri Lanka", country: "lk" },
+  { id: "MP-24861", name: "Dinesh", age: 32, meta: "Melbourne · Buddhist · Software Engineer", time: "5h ago", photo: "/brand/groom.png", photoHidden: true, location: "Melbourne, Australia", country: "au" },
+  { id: "MP-24872", name: "Chamath", age: 29, meta: "Toronto · Catholic · Nurse", time: "Yesterday", photo: "/brand/groom.png", photoHidden: true, location: "Toronto, Canada", country: "ca" },
 ];
 
 export interface InboxMessage {
@@ -136,6 +137,23 @@ export const REQUEST_TABS: { id: ConnectionTab; label: string }[] = [
 ];
 
 export const REQUEST_PROFILES: RequestProfile[] = [
+  ...REQUESTS.map((request): RequestProfile => {
+    const [, religion, profession] = request.meta.split(" · ");
+    return {
+      ...request,
+      tab: "received",
+      fullName: request.name,
+      isNew: true,
+      note: "",
+      about: "",
+      details: [
+        { icon: "calendar", label: "Age", value: `${request.age} years` },
+        { icon: "book", label: "Religion", value: religion },
+        { icon: "briefcase", label: "Profession", value: profession },
+        { icon: "location", label: "Living in", value: request.location },
+      ],
+    };
+  }),
   {
     id: "MP-24817", tab: "received", name: "Kavindu", fullName: "Kavindu Jayasinghe", age: 28, meta: "Kandy · Buddhist · Doctor", time: "2h ago", isNew: true,
     photo: "/images/profiles/mp-24817.jpg", location: "Kandy, Sri Lanka", country: "lk", horoscope: true,

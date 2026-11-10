@@ -23,6 +23,19 @@ public class ProfileDto
     public string AboutFamily { get; set; } = string.Empty;
     public bool HoroscopeAvailable { get; set; }
     public List<string> Interests { get; set; } = new();
+    public ProfileDetailsDto? Details { get; set; }
+}
+
+public class ProfileDetailsDto
+{
+    public string? DisplayName { get; set; }
+    public string? CreatedBy { get; set; }
+    public string? CivilStatus { get; set; }
+    public string? District { get; set; }
+    public string? Caste { get; set; }
+    public string? ZodiacSign { get; set; }
+    public string? MonthlySalaryRange { get; set; }
+    public string? WeightKg { get; set; }
 }
 
 public class ProfileFilterDto
@@ -54,5 +67,6 @@ public class CreateProfileDto
     public bool HoroscopeAvailable { get; set; } = true;
     public string PhotoUrl { get; set; } = string.Empty;
     public List<string> Interests { get; set; } = new();
+    public ProfileDetailsDto? Details { get; set; }
 }
 

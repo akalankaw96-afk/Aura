@@ -6,25 +6,23 @@ import { ArrowRight2, MessageText, TickCircle, Verify } from "iconsax-react";
 import { cn } from "@/lib/cn";
 import { Badge } from "@/components/ui/Badge";
 import { Button, ButtonLink } from "@/components/ui/Button";
-import { SegmentedTabs } from "@/components/ui/SegmentedTabs";
 import { useToast } from "@/components/ui/Toast";
+import { SegmentedTabs } from "@/components/ui/SegmentedTabs";
 import { useLanguage } from "@/context/LanguageContext";
-import { FRIENDS, MESSAGES, REQUESTS, friendProfileId, type Friend, type InterestRequest } from "@/content/dashboard";
+import { FRIENDS, MESSAGES, REQUESTS, REQUEST_PROFILES, friendProfileId, type Friend } from "@/content/dashboard";
 import { useAuthSession } from "@/lib/session";
-import { useAddedFriends, useFavourites } from "@/lib/connections";
+import { useAddedFriends, useDeclinedInterests, useFavourites } from "@/lib/connections";
 import { requirePaidAction } from "@/lib/usage";
 import { ConnectionEmptyState } from "@/components/sections/member/ConnectionEmptyState";
 
 /**
  * Figma: Dashboard — Version B (tabs) → Requests + Messages (two cards, gap 24).
  *  - Requests & friends card: Segmented Tabs [Friends · Favourites · New requests]
- *      Friends tab → Friend Row (Profile + Message); a just-accepted friend is first, green, "New friend".
- *      New requests tab → Request Row (Decline / Accept). Accepting turns the row green
- *      ("Accepted · added to your friends" + Say hello) and adds the person to Friends.
+ *      Each row opens the corresponding profile in Requests.
+ *      A just-accepted friend is first, green, with a "New friend" badge.
  *  - Messages card: Segmented Tabs [Messages · New messages] → Conversation Row.
  *  - Empty State in each tab when the list is empty (try /dashboard?empty=1).
- * Motion: sliding tab pill, tab content fades up, rows stagger in, declined rows collapse,
- * accepted rows flash green, counts pop.
+ * Motion: sliding tab pill, tab content fades up, rows stagger in, counts pop.
  */
 export function Inbox() {
   const { isVerified, hasCompletedProfile } = useAuthSession();
@@ -86,23 +84,26 @@ function EmptyState({ icon, title, body, action }: { icon: React.ReactNode; titl
   );
 }
 
-/** Row wrapper: staggered entrance + collapse when leaving */
-function Row({ i, leaving, last, highlight, children }: { i: number; leaving?: boolean; last?: boolean; highlight?: boolean; children: React.ReactNode }) {
+/** Row wrapper with a staggered entrance and optional full-row link. */
+function Row({ i, last, highlight, href, linkLabel, children }: {
+  i: number;
+  last?: boolean;
+  highlight?: boolean;
+  href?: string;
+  linkLabel?: string;
+  children: React.ReactNode;
+}) {
+  const className = cn(
+    "group relative flex flex-wrap items-center gap-3 transition-colors sm:flex-nowrap",
+    highlight ? "rounded-md bg-success-bg p-3" : "py-3",
+    !highlight && !last && "border-b border-line",
+    href && "hover:bg-surface-subtle focus-within:bg-surface-subtle",
+  );
   return (
-    <li
-      className={cn("grid transition-[grid-template-rows,opacity] duration-300 ease-out", leaving ? "grid-rows-[0fr] opacity-0" : "grid-rows-[1fr] opacity-100")}
-      style={{ animation: `fade-up 450ms cubic-bezier(0.22,1,0.36,1) ${i * 60}ms backwards` }}
-    >
-      <div className="min-h-0 overflow-hidden">
-        <div
-          className={cn(
-            "flex flex-wrap items-center gap-3 transition-colors duration-500 sm:flex-nowrap",
-            highlight ? "rounded-[12px] bg-success-bg p-3" : "py-3",
-            !highlight && !last && "border-b border-line",
-          )}
-        >
-          {children}
-        </div>
+    <li style={{ animation: `fade-up 450ms cubic-bezier(0.22,1,0.36,1) ${i * 60}ms backwards` }}>
+      <div className={className}>
+        {href && <Link href={href} aria-label={linkLabel} className="absolute inset-0 z-10 rounded-md focus-visible:outline-none focus-visible:shadow-ring-brand" />}
+        {children}
       </div>
     </li>
   );
@@ -117,39 +118,33 @@ function RequestsFriendsCard({ empty }: { empty: boolean }) {
   const toast = useToast();
   const [tab, setTab] = useState<RFTab>("friends");
   const { profiles: addedFriends, save: addFriend } = useAddedFriends();
+  const { profiles: declinedInterests, save: declineInterest } = useDeclinedInterests();
   const { profiles: favourites } = useFavourites();
-  const [requests, setRequests] = useState<InterestRequest[]>(empty ? [] : REQUESTS);
-  const [status, setStatus] = useState<Record<string, "accepted" | "leaving">>({});
   const addedIds = new Set(addedFriends.map((profile) => profile.id));
+  const declinedIds = new Set(declinedInterests.map((profile) => profile.id));
+  const [acceptedHere, setAcceptedHere] = useState<string[]>([]);
+  const requests = empty ? [] : REQUESTS.filter((request) =>
+    !declinedIds.has(request.id) && (!addedIds.has(request.id) || acceptedHere.includes(request.id)),
+  );
+  const pending = requests.filter((request) => !addedIds.has(request.id)).length;
   const friends: Friend[] = empty ? [] : [
     ...addedFriends.map((profile) => ({ ...profile, isNew: true, lastSeen: t.dashboard.connectedJustNow })),
     ...FRIENDS.filter((friend) => !addedIds.has(friendProfileId(friend))),
   ];
   const members: Friend[] = tab === "favourites" ? favourites : friends;
-  const pending = requests.filter((r) => !status[r.id] && !addedIds.has(r.id)).length;
 
-  const accept = (r: InterestRequest) => {
-    if (!requirePaidAction("interests", "accept a request")) return;
-    if (!addFriend({
-      ...r,
-      fullName: r.name,
-      country: r.location.endsWith("Australia") ? "au" : r.location.endsWith("Canada") ? "ca" : "lk",
-      note: "You accepted this interest.",
-      about: "",
-      details: [
-        { icon: "calendar", label: "Age", value: `${r.age} years` },
-        { icon: "location", label: "Living in", value: r.location },
-      ],
-    })) return;
-    setStatus((s) => ({ ...s, [r.id]: "accepted" }));
-    toast.success(`${r.name} is now your friend`, "Photos and chat are unlocked — say hello!");
-  };
-  const decline = (r: InterestRequest) => {
-    if (!requirePaidAction("interests", "decline a request")) return;
-    setStatus((s) => ({ ...s, [r.id]: "leaving" }));
-    window.setTimeout(() => setRequests((list) => list.filter((x) => x.id !== r.id)), 320);
-    toast.info("Request declined", `${r.name} won’t be notified.`);
-  };
+  function accept(id: string) {
+    const request = REQUEST_PROFILES.find((profile) => profile.id === id);
+    if (!request || !requirePaidAction("interests", "accept a request")) return;
+    if (!addFriend({ ...request, note: "You accepted this interest." })) return;
+    setAcceptedHere((ids) => [...ids, id]);
+    toast.success(`${request.name} is now your friend`, "You can message them from Friends.");
+  }
+
+  function decline(id: string, name: string) {
+    if (!requirePaidAction("interests", "decline a request") || !declineInterest({ id })) return;
+    toast.info("Request declined", `${name} won’t be notified.`);
+  }
 
   return (
     <Card id="requests">
@@ -185,7 +180,14 @@ function RequestsFriendsCard({ empty }: { empty: boolean }) {
           ) : (
             <ul className="flex flex-col gap-1">
               {members.map((f, i) => (
-                <Row key={f.id} i={i} last={i === members.length - 1} highlight={f.isNew}>
+                <Row
+                  key={f.id}
+                  i={i}
+                  last={i === members.length - 1}
+                  highlight={f.isNew}
+                  href={`/requests?tab=${tab}&id=${encodeURIComponent(tab === "friends" ? friendProfileId(f) : f.id)}`}
+                  linkLabel={`View ${f.name}’s profile`}
+                >
                   <Avatar src={f.photo} hidden={f.photoHidden} online={f.online} />
                   <div className="flex min-w-0 flex-1 flex-col gap-0.5">
                     <p className="flex flex-wrap items-center gap-1.5 text-label-lg text-ink">
@@ -200,16 +202,15 @@ function RequestsFriendsCard({ empty }: { empty: boolean }) {
                       {f.online ? t.dashboard.onlineNow : f.lastSeen || f.location}
                     </p>
                   </div>
-                  <div className="flex gap-2 max-sm:w-full max-sm:pl-[60px]">
-                    <Link href={`/requests?tab=${tab}&id=${encodeURIComponent(tab === "friends" ? friendProfileId(f) : f.id)}`} className="flex h-[41px] items-center rounded-full px-4 text-button-sm text-ink ring-1 ring-inset ring-line-strong transition-colors hover:bg-surface-subtle">
+                  <div className="pointer-events-none relative z-20 flex gap-2 max-sm:w-full max-sm:pl-14">
+                    <span className="flex h-10 items-center rounded-full px-4 text-button-sm text-ink ring-1 ring-inset ring-line-strong">
                       {t.dashboard.profile}
-                    </Link>
-                    {tab === "friends" && <Link
-                      href={`/messages?c=${f.id}`}
-                      className="flex h-[41px] items-center gap-1.5 rounded-full bg-brand-gradient px-4 text-button-sm text-ink-on-brand transition-shadow hover:shadow-glow"
-                    >
-                      {t.dashboard.message}
-                    </Link>}
+                    </span>
+                    {tab === "friends" && (
+                      <ButtonLink href={`/messages?c=${encodeURIComponent(f.id)}`} size="sm" className="pointer-events-auto">
+                        {t.dashboard.message}
+                      </ButtonLink>
+                    )}
                   </div>
                 </Row>
               ))}
@@ -229,16 +230,23 @@ function RequestsFriendsCard({ empty }: { empty: boolean }) {
           ) : (
             <ul className="flex flex-col gap-1">
               {requests.map((r, i) => {
-                const accepted = status[r.id] === "accepted" || addedIds.has(r.id);
+                const accepted = addedIds.has(r.id);
                 return (
-                  <Row key={r.id} i={i} last={i === requests.length - 1} leaving={status[r.id] === "leaving"} highlight={accepted}>
+                  <Row
+                    key={r.id}
+                    i={i}
+                    last={i === requests.length - 1}
+                    highlight={accepted}
+                    href={`/requests?tab=${accepted ? "friends" : "received"}&id=${encodeURIComponent(r.id)}`}
+                    linkLabel={`View ${r.name}’s profile`}
+                  >
                     <Avatar src={r.photo} hidden={r.photoHidden} />
                     <div className="flex min-w-0 flex-1 flex-col gap-0.5">
                       <p className="flex items-center gap-1.5 text-label-lg text-ink">
                         {r.name}, {r.age} <Verify size={16} color="currentColor" variant="Bold" className="text-icon-brand" />
                       </p>
                       {accepted ? (
-                        <p className="flex animate-fade-up items-center gap-1 text-body-sm font-semibold text-success-fg">
+                        <p className="flex items-center gap-1 text-body-sm font-semibold text-success-fg">
                           <TickCircle size={14} color="currentColor" variant="Bold" /> {t.dashboard.acceptedAdded}
                         </p>
                       ) : (
@@ -248,20 +256,22 @@ function RequestsFriendsCard({ empty }: { empty: boolean }) {
                         </>
                       )}
                     </div>
-                    {accepted ? (
-                      <Link href="/messages" className="flex h-[41px] animate-pop-in items-center rounded-full bg-brand-gradient px-4 text-button-sm text-ink-on-brand transition-shadow hover:shadow-glow">
-                        {t.dashboard.sayHello}
-                      </Link>
-                    ) : (
-                      <div className="flex gap-2 max-sm:w-full max-sm:pl-[60px]">
-                        <Button size="sm" variant="outline" onClick={() => decline(r)}>
-                          {t.dashboard.decline}
-                        </Button>
-                        <Button size="sm" onClick={() => accept(r)}>
-                          {t.dashboard.accept}
-                        </Button>
-                      </div>
-                    )}
+                    <div className="pointer-events-none relative z-20 flex gap-2 max-sm:w-full max-sm:pl-14">
+                      {accepted ? (
+                        <ButtonLink href={`/messages?c=${encodeURIComponent(r.id)}`} size="sm" className="pointer-events-auto">
+                          {t.dashboard.sayHello}
+                        </ButtonLink>
+                      ) : (
+                        <>
+                          <Button size="sm" variant="outline" className="pointer-events-auto" onClick={() => decline(r.id, r.name)}>
+                            {t.dashboard.decline}
+                          </Button>
+                          <Button size="sm" className="pointer-events-auto" onClick={() => accept(r.id)}>
+                            {t.dashboard.accept}
+                          </Button>
+                        </>
+                      )}
+                    </div>
                   </Row>
                 );
               })}

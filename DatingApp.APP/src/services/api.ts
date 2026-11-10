@@ -1,4 +1,4 @@
-import { Profile, SuccessStory, PricingPlan, FaqItem } from '../types';
+import { Profile, ProfileKycDetails, SuccessStory, PricingPlan, FaqItem } from '../types';
 import { mockProfiles, successStories, pricingPlans, faqs } from '../data/mockData';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
@@ -89,6 +89,7 @@ export interface CreateProfilePayload {
   horoscopeAvailable: boolean;
   photoUrl: string;
   interests: string[];
+  details?: ProfileKycDetails;
 }
 
 export const apiService = {
@@ -132,8 +133,10 @@ export const apiService = {
       if (filters?.profession && filters.profession !== 'All') params.append('profession', filters.profession);
       if (filters?.location && filters.location !== 'All') params.append('location', filters.location);
 
+      const token = typeof window !== 'undefined' ? localStorage.getItem('aura_token') : null;
       const res = await fetch(`${API_BASE_URL}/profiles?${params.toString()}`, {
         cache: 'no-store',
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
       });
       if (res.ok) {
         return await res.json();
@@ -491,6 +494,7 @@ export const apiService = {
       aboutFamily: profileData.aboutFamily,
       horoscopeAvailable: profileData.horoscopeAvailable,
       interests: profileData.interests,
+      details: profileData.details,
     };
 
     if (typeof window !== 'undefined') {

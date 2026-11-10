@@ -7,6 +7,7 @@ import { Card, Stepper, useToast } from "@/components/ui";
 import { flashToast } from "@/components/ui/Toast";
 import { containsContactDetails, loadDraft, saveDraft, type RegistrationDraft } from "@/lib/demo";
 import { readKyc, setKyc } from "@/lib/verification";
+import { saveSubmittedKycDetails } from "@/lib/kycDetails";
 import { AuthShell } from "./AuthShell";
 import { PhotosStep, ProfileStep } from "./RegisterFlow";
 
@@ -78,6 +79,7 @@ export function ReviewStatus() {
     try {
       sessionStorage.removeItem(ORIGINAL_KEY);
     } catch {}
+    saveSubmittedKycDetails(draft, true);
     setKyc("resubmitted");
     flashToast("success", "Changes submitted", "We’ll review them and SMS you once you’re approved.");
     router.push("/dashboard");

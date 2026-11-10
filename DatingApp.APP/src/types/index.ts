@@ -1,3 +1,14 @@
+export interface ProfileKycDetails {
+  displayName?: string | null;
+  createdBy?: string | null;
+  civilStatus?: string | null;
+  district?: string | null;
+  caste?: string | null;
+  zodiacSign?: string | null;
+  monthlySalaryRange?: string | null;
+  weightKg?: string | null;
+}
+
 export interface Profile {
   id: string;
   code: string;
@@ -19,6 +30,7 @@ export interface Profile {
   aboutFamily: string;
   horoscopeAvailable: boolean;
   interests: string[];
+  details?: ProfileKycDetails | null;
 }
 
 export interface SuccessStory {

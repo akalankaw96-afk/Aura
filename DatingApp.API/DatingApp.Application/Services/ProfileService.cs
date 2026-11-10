@@ -3,13 +3,14 @@ using DatingApp.Application.DTOs;
 using DatingApp.Domain.Entities;
 using DatingApp.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
+using System.Text.Json;
 
 namespace DatingApp.Application.Services;
 
 public interface IProfileService
 {
-    Task<List<ProfileDto>> GetProfilesAsync(ProfileFilterDto? filter = null, CancellationToken ct = default);
-    Task<ProfileDto?> GetProfileByIdAsync(Guid id, CancellationToken ct = default);
+    Task<List<ProfileDto>> GetProfilesAsync(ProfileFilterDto? filter = null, CancellationToken ct = default, bool includeMemberDetails = false);
+    Task<ProfileDto?> GetProfileByIdAsync(Guid id, CancellationToken ct = default, bool includeMemberDetails = false);
     Task<ProfileDto?> GetProfileByUserIdAsync(Guid userId, CancellationToken ct = default);
     Task<ProfileDto> CreateOrUpdateProfileAsync(Guid userId, CreateProfileDto dto, CancellationToken ct = default);
 }
@@ -23,7 +24,7 @@ public class ProfileService : IProfileService
         _context = context;
     }
 
-    public async Task<List<ProfileDto>> GetProfilesAsync(ProfileFilterDto? filter = null, CancellationToken ct = default)
+    public async Task<List<ProfileDto>> GetProfilesAsync(ProfileFilterDto? filter = null, CancellationToken ct = default, bool includeMemberDetails = false)
     {
         try
         {
@@ -75,7 +76,7 @@ public class ProfileService : IProfileService
             var list = await query.OrderByDescending(p => p.CreatedAt).ToListAsync(ct);
             if (list.Any())
             {
-                return list.Select(MapToDto).ToList();
+                return list.Select(profile => MapToDto(profile, includeMemberDetails)).ToList();
             }
         }
         catch (Exception ex)
@@ -86,12 +87,12 @@ public class ProfileService : IProfileService
         return GetFallbackProfiles(filter);
     }
 
-    public async Task<ProfileDto?> GetProfileByIdAsync(Guid id, CancellationToken ct = default)
+    public async Task<ProfileDto?> GetProfileByIdAsync(Guid id, CancellationToken ct = default, bool includeMemberDetails = false)
     {
         try
         {
             var profile = await _context.CandidateProfiles.AsNoTracking().FirstOrDefaultAsync(p => p.Id == id, ct);
-            if (profile != null) return MapToDto(profile);
+            if (profile != null) return MapToDto(profile, includeMemberDetails);
         }
         catch
         {
@@ -106,7 +107,7 @@ public class ProfileService : IProfileService
         try
         {
             var profile = await _context.CandidateProfiles.AsNoTracking().FirstOrDefaultAsync(p => p.UserId == userId, ct);
-            if (profile != null) return MapToDto(profile);
+            if (profile != null) return MapToDto(profile, includeMemberDetails: true, owner: true);
         }
         catch
         {
@@ -143,10 +144,11 @@ public class ProfileService : IProfileService
             existingProfile.HoroscopeAvailable = dto.HoroscopeAvailable;
             if (!string.IsNullOrWhiteSpace(dto.PhotoUrl)) existingProfile.PhotoUrl = dto.PhotoUrl;
             existingProfile.Interests = string.Join(",", dto.Interests);
+            if (dto.Details != null) existingProfile.SubmittedDetailsJson = JsonSerializer.Serialize(dto.Details);
             existingProfile.UpdatedAt = DateTime.UtcNow;
 
             await _context.SaveChangesAsync(ct);
-            return MapToDto(existingProfile);
+            return MapToDto(existingProfile, includeMemberDetails: true, owner: true);
         }
 
         // Create new profile
@@ -177,22 +179,33 @@ public class ProfileService : IProfileService
                     ? "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?q=80&w=800&auto=format&fit=crop" 
                     : "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=800&auto=format&fit=crop") 
                 : dto.PhotoUrl,
-            Interests = string.Join(",", dto.Interests)
+            Interests = string.Join(",", dto.Interests),
+            SubmittedDetailsJson = dto.Details == null ? null : JsonSerializer.Serialize(dto.Details)
         };
 
         _context.CandidateProfiles.Add(profile);
         await _context.SaveChangesAsync(ct);
 
-        return MapToDto(profile);
+        return MapToDto(profile, includeMemberDetails: true, owner: true);
     }
 
-    private static ProfileDto MapToDto(CandidateProfile p)
+    private static ProfileDto MapToDto(CandidateProfile p, bool includeMemberDetails = false, bool owner = false)
     {
+        var details = string.IsNullOrWhiteSpace(p.SubmittedDetailsJson)
+            ? null
+            : JsonSerializer.Deserialize<ProfileDetailsDto>(p.SubmittedDetailsJson);
+        if (!includeMemberDetails && details != null)
+        {
+            details.ZodiacSign = null;
+            details.MonthlySalaryRange = null;
+            details.WeightKg = null;
+        }
+
         return new ProfileDto
         {
             Id = p.Id,
             Code = p.Code,
-            Name = p.FullName,
+            Name = !owner && !string.IsNullOrWhiteSpace(details?.DisplayName) ? details.DisplayName : p.FullName,
             Gender = p.Gender.ToString().ToLowerInvariant(),
             Age = p.Age,
             Height = p.Height,
@@ -210,6 +223,7 @@ public class ProfileService : IProfileService
             Bio = p.Bio,
             AboutFamily = p.AboutFamily,
             HoroscopeAvailable = p.HoroscopeAvailable,
+            Details = details,
             Interests = string.IsNullOrWhiteSpace(p.Interests)
                 ? new List<string>()
                 : p.Interests.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToList()

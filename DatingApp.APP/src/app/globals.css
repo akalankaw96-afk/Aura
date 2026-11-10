@@ -5,6 +5,45 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Each track is the height of the screen, so hearts rise past every
+   page without shifting content or blocking interaction. */
+.floating-heart {
+  position: absolute;
+  top: 0;
+  height: 100%;
+  width: var(--heart-size);
+  opacity: 0;
+  animation: floating-heart-rise var(--heart-time) linear var(--heart-delay) infinite;
+}
+
+.floating-heart-icon {
+  position: absolute;
+  top: 100%;
+  width: var(--heart-size);
+  height: var(--heart-size);
+  animation: floating-heart-turn var(--heart-time) ease-in-out var(--heart-delay) infinite;
+}
+
+@keyframes floating-heart-rise {
+  0% { transform: translate3d(0, 0, 0); opacity: 0; }
+  16% { opacity: 0.17; }
+  75% { opacity: 0.13; }
+  100% { transform: translate3d(var(--heart-drift), -105%, 0); opacity: 0; }
+}
+
+@keyframes floating-heart-turn {
+  from { transform: rotate(var(--heart-angle)); }
+  to { transform: rotate(var(--heart-end-angle)); }
+}
+
+@media (max-width: 639px) {
+  .floating-heart:nth-child(n+7) { display: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .floating-hearts { display: none; }
+}
+
 @layer base {
   html {
     -webkit-text-size-adjust: 100%;

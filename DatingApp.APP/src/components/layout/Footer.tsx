@@ -29,7 +29,7 @@ export function Footer() {
         [t.footer.about, "/about"],
         [t.nav.howItWorks, "/#how-it-works"],
         [t.nav.pricing, "/#pricing"],
-        [t.footer.contact, "/contact"],
+        [t.footer.contact, "/support"],
       ] as [string, string][],
     },
     {
