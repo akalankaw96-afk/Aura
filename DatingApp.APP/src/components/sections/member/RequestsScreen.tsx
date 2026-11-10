@@ -16,6 +16,7 @@ import {
   Teacher,
   Verify,
 } from "iconsax-react";
+import { requirePaidAction } from "@/lib/usage";
 import { cn } from "@/lib/cn";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
@@ -59,12 +60,14 @@ export function RequestsScreen() {
   };
 
   const accept = (p: RequestProfile) => {
+    if (!requirePaidAction("interests", "accept a request")) return;
     setMoved((m) => ({ ...m, [p.id]: "accepted" }));
     setTab("accepted");
     setSelectedId(p.id);
     toast.success("Interest accepted", `You can now message ${p.name}. Photos and contacts are unlocked.`);
   };
   const decline = (p: RequestProfile) => {
+    if (!requirePaidAction("interests", "decline a request")) return;
     setMoved((m) => ({ ...m, [p.id]: "declined" }));
     setSelectedId(null);
     setMobileOpen(false);
@@ -259,7 +262,9 @@ function Detail({
           </div>
         )}
         {tab === "sent" && (
-          <Button size="md" variant="outline" onClick={() => toast.info("Reminder sent", `We’ll nudge ${p.name} gently.`)}>
+          <Button size="md" variant="outline" onClick={() => {
+            if (requirePaidAction("interests", "send a reminder")) toast.info("Reminder sent", `We’ll nudge ${p.name} gently.`);
+          }}>
             Send a reminder
           </Button>
         )}

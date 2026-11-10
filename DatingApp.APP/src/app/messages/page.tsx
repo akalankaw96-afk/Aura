@@ -28,7 +28,7 @@ import { Footer } from "@/components/layout/Footer";
 import { useLanguage } from "@/context/LanguageContext";
 import { BackButton } from "@/components/ui/BackButton";
 import { KycGuard } from "@/components/auth/KycGuard";
-import { consume, useUsage } from "@/lib/usage";
+import { requirePaidAction } from "@/lib/usage";
 import { FilterChip } from "@/components/ui/FilterChip";
 import { useToast } from "@/components/ui/Toast";
 import {
@@ -65,8 +65,6 @@ export default function MessagesPage() {
   const [messages, setMessages] = useState<ChatMessageDto[]>([]);
   const [filter, setFilter] = useState<"all" | "unread" | "blocked">("all");
   const toast = useToast();
-  const { left: usageLeft, unlimited } = useUsage();
-  const messagesLeft = usageLeft("messages");
   // Block / mute state (Figma: Messages — Blocked list / Block confirm).
   // TODO(api): persist via the backend once block/report endpoints exist.
   const [blocked, setBlocked] = useState<Record<string, BlockInfo>>({});
@@ -290,8 +288,7 @@ export default function MessagesPage() {
     e?.preventDefault();
     const textToSend = customText ?? inputText;
     if (!textToSend.trim() || !activeConv) return;
-    // Free plan: monthly message allowance (opens the Upgrade prompt when used up)
-    if (!consume("messages")) return;
+    if (!requirePaidAction("messages", "send a message")) return;
 
     if (!customText) setInputText("");
 
@@ -883,24 +880,6 @@ export default function MessagesPage() {
                 <BlockedComposer />
               ) : (
               <>
-              {/* Free plan: messages left this month */}
-              {!unlimited && (
-                <div
-                  className={cn(
-                    "flex items-center justify-between gap-3 border-t border-line px-4 py-2 text-caption",
-                    messagesLeft === 0 ? "bg-error-bg text-error-fg" : messagesLeft <= 2 ? "bg-premium-bg text-premium-fg" : "bg-surface-subtle text-ink-tertiary"
-                  )}
-                >
-                  <span>
-                    {messagesLeft === 0
-                      ? "You’ve used all your free messages this month."
-                      : `${messagesLeft} free message${messagesLeft === 1 ? "" : "s"} left this month`}
-                  </span>
-                  <Link href="/plans" className="font-bold text-brand hover:underline">
-                    Upgrade
-                  </Link>
-                </div>
-              )}
               <form onSubmit={handleSend} className="flex items-center gap-2 border-t border-line p-2.5 sm:gap-3 sm:p-4">
                 <button
                   type="button"

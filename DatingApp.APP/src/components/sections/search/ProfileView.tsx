@@ -28,12 +28,14 @@ import {
   Verify,
 } from "iconsax-react";
 import { createPortal } from "react-dom";
+import { useRouter } from "next/navigation";
 import { Share2 } from "lucide-react";
 import { cn } from "@/lib/cn";
-import { requireMember } from "@/lib/session";
+import { requirePaidAction } from "@/lib/usage";
+import { allowVerificationAction, requireMember } from "@/lib/session";
 import { Badge } from "@/components/ui/Badge";
 import { BackButton } from "@/components/ui/BackButton";
-import { Button, ButtonLink } from "@/components/ui/Button";
+import { Button } from "@/components/ui/Button";
 import { Select } from "@/components/ui/Select";
 import { Textarea } from "@/components/ui/Textarea";
 import { Flag, type CountryCode } from "@/components/ui/Flag";
@@ -217,6 +219,7 @@ function Photo({ p, className }: { p: ViewProfile; className?: string }) {
 }
 
 function Detail({ p, x, onInterest }: { p: ViewProfile; x?: ProfileExtras; onInterest: (p: ViewProfile) => boolean }) {
+  const router = useRouter();
   const toast = useToast();
   const [saved, setSaved] = useState(false);
   const [sent, setSent] = useState(false);
@@ -247,8 +250,8 @@ function Detail({ p, x, onInterest }: { p: ViewProfile; x?: ProfileExtras; onInt
     toast.success("Link copied", `Share ${p.id} with your family.`);
   };
   const send = () => {
-    if (blocked || sent) return;
     if (!requireMember("send an interest")) return;
+    if (blocked || sent) return;
     if (onInterest(p)) setSent(true);
   };
 
@@ -399,7 +402,12 @@ function Detail({ p, x, onInterest }: { p: ViewProfile; x?: ProfileExtras; onInt
             rows={2}
             maxLength={150}
             value={note}
-            onChange={(e) => setNote(e.target.value)}
+            onFocus={(e) => {
+              if (!allowVerificationAction("add a note")) e.currentTarget.blur();
+            }}
+            onChange={(e) => {
+              if (allowVerificationAction("add a note")) setNote(e.target.value);
+            }}
             placeholder="Our family liked your profile and would love to connect."
             className={cn(
               "w-full resize-none rounded-md border bg-surface-subtle px-4 py-3 text-body-md text-ink outline-none transition-colors placeholder:text-ink-disabled focus:border-brand-focus",
@@ -439,25 +447,22 @@ function Detail({ p, x, onInterest }: { p: ViewProfile; x?: ProfileExtras; onInt
         </button>
         <div className="flex-1" />
         <div className="flex gap-3 max-sm:w-full">
-          <ButtonLink
-            href="/messages"
+          <Button
             variant="outline"
             size="md"
             className="max-sm:flex-1"
             leftIcon={<MessageText size={18} color="currentColor" />}
-            onClick={(e) => {
-              if (!requireMember("message members")) {
-                e.preventDefault();
+            onClick={() => {
+              if (!requirePaidAction("messages", "message members")) return;
+              if (!sent) {
+                toast.info("Chat unlocks after they accept", `Send an interest to ${p.id} first.`);
                 return;
               }
-              if (!sent) {
-                e.preventDefault();
-                toast.info("Chat unlocks after they accept", `Send an interest to ${p.id} first.`);
-              }
+              router.push("/messages");
             }}
           >
             Message
-          </ButtonLink>
+          </Button>
           <Button size="md" className="max-sm:flex-1" disabled={sent || blocked} onClick={send} leftIcon={sent ? <TickCircle size={18} color="currentColor" /> : <HeartAdd size={18} color="currentColor" />}>
             {sent ? "Interest sent" : "Send interest"}
           </Button>
@@ -473,6 +478,7 @@ function Detail({ p, x, onInterest }: { p: ViewProfile; x?: ProfileExtras; onInt
         onCancel={() => setReportOpen(false)}
         onSubmit={() => {
           setReportOpen(false);
+          if (!requireMember("report a profile")) return;
           setReported(true);
           toast.success("Report submitted", `Thank you — our safety team will review ${p.id} within 24 hours.`);
         }}

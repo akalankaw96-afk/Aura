@@ -9,14 +9,12 @@ import { FREE_LIMITS, USAGE_LABEL, useUsage, type UsageKind } from "@/lib/usage"
 
 /**
  * Plan & usage card — approved members on the Free plan.
- * Shows every monthly allowance (messages, searches, interests) as a meter,
+ * Shows the monthly search and profile-view allowances as meters,
  * what Gold unlocks, and an Upgrade button. Hidden for Gold / Platinum.
  */
 const METERS: { kind: UsageKind; Icon: typeof Heart }[] = [
   { kind: "profileViews", Icon: Eye },
   { kind: "searches", Icon: SearchNormal1 },
-  { kind: "interests", Icon: Heart },
-  { kind: "chats", Icon: Messages2 },
 ];
 
 /** Days until the monthly reset (1st of next month) — the countdown under the title */
@@ -66,7 +64,7 @@ export function PlanUsageCard() {
       )}
 
       {/* meters */}
-      <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3">
         {METERS.map(({ kind, Icon }, i) => {
           const total = FREE_LIMITS[kind];
           const l = left(kind);

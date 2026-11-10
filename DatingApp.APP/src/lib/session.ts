@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { apiService, AuthSession } from "@/services/api";
 import { Profile } from "@/types";
+import { readKyc, type KycStatus } from "@/lib/verification";
 
 /** Same key the API service writes on login (services/api.ts). */
 export const SESSION_KEY = "aura_session";
@@ -125,19 +126,38 @@ const safePath = (p: string | null | undefined) => (p && p.startsWith("/") && !p
 
 export const LOGIN_REQUIRED_EVENT = "vk-login-required";
 
+export type MemberActionPrompt = {
+  action: string;
+  next: string;
+  verification?: Exclude<KycStatus, "live">;
+};
+
+function openMemberActionPrompt(detail: MemberActionPrompt) {
+  window.dispatchEvent(new CustomEvent(LOGIN_REQUIRED_EVENT, { detail }));
+}
+
+/** Block actions for signed-in members whose profile is still under review. */
+export function allowVerificationAction(action: string): boolean {
+  if (!hasSession()) return true;
+  const verification = readKyc();
+  if (verification === "live") return true;
+  openMemberActionPrompt({ action, next: "/dashboard", verification });
+  return false;
+}
+
 /**
  * Guests (not logged in) who tap an action — send interest, message, shortlist, share, report —
  * see the "Log in to continue" dialog (components/layout/LoginRequiredModal) with
  * Log in · Create account · Cancel. After logging in they come back to the same page.
- * Returns true when the visitor is a member and the action may continue.
+ * Signed-in members must also be approved before the action can continue.
  */
 export function requireMember(action = "continue"): boolean {
-  if (hasSession()) return true;
+  if (hasSession()) return allowVerificationAction(action);
   const here = window.location.pathname + window.location.search;
   try {
     sessionStorage.setItem(RETURN_KEY, here);
   } catch {}
-  window.dispatchEvent(new CustomEvent(LOGIN_REQUIRED_EVENT, { detail: { action, next: here } }));
+  openMemberActionPrompt({ action, next: here });
   return false;
 }
 

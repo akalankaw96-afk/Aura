@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { readPlan } from "@/lib/verification";
-import { hasSession } from "@/lib/session";
+import { hasSession, requireMember } from "@/lib/session";
 
 /**
  * Free-plan usage limits (per calendar month). Paid members (Gold / Platinum) are unlimited.
@@ -17,10 +17,10 @@ export type UsageKind = "profileViews" | "chats" | "messages" | "searches" | "in
 
 export const FREE_LIMITS: Record<UsageKind, number> = {
   profileViews: 5,
-  chats: 2,
-  messages: 2,
+  chats: 0,
+  messages: 0,
   searches: 3,
-  interests: 3,
+  interests: 0,
 };
 
 export const USAGE_LABEL: Record<UsageKind, { title: string; unit: string; limitReachedTitle?: string; limitReachedMsg?: string }> = {
@@ -33,17 +33,22 @@ export const USAGE_LABEL: Record<UsageKind, { title: string; unit: string; limit
   chats: {
     title: "Free Chat Connections",
     unit: "connections",
-    limitReachedTitle: "Free Chat Limit Reached",
-    limitReachedMsg: "You've reached your free chat limit of 2 people. Upgrade to Premium to connect with more members.",
+    limitReachedTitle: "Chat is a Gold feature",
+    limitReachedMsg: "Upgrade to Gold to connect and chat with members.",
   },
   messages: {
     title: "Messages",
     unit: "messages",
-    limitReachedTitle: "Free Chat Limit Reached",
-    limitReachedMsg: "You've reached your free chat limit of 2 people. Upgrade to Premium to connect with more members.",
+    limitReachedTitle: "Messaging is a Gold feature",
+    limitReachedMsg: "You can still view profile details with your free allowance. Upgrade to Gold to send messages.",
   },
   searches: { title: "Searches", unit: "searches" },
-  interests: { title: "Interests", unit: "interests" },
+  interests: {
+    title: "Interest requests",
+    unit: "interests",
+    limitReachedTitle: "Interest requests are a Gold feature",
+    limitReachedMsg: "Upgrade to Gold to send and respond to interest requests.",
+  },
 };
 
 const KEY = "vk-usage";
@@ -81,6 +86,17 @@ function write(u: Usage) {
 
 export const isUnlimited = () => readPlan() !== "free";
 
+const SEARCH_LIMITS = ["searches", "profileViews"] as const;
+
+export function exhaustedSearchLimit(usage = readUsage(), unlimited = isUnlimited()) {
+  if (unlimited) return undefined;
+  return SEARCH_LIMITS.find((kind) => usage[kind] >= FREE_LIMITS[kind]);
+}
+
+export function allSearchLimitsExhausted(usage = readUsage(), unlimited = isUnlimited()) {
+  return !unlimited && SEARCH_LIMITS.every((kind) => usage[kind] >= FREE_LIMITS[kind]);
+}
+
 /** How many of `kind` a free member has left this month (Infinity for paid members). */
 export function remaining(kind: UsageKind) {
   if (isUnlimited()) return Infinity;
@@ -100,6 +116,10 @@ export function consume(kind: UsageKind): boolean {
   }
   write({ ...u, [kind]: u[kind] + 1 });
   return true;
+}
+
+export function requirePaidAction(kind: "messages" | "interests", action: string): boolean {
+  return requireMember(action) && consume(kind);
 }
 
 /**
@@ -143,10 +163,12 @@ export function useUsage() {
     window.addEventListener(EVENT, update);
     window.addEventListener("vk-plan-change", update);
     window.addEventListener("storage", update);
+    window.addEventListener("focus", update);
     return () => {
       window.removeEventListener(EVENT, update);
       window.removeEventListener("vk-plan-change", update);
       window.removeEventListener("storage", update);
+      window.removeEventListener("focus", update);
     };
   }, []);
   const left = (k: UsageKind) => (unlimited ? Infinity : Math.max(0, FREE_LIMITS[k] - usage[k]));

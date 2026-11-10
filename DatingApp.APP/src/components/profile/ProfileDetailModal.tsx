@@ -20,6 +20,8 @@ import {
 import { Flag } from "@/components/ui/Flag";
 import { cn } from "@/lib/cn";
 import { apiService } from "@/services/api";
+import { requirePaidAction } from "@/lib/usage";
+import { allowVerificationAction } from "@/lib/session";
 
 export interface ProposalDetail {
   id: string;
@@ -65,6 +67,7 @@ export function ProfileDetailModal({ profile, onClose, onConnect }: ProfileDetai
 
   // Flow 2 Guardrail: Phone number or URL scanner in introductory note
   const handleNoteChange = (text: string) => {
+    if (!allowVerificationAction("add a note")) return;
     setNoteText(text);
     const phoneRegex = /(\+?\d[\d\s-]{6,}\d)/;
     const linkRegex = /(https?:\/\/|www\.|\.com|\.lk|\.net)/i;
@@ -79,6 +82,7 @@ export function ProfileDetailModal({ profile, onClose, onConnect }: ProfileDetai
   };
 
   const handleSend = () => {
+    if (!requirePaidAction("interests", "send an interest")) return;
     if (noteWarning) return;
     setInterestSent(true);
     apiService.sendMatchRequest(profile.id, noteText);
@@ -86,6 +90,7 @@ export function ProfileDetailModal({ profile, onClose, onConnect }: ProfileDetai
   };
 
   const handleShare = () => {
+    if (!allowVerificationAction("share profiles")) return;
     if (typeof navigator !== "undefined" && navigator.clipboard) {
       navigator.clipboard.writeText(window.location.origin + `/search?id=${displayId}`);
       setCopied(true);
@@ -148,7 +153,9 @@ export function ProfileDetailModal({ profile, onClose, onConnect }: ProfileDetai
               {/* Shortlist Heart Button */}
               <button
                 type="button"
-                onClick={() => setShortlisted(!shortlisted)}
+                onClick={() => {
+                  if (allowVerificationAction("shortlist profiles")) setShortlisted(!shortlisted);
+                }}
                 className="w-10 h-10 rounded-full bg-white/20 hover:bg-white/30 text-white flex items-center justify-center transition-transform active:scale-90 cursor-pointer"
               >
                 <Heart size={20} color={shortlisted ? "#de0547" : "currentColor"} variant={shortlisted ? "Bold" : "Linear"} />
@@ -275,6 +282,7 @@ export function ProfileDetailModal({ profile, onClose, onConnect }: ProfileDetai
               <button
                 type="button"
                 onClick={() => {
+                  if (!allowVerificationAction("report a profile")) return;
                   setReported(true);
                   alert(`Candidate profile ${displayId} flagged for review.`);
                 }}
@@ -290,7 +298,9 @@ export function ProfileDetailModal({ profile, onClose, onConnect }: ProfileDetai
               {!interestSent && !showNote && (
                 <button
                   type="button"
-                  onClick={() => setShowNote(true)}
+                  onClick={() => {
+                    if (allowVerificationAction("add a note")) setShowNote(true);
+                  }}
                   className="py-2.5 px-3.5 rounded-full border border-line text-ink hover:bg-surface-subtle text-xs font-semibold cursor-pointer"
                 >
                   + Add Message

@@ -26,13 +26,13 @@ const PRICES: Record<Exclude<PlanId, "free">, Record<Period, number>> = {
 const SAVE: Record<Period, string | null> = { 1: null, 3: "Save 15%", 6: "Save 25%" };
 
 const PLANS: { id: PlanId; name: string; tagline: string; features: string[] }[] = [
-  { id: "free", name: "Free", tagline: "Your current plan", features: ["Create & post your profile", "Browse all proposals", "5 interests a month", "Safety & privacy controls"] },
-  { id: "gold", name: "Gold", tagline: "For serious seekers and families", features: ["Unlimited interests", "See contacts after acceptance", "View horoscopes", "Highlighted in search"] },
+  { id: "free", name: "Free", tagline: "Your current plan", features: ["Create & post your profile", "3 searches per month", "5 profile views per month", "Safety & privacy controls"] },
+  { id: "gold", name: "Gold", tagline: "For serious seekers and families", features: ["Unlimited messages and interest requests", "Unlimited searches and profile views", "See contacts after acceptance", "View horoscopes", "Highlighted in search"] },
   { id: "platinum", name: "Platinum", tagline: "Personal help from our matchmakers", features: ["Everything in Gold", "Dedicated matchmaker", "Hand-picked weekly matches", "Priority verification"] },
 ];
 
 const FAQ = [
-  { q: "Can I stay on the Free plan?", a: "Yes. Your profile stays live and you can browse and send 5 interests every month for free." },
+  { q: "Can I stay on the Free plan?", a: "Yes. Your profile stays live and you get 3 searches and 5 profile views each month. Gold unlocks messages and interest requests." },
   { q: "Is my payment secure?", a: "Payments are processed by a PCI-DSS certified gateway. We never store your full card number." },
   { q: "Can I cancel?", a: "Plans don’t auto-renew. When your period ends you simply move back to Free — no hidden fees." },
 ];

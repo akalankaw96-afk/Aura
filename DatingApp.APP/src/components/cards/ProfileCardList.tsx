@@ -17,6 +17,7 @@ import {
   Verify,
 } from "iconsax-react";
 import { cn } from "@/lib/cn";
+import { requirePaidAction } from "@/lib/usage";
 import { requireMember } from "@/lib/session";
 import { Flag } from "@/components/ui/Flag";
 import { Button } from "@/components/ui/Button";
@@ -171,7 +172,7 @@ export function ProfileCardList({
               disabled={sent}
               leftIcon={<HeartAdd size={18} color="currentColor" />}
               onClick={() => {
-                if (!requireMember("send an interest")) return;
+                if (!requirePaidAction("interests", "send an interest")) return;
                 if (onInterest(profile) !== false) setSent(true);
               }}
             >

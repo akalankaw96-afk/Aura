@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import Link from "next/link";
 import { ArrowRight2, Book1, Briefcase, Cake, Crown1, Heart, Ruler, ShieldTick, Star1, Verify } from "iconsax-react";
 import { cn } from "@/lib/cn";
+import { requirePaidAction } from "@/lib/usage";
 import { requireMember } from "@/lib/session";
 import { Flag } from "@/components/ui/Flag";
 import type { FeaturedProfile } from "@/content/home";
@@ -127,7 +128,7 @@ export function ProfileCard({
             <button
               type="button"
               onClick={() => {
-                if (!requireMember("send an interest")) return;
+                if (!requirePaidAction("interests", "send an interest")) return;
                 if (onInterest(profile) !== false) setSent(true);
               }}
               disabled={sent}

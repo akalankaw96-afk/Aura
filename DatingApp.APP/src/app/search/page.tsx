@@ -14,9 +14,9 @@ import { RemovableFilterChip } from "@/components/ui/RemovableFilterChip";
 import { SortDropdown } from "@/components/ui/SortDropdown";
 import { ViewToggle, type ResultsView } from "@/components/ui/ViewToggle";
 import { useToast } from "@/components/ui/Toast";
-import { requireMember, useSignedIn } from "@/lib/session";
+import { hasSession, requireMember, useSignedIn } from "@/lib/session";
 import { cn } from "@/lib/cn";
-import { consumeProfileView, consume, useUsage } from "@/lib/usage";
+import { consumeProfileView, consume, allSearchLimitsExhausted, useUsage } from "@/lib/usage";
 import { ProfileCard } from "@/components/cards/ProfileCard";
 import { ProfileCardList } from "@/components/cards/ProfileCardList";
 import { ProfileView } from "@/components/sections/search/ProfileView";
@@ -250,6 +250,7 @@ function SearchPageContent() {
   useEffect(() => {
     if (applied.filters === filters && applied.sort === sort) return;
     const t = window.setTimeout(() => {
+      if (hasSession() && allSearchLimitsExhausted()) return;
       if (consume("searches")) setApplied({ filters, sort });
       else {
         // limit reached → put the controls back to the last allowed search
@@ -315,10 +316,14 @@ function SearchPageContent() {
 
   // Open ?id= on load, and follow browser back / forward
   useEffect(() => {
-    if (initialId && consumeProfileView(initialId)) setViewId(initialId);
+    const openFromUrl = (id: string | null) => {
+      if (hasSession() && allSearchLimitsExhausted()) return;
+      if (!id || consumeProfileView(id)) setViewId(id);
+    };
+    openFromUrl(initialId || null);
     const onPop = () => {
       pushedRef.current = false;
-      setViewId(new URLSearchParams(window.location.search).get("id"));
+      openFromUrl(new URLSearchParams(window.location.search).get("id"));
     };
     window.addEventListener("popstate", onPop);
     return () => window.removeEventListener("popstate", onPop);
@@ -334,6 +339,7 @@ function SearchPageContent() {
   }, [drawerOpen]);
 
   const handleOpenDetail = (p: FeaturedProfile) => {
+    if (hasSession() && allSearchLimitsExhausted()) return;
     // Free plan: 5 different profiles a month (Upgrade prompt at the limit)
     if (!consumeProfileView(p.id)) return;
     const url = new URL(window.location.href);
@@ -372,6 +378,7 @@ function SearchPageContent() {
   const clearAll = () => setFilters(defaultFilters(filters.lookingFor));
   const sendInterest = (p: FeaturedProfile) => {
     if (!requireMember("send an interest")) return false;
+    if (allSearchLimitsExhausted()) return false;
     // Free plan: monthly interest allowance (opens the Upgrade prompt when used up)
     if (!consume("interests")) return false;
     toast.success("Interest sent", `${p.id} will be notified. You can chat once they accept.`);

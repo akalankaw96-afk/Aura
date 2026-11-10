@@ -5,7 +5,7 @@ import { CloseCircle, Heart, Lock1, MessageText, ShieldTick } from "iconsax-reac
 import { cn } from "@/lib/cn";
 import { Button, ButtonLink } from "@/components/ui/Button";
 import { CoupleAvatar } from "@/components/ui/Brand";
-import { LOGIN_REQUIRED_EVENT } from "@/lib/session";
+import { LOGIN_REQUIRED_EVENT, type MemberActionPrompt } from "@/lib/session";
 
 /**
  * "Log in to continue" — opens when a guest taps a member-only action
@@ -20,13 +20,13 @@ const PERKS = [
 ];
 
 export function LoginRequiredModal() {
-  const [state, setState] = useState<{ action: string; next: string } | null>(null);
+  const [state, setState] = useState<MemberActionPrompt | null>(null);
   const [closing, setClosing] = useState(false);
 
   useEffect(() => {
     const open = (e: Event) => {
       setClosing(false);
-      setState((e as CustomEvent<{ action: string; next: string }>).detail);
+      setState((e as CustomEvent<MemberActionPrompt>).detail);
     };
     window.addEventListener(LOGIN_REQUIRED_EVENT, open);
     return () => window.removeEventListener(LOGIN_REQUIRED_EVENT, open);
@@ -50,9 +50,20 @@ export function LoginRequiredModal() {
 
   if (!state) return null;
   const next = encodeURIComponent(state.next);
+  const needsChanges = state.verification === "changes";
+  const title = needsChanges
+    ? "Profile changes required"
+    : state.verification
+      ? "Verification in progress"
+      : `Log in to ${state.action}`;
+  const message = needsChanges
+    ? "Update the flagged details on your dashboard and resubmit your profile. You can use profile actions once your verification is approved."
+    : state.verification
+      ? "We’re reviewing your profile. Please wait for approval before messaging members, sharing profiles, or using other profile actions."
+      : "This feature is for members only. Log in, or create a free account in about 2 minutes.";
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-end justify-center p-0 sm:items-center sm:p-4" role="dialog" aria-modal="true" aria-labelledby="login-required-title">
+    <div className="fixed inset-0 z-[100] flex items-end justify-center p-0 sm:items-center sm:p-4" role="dialog" aria-modal="true" aria-labelledby="login-required-title" aria-describedby="login-required-description">
       <div className={cn("absolute inset-0 bg-[rgba(0,0,0,0.45)] transition-opacity duration-200", closing ? "opacity-0" : "animate-fade-in")} onClick={close} aria-hidden />
       <div
         className={cn(
@@ -72,12 +83,23 @@ export function LoginRequiredModal() {
             </span>
           </span>
           <h2 id="login-required-title" className="text-h5 text-ink">
-            Log in to {state.action}
+            {title}
           </h2>
-          <p className="text-body-sm text-ink-secondary">This feature is for members only. Log in, or create a free account in about 2 minutes.</p>
+          <p id="login-required-description" className="text-body-sm text-ink-secondary">{message}</p>
         </div>
 
         <div className="flex flex-col gap-4 px-6 pb-[calc(24px+env(safe-area-inset-bottom))] pt-5">
+          {state.verification ? (
+            <div className="flex flex-col gap-3">
+              <ButtonLink href="/dashboard" size="md" fullWidth onClick={close}>
+                {needsChanges ? "Review flagged details" : "View verification status"}
+              </ButtonLink>
+              <Button variant="ghost" size="md" fullWidth onClick={close} autoFocus>
+                Got it
+              </Button>
+            </div>
+          ) : (
+          <>
           <ul className="flex flex-col gap-2.5">
             {PERKS.map(({ Icon, label }, i) => (
               <li key={label} className="flex items-center gap-3 text-body-sm text-ink" style={{ animation: `fade-up 380ms cubic-bezier(0.22,1,0.36,1) ${120 + i * 50}ms backwards` }}>
@@ -99,6 +121,8 @@ export function LoginRequiredModal() {
               Cancel
             </Button>
           </div>
+          </>
+          )}
         </div>
       </div>
     </div>

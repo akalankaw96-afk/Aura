@@ -46,12 +46,12 @@ export function DashboardDemo() {
       tips={[
         { label: "KYC status", value: status === "live" ? "approved" : status === "changes" ? "rejected" : status },
         { label: "Plan", value: paid ? plan : "free" },
-        { label: "Free limits", value: `${FREE_LIMITS.profileViews} views/mo · ${FREE_LIMITS.chats} chats · ${FREE_LIMITS.interests} int.` },
+        { label: "Free limits", value: `${FREE_LIMITS.searches} searches/mo · ${FREE_LIMITS.profileViews} views/mo` },
       ]}
       actions={[
         { label: "1 · KYC pending", active: status === "pending" || status === "resubmitted", onClick: () => go("pending", false, "KYC pending", "Profile under review — features are locked.") },
         { label: "2 · KYC rejected", active: status === "changes", onClick: () => go("changes", false, "KYC rejected", "3 fields need changes — tap Edit & resubmit.") },
-        { label: "3 · Approved · Free", active: status === "live" && !paid, onClick: () => go("live", false, "Approved · Free plan", "Limited messages, searches and interests.") },
+        { label: "3 · Approved · Free", active: status === "live" && !paid, onClick: () => go("live", false, "Approved · Free plan", "Includes monthly searches and profile views. Gold unlocks messages and requests.") },
         { label: "4 · Approved · Pro", active: status === "live" && plan === "gold", onClick: () => go("live", true, "Approved · Gold", "Every feature is unlocked.") },
         { label: "Pro · Platinum", active: status === "live" && plan === "platinum", onClick: () => go("live", "platinum", "Approved · Platinum", "Gold + matchmaker features.") },
         {
