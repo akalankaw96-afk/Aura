@@ -11,12 +11,35 @@ import { readPlan } from "@/lib/verification";
  * When a free member hits a limit, `consume()` returns false and opens the Upgrade prompt.
  * Demo: counts are kept in localStorage. TODO(api): enforce on the server.
  */
-export type UsageKind = "messages" | "searches" | "interests";
+export type UsageKind = "profileViews" | "chats" | "messages" | "searches" | "interests";
 
-export const FREE_LIMITS: Record<UsageKind, number> = { messages: 5, searches: 3, interests: 3 };
+export const FREE_LIMITS: Record<UsageKind, number> = {
+  profileViews: 3,
+  chats: 2,
+  messages: 2,
+  searches: 3,
+  interests: 3,
+};
 
-export const USAGE_LABEL: Record<UsageKind, { title: string; unit: string }> = {
-  messages: { title: "Messages", unit: "messages" },
+export const USAGE_LABEL: Record<UsageKind, { title: string; unit: string; limitReachedTitle?: string; limitReachedMsg?: string }> = {
+  profileViews: {
+    title: "Daily Profile Views",
+    unit: "views",
+    limitReachedTitle: "Daily Profile View Limit Reached",
+    limitReachedMsg: "You've reached your daily limit of 3 profile views. Upgrade to Premium to explore unlimited profiles.",
+  },
+  chats: {
+    title: "Free Chat Connections",
+    unit: "connections",
+    limitReachedTitle: "Free Chat Limit Reached",
+    limitReachedMsg: "You've reached your free chat limit of 2 people. Upgrade to Premium to connect with more members.",
+  },
+  messages: {
+    title: "Messages",
+    unit: "messages",
+    limitReachedTitle: "Free Chat Limit Reached",
+    limitReachedMsg: "You've reached your free chat limit of 2 people. Upgrade to Premium to connect with more members.",
+  },
   searches: { title: "Searches", unit: "searches" },
   interests: { title: "Interests", unit: "interests" },
 };
@@ -28,7 +51,14 @@ export const UPGRADE_EVENT = "vk-upgrade-prompt";
 type Usage = Record<UsageKind, number> & { month: string };
 
 const thisMonth = () => new Date().toISOString().slice(0, 7);
-const empty = (): Usage => ({ month: thisMonth(), messages: 0, searches: 0, interests: 0 });
+const empty = (): Usage => ({
+  month: thisMonth(),
+  profileViews: 0,
+  chats: 0,
+  messages: 0,
+  searches: 0,
+  interests: 0,
+});
 
 export function readUsage(): Usage {
   if (typeof window === "undefined") return empty();

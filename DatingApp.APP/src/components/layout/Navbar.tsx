@@ -310,9 +310,10 @@ function AccountMenu({ session, onLogout }: { session: AuthSession | null; onLog
     };
   }, [open]);
 
-  const fullName = session?.fullName || MEMBER.firstName;
+  const fullName = session?.fullName || "Member";
   // Figma: Account pill shows the first name only
-  const displayName = fullName.split(" ")[0];
+  const displayName = fullName.trim().split(" ")[0] || "Member";
+  const photo = session?.photoUrl;
 
   return (
     <div ref={ref} className="relative">
@@ -323,8 +324,14 @@ function AccountMenu({ session, onLogout }: { session: AuthSession | null; onLog
         onClick={() => setOpen((o) => !o)}
         className="flex items-center gap-2 rounded-full border border-line bg-surface-card py-1 pl-1 pr-3 text-label-md text-ink transition-shadow hover:shadow-md"
       >
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={MEMBER.photo} alt="" className="h-9 w-9 rounded-full object-cover" />
+        {photo ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={photo} alt={displayName} className="h-9 w-9 rounded-full object-cover border border-line" />
+        ) : (
+          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-brand-gradient text-white font-bold text-xs">
+            {displayName[0] || "M"}
+          </div>
+        )}
         <span className="max-w-[120px] truncate">{displayName}</span>
         <ArrowDown2 size={16} color="currentColor" className={cn("text-icon-brand transition-transform", open && "rotate-180")} />
       </button>

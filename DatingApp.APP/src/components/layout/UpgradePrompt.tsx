@@ -12,6 +12,8 @@ import { FREE_LIMITS, UPGRADE_EVENT, USAGE_LABEL, type UsageKind } from "@/lib/u
  * anything can open it via lib/usage → consume().
  */
 const ICON: Record<UsageKind, React.ReactNode> = {
+  profileViews: <Eye size={26} color="currentColor" />,
+  chats: <Messages2 size={26} color="currentColor" />,
   messages: <Messages2 size={26} color="currentColor" />,
   searches: <SearchNormal1 size={26} color="currentColor" />,
   interests: <Heart size={26} color="currentColor" />,
@@ -75,10 +77,10 @@ export function UpgradePrompt() {
             </span>
           </span>
           <h2 id="upgrade-title" className="text-h5 text-ink">
-            You’ve used your {limit} free {unit}
+            {USAGE_LABEL[kind].limitReachedTitle || `You’ve used your ${limit} free ${unit}`}
           </h2>
           <p className="text-body-sm text-ink-secondary">
-            Free members get {limit} {unit} a month — your allowance resets on the 1st. Upgrade to keep going right now.
+            {USAGE_LABEL[kind].limitReachedMsg || `Free members get ${limit} ${unit} a month — your allowance resets on the 1st. Upgrade to keep going right now.`}
           </p>
         </div>
 

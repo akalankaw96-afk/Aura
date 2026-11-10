@@ -4,10 +4,11 @@ import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { AddCircle, Crown1, Lock1, Lovely, TickCircle } from "iconsax-react";
 import { cn } from "@/lib/cn";
-import { DASH_HERO, MEMBER } from "@/content/dashboard";
+import { DASH_HERO } from "@/content/dashboard";
 import { HERO } from "@/content/home";
 import { useLanguage } from "@/context/LanguageContext";
 import { useAccess } from "@/lib/verification";
+import { useAuthSession } from "@/lib/session";
 
 /**
  * Figma: Dashboard → Hero — 1280 wide, padding 48, gap 40, radius 2xl.
@@ -17,6 +18,7 @@ import { useAccess } from "@/lib/verification";
 export function DashboardHero() {
   const { t, lang } = useLanguage();
   const { locked, isPaid, plan } = useAccess();
+  const { firstName, hasCompletedProfile } = useAuthSession();
   const [hello, setHello] = useState("Welcome");
 
   useEffect(() => {
@@ -49,12 +51,14 @@ export function DashboardHero() {
             )}
           </div>
           <h1 className="enter text-h2 md:text-display-lg" style={{ "--enter-delay": "80ms" } as React.CSSProperties}>
-            {hello}, {MEMBER.firstName}
+            {hello}, {firstName}
           </h1>
           <p className="enter text-body-md text-ink-on-brand-muted md:text-body-lg" style={{ "--enter-delay": "160ms" } as React.CSSProperties}>
             {locked
               ? lang === "si"
                 ? "ඔබේ පැතිකඩ සමාලෝචනය වෙමින් පවතී — අතරතුර ඔබේ පාලක පුවරුව බලන්න."
+                : !hasCompletedProfile
+                ? "Please complete your candidate profile to activate personalized match recommendations."
                 : "Your profile is being reviewed — take a look around while we get your matches ready."
               : lang === "si"
               ? `අද දිනයේ නව ගැළපීම් 12ක් සහ යෝජනා 3ක් ඔබ වෙනුවෙන් සූදානම්ව ඇත.`
@@ -74,8 +78,11 @@ export function DashboardHero() {
                 {t.dashboard.seeMatches}
               </Link>
             )}
-            <Link href={DASH_HERO.secondary.href} className="flex h-11 items-center rounded-full bg-brand-subtle px-6 text-button-md text-brand-text ring-1 ring-inset ring-brand">
-              {t.dashboard.completeProfile}
+            <Link
+              href={hasCompletedProfile ? "/register/status" : "/register"}
+              className="flex h-11 items-center rounded-full bg-brand-subtle px-6 text-button-md text-brand-text ring-1 ring-inset ring-brand"
+            >
+              {hasCompletedProfile ? "View Status" : t.dashboard.completeProfile}
             </Link>
           </div>
         </div>
@@ -90,18 +97,48 @@ export function DashboardHero() {
 function ProfileStrength() {
   const { t, lang } = useLanguage();
   const { locked, isPaid, plan } = useAccess();
+  const { fullName, firstName, photoUrl, profileCode, hasCompletedProfile, isVerified } = useAuthSession();
+
+  const targetStrength = isVerified ? 100 : hasCompletedProfile ? 70 : 35;
   const [w, setW] = useState(0);
+
   useEffect(() => {
-    const tTimer = window.setTimeout(() => setW(MEMBER.strength), 500);
+    const tTimer = window.setTimeout(() => setW(targetStrength), 500);
     return () => window.clearTimeout(tTimer);
-  }, []);
+  }, [targetStrength]);
 
   const todoLabels: Record<string, string> = {
     "Personal details": lang === "si" ? "පුද්ගලික තොරතුරු" : "Personal details",
     "Family & partner preferences": lang === "si" ? "පවුලේ තොරතුරු සහ කැමැත්ත" : "Family & partner preferences",
     "Upload photo (verified)": lang === "si" ? "සත්‍යාපිත ඡායාරූපය" : "Upload photo (verified)",
     "Add horoscope for better matches": lang === "si" ? "කේන්දර සටහන එක් කරන්න" : "Add horoscope for better matches",
+    "Google account connected": lang === "si" ? "Google ගිණුම සම්බන්ධයි" : "Google account connected",
+    "Profile submitted": lang === "si" ? "පැතිකඩ යොමු කරන ලදී" : "Profile submitted",
+    "Safety review in progress": lang === "si" ? "ආරක්ෂක සමාලෝචනය සිදුවෙමින් පවතී" : "Safety review in progress",
+    "Account verified": lang === "si" ? "ගිණුම සත්‍යාපිතයි" : "Account verified",
+    "Profile live": lang === "si" ? "පැතිකඩ සක්‍රීයයි" : "Profile live",
   };
+
+  const dynamicTodos = isVerified
+    ? [
+        { done: true, label: "Account verified" },
+        { done: true, label: "Profile live" },
+        { done: false, label: "Add horoscope for better matches" },
+      ]
+    : hasCompletedProfile
+    ? [
+        { done: true, label: "Google account connected" },
+        { done: true, label: "Profile submitted" },
+        { done: false, label: "Safety review in progress" },
+      ]
+    : [
+        { done: true, label: "Google account connected" },
+        { done: false, label: "Personal details" },
+        { done: false, label: "Upload photo (verified)" },
+      ];
+
+  const displayPhoto = photoUrl || "";
+  const displayId = profileCode || (hasCompletedProfile ? "AM-PENDING" : "NEW MEMBER");
 
   return (
     <aside
@@ -111,36 +148,48 @@ function ProfileStrength() {
     >
       <div className="flex items-center gap-3">
         <span className="relative shrink-0">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={MEMBER.photo} alt="" className={cn("h-14 w-14 rounded-full border-2 object-cover", !locked && isPaid ? "border-gold-300" : "border-white")} />
+          {displayPhoto ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={displayPhoto}
+              alt=""
+              className={cn("h-14 w-14 rounded-full border-2 object-cover", !locked && isPaid ? "border-gold-300" : "border-white")}
+            />
+          ) : (
+            <div className={cn("flex h-14 w-14 items-center justify-center rounded-full bg-brand-gradient text-white font-bold text-xl border-2", !locked && isPaid ? "border-gold-300" : "border-white")}>
+              {firstName[0] || "M"}
+            </div>
+          )}
           {!locked && isPaid && (
             <span aria-label={plan === "platinum" ? "Platinum" : "Gold"} className="absolute -bottom-1 -right-1 flex h-6 w-6 items-center justify-center rounded-full bg-gold-300 text-gold-900 ring-2 ring-white">
               <Crown1 size={14} color="currentColor" />
             </span>
           )}
         </span>
-        <div className="flex flex-col gap-0.5">
-          <p className="text-h6">{MEMBER.fullName}</p>
-          <p className="text-caption text-ink-on-brand-muted">{locked ? "Pending review" : `${MEMBER.id} · ${t.featured.verified}`}</p>
+        <div className="flex flex-col gap-0.5 min-w-0">
+          <p className="text-h6 truncate max-w-[200px]">{fullName || "Your Profile"}</p>
+          <p className="text-caption text-ink-on-brand-muted">
+            {locked ? "Pending review" : `${displayId} · ${t.featured.verified}`}
+          </p>
         </div>
       </div>
       <div className="flex flex-col gap-2">
         <div className="flex justify-between text-label-md">
           <span>{t.dashboard.profileStrength}</span>
-          <span>{MEMBER.strength}%</span>
+          <span>{targetStrength}%</span>
         </div>
-        <div className="h-2 overflow-hidden rounded-full bg-[rgba(255,255,255,0.2)]" role="progressbar" aria-valuenow={MEMBER.strength} aria-valuemin={0} aria-valuemax={100}>
+        <div className="h-2 overflow-hidden rounded-full bg-[rgba(255,255,255,0.2)]" role="progressbar" aria-valuenow={targetStrength} aria-valuemin={0} aria-valuemax={100}>
           <div className="h-full rounded-full bg-gold-300 transition-[width] duration-1000 ease-out" style={{ width: `${w}%` }} />
         </div>
       </div>
       <ul className="flex flex-col gap-2">
-        {MEMBER.todos.map((item) => (
+        {dynamicTodos.map((item) => (
           <li key={item.label} className={cn("flex items-center gap-2 text-body-sm", item.done ? "text-ink-on-brand" : "text-ink-on-brand-muted")}>
             {item.done ? <TickCircle size={16} color="currentColor" variant="Bold" className="text-gold-300" /> : <AddCircle size={16} color="currentColor" />}
             {item.done ? (
               todoLabels[item.label] || item.label
             ) : (
-              <Link href="/register" className="hover:text-ink-on-brand hover:underline">
+              <Link href={hasCompletedProfile ? "/register/status" : "/register"} className="hover:text-ink-on-brand hover:underline">
                 {todoLabels[item.label] || item.label}
               </Link>
             )}

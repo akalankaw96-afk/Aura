@@ -209,8 +209,6 @@ export function GoogleSignInButton({ isSignUp = false, onSuccess, className = ""
       if (!session.hasCompletedProfile) {
         toast.info("Complete Your Matrimony Profile", "Just a few quick details to activate match recommendations.");
         router.push("/register");
-      } else if (session.isUnderReview) {
-        router.push("/");
       } else {
         router.push("/dashboard");
       }

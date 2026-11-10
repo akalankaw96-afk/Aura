@@ -13,15 +13,15 @@ import { FREE_LIMITS, USAGE_LABEL, useUsage, type UsageKind } from "@/lib/usage"
  * what Gold unlocks, and an Upgrade button. Hidden for Gold / Platinum.
  */
 const METERS: { kind: UsageKind; Icon: typeof Heart }[] = [
-  { kind: "messages", Icon: Messages2 },
-  { kind: "searches", Icon: SearchNormal1 },
+  { kind: "profileViews", Icon: Eye },
+  { kind: "chats", Icon: Messages2 },
   { kind: "interests", Icon: Heart },
 ];
 const GOLD = [
-  { Icon: Messages2, label: "Unlimited messages" },
+  { Icon: Eye, label: "Unlimited profile views" },
+  { Icon: Messages2, label: "Unlimited chat connections" },
   { Icon: Heart, label: "Unlimited interests" },
   { Icon: SearchNormal1, label: "Unlimited & advanced search" },
-  { Icon: Eye, label: "See who viewed you" },
   { Icon: Sms, label: "Contact & WhatsApp sharing" },
   { Icon: Star1, label: "Horoscope matching" },
 ];
@@ -31,7 +31,9 @@ export function PlanUsageCard() {
   const { usage, left } = useUsage();
   if (locked || isPaid) return null;
 
-  const anyOut = METERS.some(({ kind }) => left(kind) === 0);
+  const outMeter = METERS.find(({ kind }) => left(kind) === 0);
+  const outLabel = outMeter ? USAGE_LABEL[outMeter.kind] : null;
+  const anyOut = Boolean(outMeter);
 
   return (
     <section aria-label="Your plan and usage" className="kyc-in flex flex-col gap-5 rounded-xl border border-premium-line bg-surface-card p-5 shadow-sm sm:p-6">
@@ -41,10 +43,13 @@ export function PlanUsageCard() {
         <span className="text-label-sm text-ink-tertiary">Resets on the 1st</span>
       </div>
 
-      {anyOut && (
-        <div className="flex animate-fade-up items-center gap-3 rounded-md bg-premium-bg px-4 py-3 text-body-sm text-premium-fg">
-          <Lock1 size={18} color="currentColor" className="shrink-0" />
-          <p className="flex-1">You’ve reached a free limit. Upgrade to keep messaging, searching and sending interests.</p>
+      {anyOut && outLabel && (
+        <div className="flex animate-fade-up items-start gap-3 rounded-md bg-premium-bg px-4 py-3 text-body-sm text-premium-fg">
+          <Lock1 size={18} color="currentColor" className="shrink-0 mt-0.5" />
+          <div className="flex-1">
+            <p className="font-bold">{outLabel.limitReachedTitle || "Free Limit Reached"}</p>
+            <p className="text-body-xs">{outLabel.limitReachedMsg || "You’ve reached a free limit. Upgrade to keep exploring."}</p>
+          </div>
         </div>
       )}
 

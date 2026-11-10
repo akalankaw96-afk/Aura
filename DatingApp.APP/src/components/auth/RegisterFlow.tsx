@@ -46,6 +46,7 @@ import { DEMO, formatPhone } from "./shared";
 import { setKyc } from "@/lib/verification";
 import { AVATARS, avatarDataUri, isIllustration, type AvatarGender } from "@/content/avatars";
 import type { CountryCode } from "@/components/ui/Flag";
+import { apiService } from "@/services/api";
 
 /**
  * Registration journeys 3–6 (Figma 02 Account, 03 Verify, 04 Profile,
@@ -75,7 +76,7 @@ export function RegisterFlow({ initialStep = 1, embedded, onComplete }: Register
     if (typeof window !== "undefined") window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
-  const finish = () => {
+  const finish = async () => {
     const d = saveDraft({ reviewStatus: "submitted" });
     if (embedded && onComplete) {
       toast.success("Profile submitted", "We’ll review it within 24 hours.");
@@ -83,15 +84,48 @@ export function RegisterFlow({ initialStep = 1, embedded, onComplete }: Register
       return;
     }
     flashToast("success", "Profile submitted", "You can explore your dashboard while we review it.");
+
+    // Sync candidate profile with backend API
+    try {
+      const fullName = d.fullName || `${d.firstName || ""} ${d.lastName || ""}`.trim() || "New Member";
+      const calculatedAge = d.dob ? ageFrom(d.dob) : 28;
+
+      await apiService.createOrUpdateProfile({
+        fullName,
+        gender: (d.gender === "female" ? "female" : "male") as "female" | "male",
+        age: calculatedAge ?? 28,
+        height: d.height || "5' 8\"",
+        profession: "Professional",
+        professionCategory: "Other",
+        education: "Bachelor's Degree",
+        university: "",
+        location: d.country === "Sri Lanka" ? "Colombo" : "Living abroad",
+        country: d.country || "Sri Lanka",
+        religion: d.religion || "Buddhist",
+        community: d.ethnicity || "Sinhalese",
+        bio: d.about || "",
+        aboutFamily: "",
+        horoscopeAvailable: false,
+        photoUrl: d.photo || "",
+        interests: [],
+      });
+    } catch (err) {
+      console.warn("Backend profile sync notice:", err);
+    }
+
     // signed in with a pending profile → Dashboard (features unlock after review)
     try {
-      if (!localStorage.getItem("aura_session")) {
-        localStorage.setItem(
-          "aura_session",
-          JSON.stringify({ fullName: d.fullName || d.firstName || "New member", email: d.email, mobile: d.mobile, profileStatus: "PendingAdminApproval" })
-        );
-        window.dispatchEvent(new Event("aura_auth_change"));
-      }
+      const raw = localStorage.getItem("aura_session");
+      const sess = raw ? JSON.parse(raw) : {};
+      sess.fullName = d.fullName || d.firstName || sess.fullName || "New member";
+      sess.email = d.email || sess.email;
+      sess.phoneNumber = d.mobile || sess.phoneNumber;
+      sess.photoUrl = d.photo || sess.photoUrl;
+      sess.hasCompletedProfile = true;
+      sess.isUnderReview = true;
+      sess.isVerified = false;
+      localStorage.setItem("aura_session", JSON.stringify(sess));
+      window.dispatchEvent(new Event("aura_auth_change"));
     } catch {}
     setKyc("pending");
     router.push("/dashboard");

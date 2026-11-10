@@ -170,6 +170,27 @@ export const apiService = {
     return mockProfiles.find((p) => p.id === id) || null;
   },
 
+  // Get current logged-in candidate profile
+  async getMyProfile(): Promise<Profile | null> {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('aura_token') : null;
+    if (!token) return null;
+    try {
+      const res = await fetch(`${API_BASE_URL}/profiles/me`, {
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      if (res.ok) {
+        const json: Profile = await res.json();
+        return json;
+      }
+    } catch (e) {
+      console.warn('API getMyProfile error:', e);
+    }
+    return null;
+  },
+
   // Authentication: Register with Email
   async register(data: {
     fullName: string;
@@ -231,7 +252,17 @@ export const apiService = {
       if (typeof window !== 'undefined' && json.token) {
         localStorage.setItem('aura_token', json.token);
         localStorage.setItem('aura_session', JSON.stringify(json));
+        localStorage.setItem('aura_auth_user', JSON.stringify(json));
+        if (json.isUnderReview || json.isVerified === false || !json.hasCompletedProfile) {
+          localStorage.setItem('aura_review_status', 'submitted');
+          localStorage.setItem('vk-kyc', 'pending');
+        } else {
+          localStorage.setItem('vk-kyc', 'live');
+        }
+        localStorage.setItem('vk-plan', json.isPremium ? (json.planId || 'gold') : 'free');
         window.dispatchEvent(new Event('aura_auth_change'));
+        window.dispatchEvent(new Event('vk-kyc-change'));
+        window.dispatchEvent(new Event('vk-plan-change'));
       }
       return json;
     }
@@ -269,10 +300,16 @@ export const apiService = {
           localStorage.setItem('aura_token', session.token);
           localStorage.setItem('aura_session', JSON.stringify(session));
           localStorage.setItem('aura_auth_user', JSON.stringify(session));
-          if (session.isUnderReview) {
+          if (session.isUnderReview || session.isVerified === false || !session.hasCompletedProfile) {
             localStorage.setItem('aura_review_status', 'submitted');
+            localStorage.setItem('vk-kyc', 'pending');
+          } else {
+            localStorage.setItem('vk-kyc', 'live');
           }
+          localStorage.setItem('vk-plan', session.isPremium ? (session.planId || 'gold') : 'free');
           window.dispatchEvent(new Event('aura_auth_change'));
+          window.dispatchEvent(new Event('vk-kyc-change'));
+          window.dispatchEvent(new Event('vk-plan-change'));
         }
         return session;
       }
@@ -297,7 +334,11 @@ export const apiService = {
       localStorage.setItem('aura_session', JSON.stringify(session));
       localStorage.setItem('aura_auth_user', JSON.stringify(session));
       localStorage.setItem('aura_review_status', 'submitted');
+      localStorage.setItem('vk-kyc', 'pending');
+      localStorage.setItem('vk-plan', 'free');
       window.dispatchEvent(new Event('aura_auth_change'));
+      window.dispatchEvent(new Event('vk-kyc-change'));
+      window.dispatchEvent(new Event('vk-plan-change'));
     }
     return session;
   },
@@ -704,6 +745,8 @@ export const apiService = {
       localStorage.removeItem('aura_session');
       localStorage.removeItem('aura_auth_user');
       localStorage.removeItem('aura_review_status');
+      localStorage.removeItem('vk-kyc');
+      localStorage.removeItem('vk-plan');
       sessionStorage.clear();
 
       try {
@@ -714,6 +757,8 @@ export const apiService = {
       }
 
       window.dispatchEvent(new Event('aura_auth_change'));
+      window.dispatchEvent(new Event('vk-kyc-change'));
+      window.dispatchEvent(new Event('vk-plan-change'));
     }
   },
 };

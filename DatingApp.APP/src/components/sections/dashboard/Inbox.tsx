@@ -10,6 +10,7 @@ import { SegmentedTabs } from "@/components/ui/SegmentedTabs";
 import { useToast } from "@/components/ui/Toast";
 import { useLanguage } from "@/context/LanguageContext";
 import { FRIENDS, MESSAGES, REQUESTS, type Friend, type InterestRequest } from "@/content/dashboard";
+import { useAuthSession } from "@/lib/session";
 
 /**
  * Figma: Dashboard — Version B (tabs) → Requests + Messages (two cards, gap 24).
@@ -23,9 +24,13 @@ import { FRIENDS, MESSAGES, REQUESTS, type Friend, type InterestRequest } from "
  * accepted rows flash green, counts pop.
  */
 export function Inbox() {
+  const { isVerified, hasCompletedProfile } = useAuthSession();
   // ?empty=1 → brand-new member: everything empty (Figma: empty-state version)
   const [empty, setEmpty] = useState(false);
-  useEffect(() => setEmpty(new URLSearchParams(window.location.search).has("empty")), []);
+  useEffect(() => {
+    const isParamEmpty = new URLSearchParams(window.location.search).has("empty");
+    setEmpty(isParamEmpty || !isVerified || !hasCompletedProfile);
+  }, [isVerified, hasCompletedProfile]);
   return (
     <div className="grid items-start gap-6 lg:grid-cols-2">
       <RequestsFriendsCard key={`rf-${empty}`} empty={empty} />

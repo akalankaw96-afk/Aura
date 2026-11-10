@@ -22,8 +22,23 @@ export function readKyc(): KycStatus {
   try {
     const q = new URLSearchParams(window.location.search).get("kyc");
     if (q === "pending" || q === "changes" || q === "resubmitted" || q === "live") return q;
+
     const v = localStorage.getItem(KEY);
-    return v === "pending" || v === "changes" || v === "resubmitted" ? v : "live";
+    if (v === "pending" || v === "changes" || v === "resubmitted" || v === "live") return v;
+
+    // Check authenticated session
+    const rawSess = localStorage.getItem("aura_session");
+    if (rawSess) {
+      const sess = JSON.parse(rawSess);
+      if (sess.isUnderReview || sess.isVerified === false || !sess.hasCompletedProfile) {
+        return "pending";
+      }
+      if (sess.isVerified === true) {
+        return "live";
+      }
+    }
+
+    return "live";
   } catch {
     return "live";
   }
@@ -75,8 +90,20 @@ export function readPlan(): Plan {
   try {
     const q = new URLSearchParams(window.location.search).get("plan");
     if (q === "free" || q === "gold" || q === "platinum") return q;
+
     const v = localStorage.getItem(PLAN_KEY);
-    return v === "gold" || v === "platinum" ? v : "free";
+    if (v === "gold" || v === "platinum" || v === "free") return v;
+
+    const rawSess = localStorage.getItem("aura_session");
+    if (rawSess) {
+      const sess = JSON.parse(rawSess);
+      if (sess.isPremium) {
+        return sess.planId === "platinum" ? "platinum" : "gold";
+      }
+      return "free";
+    }
+
+    return "free";
   } catch {
     return "free";
   }

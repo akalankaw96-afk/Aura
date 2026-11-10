@@ -21,6 +21,7 @@ import { cn } from "@/lib/cn";
 import { Button } from "@/components/ui/Button";
 import { useToast } from "@/components/ui/Toast";
 import { MEMBER } from "@/content/dashboard";
+import { useAuthSession } from "@/lib/session";
 import { useAccess } from "@/lib/verification";
 import { BOOST, OPEN_PROMOTE_EVENT, openPromote, startBoost, useBoost } from "@/lib/promotion";
 
@@ -146,6 +147,9 @@ export function PromoteModal() {
   const [method, setMethod] = useState("saved");
   // snapshot of what was bought (the boost state changes right after paying)
   const [paid, setPaid] = useState<{ extending: boolean; start: Date; end: Date } | null>(null);
+  const { profileCode, photoUrl } = useAuthSession();
+  const memberId = profileCode || "Your Profile";
+  const memberPhoto = photoUrl || MEMBER.photo;
 
   // open from the card, from ?promote=1 (Search → "Promote your profile"), or the event
   useEffect(() => {
@@ -226,7 +230,7 @@ export function PromoteModal() {
               {paid?.extending ? "Promotion extended!" : "You’re promoted!"}
             </h2>
             <p className="max-w-[360px] text-body-md text-ink-secondary">
-              {MEMBER.id} now appears at the top of matching searches until <span className="font-semibold text-ink">{fmt(paid?.end ?? endDate)}</span>. We’ll show your extra views and interests on your dashboard.
+              {memberId} now appears at the top of matching searches until <span className="font-semibold text-ink">{fmt(paid?.end ?? endDate)}</span>. We’ll show your extra views and interests on your dashboard.
             </p>
             <div className="flex w-full flex-col gap-2 rounded-[16px] bg-surface-subtle p-4 text-left text-body-sm">
               <Row label="Paid" value={`${lkr(BOOST.price)} · ${METHODS.find((m) => m.id === method)?.label}`} />
@@ -250,10 +254,10 @@ export function PromoteModal() {
               {/* how your card looks while promoted */}
               <div className="promo-shine mt-5 flex items-center gap-3 rounded-[16px] bg-premium-bg p-3 text-ink">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={MEMBER.photo} alt="" className="h-14 w-14 shrink-0 rounded-[12px] object-cover" />
+                <img src={memberPhoto} alt="" className="h-14 w-14 shrink-0 rounded-[12px] object-cover" />
                 <div className="min-w-0 flex-1">
                   <p className="flex items-center gap-2 text-label-lg">
-                    {MEMBER.id}
+                    {memberId}
                     <span className="promo-badge inline-flex h-[20px] items-center gap-1 rounded-full bg-surface-card px-2 text-label-sm text-premium-fg">
                       <Crown1 size={12} color="currentColor" /> Promoted
                     </span>

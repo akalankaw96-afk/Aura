@@ -24,6 +24,19 @@ export function DashboardDemo() {
     setPlan(gold === "platinum" ? "platinum" : gold ? "gold" : "free");
     setStatus(kyc);
     resetUsage();
+    try {
+      const raw = localStorage.getItem("aura_session");
+      if (raw) {
+        const s = JSON.parse(raw);
+        s.isVerified = kyc === "live";
+        s.isUnderReview = kyc === "pending";
+        s.isPremium = Boolean(gold);
+        s.planId = gold === "platinum" ? "platinum" : gold ? "gold" : "free";
+        s.hasCompletedProfile = true;
+        localStorage.setItem("aura_session", JSON.stringify(s));
+        window.dispatchEvent(new Event("aura_auth_change"));
+      }
+    } catch {}
     window.scrollTo({ top: 0, behavior: "smooth" });
     toast.info(title, text);
   };
@@ -33,7 +46,7 @@ export function DashboardDemo() {
       tips={[
         { label: "KYC status", value: status === "live" ? "approved" : status === "changes" ? "rejected" : status },
         { label: "Plan", value: paid ? plan : "free" },
-        { label: "Free limits", value: `${FREE_LIMITS.messages} msg · ${FREE_LIMITS.searches} search · ${FREE_LIMITS.interests} int.` },
+        { label: "Free limits", value: `${FREE_LIMITS.profileViews} views/day · ${FREE_LIMITS.chats} chats · ${FREE_LIMITS.interests} int.` },
       ]}
       actions={[
         { label: "1 · KYC pending", active: status === "pending" || status === "resubmitted", onClick: () => go("pending", false, "KYC pending", "Profile under review — features are locked.") },

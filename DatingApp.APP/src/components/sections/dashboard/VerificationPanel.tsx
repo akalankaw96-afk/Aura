@@ -30,6 +30,7 @@ import { FLAGGED } from "@/components/auth/ReviewStatus";
 import { formatPhone } from "@/components/auth/shared";
 import { loadDraft, type RegistrationDraft } from "@/lib/demo";
 import { useKyc, type KycStatus } from "@/lib/verification";
+import { useAuthSession } from "@/lib/session";
 
 /**
  * Dashboard → Profile verification panel (shown until the profile is approved).
@@ -41,6 +42,7 @@ const STEPS = ["Account created", "Mobile verified", "Profile submitted", "Safet
 
 export function VerificationPanel() {
   const { status } = useKyc();
+  const { session, firstName, photoUrl, hasCompletedProfile } = useAuthSession();
   useFlashToast(); // shows "Profile submitted" after the registration redirect
   const [draft, setDraft] = useState<RegistrationDraft | null>(null);
   const [justLive, setJustLive] = useState(false);
@@ -74,8 +76,10 @@ export function VerificationPanel() {
   }
 
   const rejected = status === "changes";
-  const current = 3; // index of "Safety review"
-  const name = draft?.firstName || "there";
+  const current = hasCompletedProfile ? 3 : 2; // index of "Safety review" or "Profile submitted"
+  const name = firstName || draft?.firstName || "there";
+  const displayPhoto = photoUrl || draft?.photo;
+  const mobileDisplay = session?.phoneNumber || draft?.mobile ? formatPhone(session?.phoneNumber || draft?.mobile || "") : (session?.email || "your email/mobile");
   const reviewedOn = new Date().toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
 
   return (
@@ -108,22 +112,40 @@ export function VerificationPanel() {
                   ? "Your profile needs a few changes"
                   : status === "resubmitted"
                   ? "Thanks — we’re checking your changes"
-                  : `Hi ${name}, your profile is under review`}
+                  : !hasCompletedProfile
+                  ? `Welcome ${name}, complete your candidate profile`
+                  : `Your Profile Is Under Review`}
               </h2>
-              <Badge tone={rejected ? "error" : "warning"}>{rejected ? "Action needed" : "Pending review"}</Badge>
+              <Badge tone={rejected ? "error" : !hasCompletedProfile ? "brand" : "warning"}>
+                {rejected ? "Action needed" : !hasCompletedProfile ? "Incomplete" : "Pending review"}
+              </Badge>
             </div>
             <p className="mt-1 text-body-sm text-ink-secondary">
               {rejected
                 ? "Please fix the items below and resubmit. Nothing is shown to other members until it’s approved."
-                : <>Every profile is checked by our safety team, usually within <b className="text-ink">24 hours</b>. We’ll SMS you at{" "}
-                    <b className="text-ink">{draft?.mobile ? formatPhone(draft.mobile) : "your mobile"}</b> as soon as you’re live.</>}
+                : !hasCompletedProfile
+                ? "Your dashboard features will be available once your matrimony profile is completed and approved."
+                : <>Your dashboard features will be available once your KYC verification is approved. We’ll notify you at{" "}
+                    <b className="text-ink">{mobileDisplay}</b> as soon as you’re live.</>}
             </p>
           </div>
-          {draft?.photo && (
+          {displayPhoto && (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={draft.photo} alt="" className="hidden h-14 w-14 shrink-0 rounded-full object-cover ring-4 ring-surface-card shadow-md sm:block" />
+            <img src={displayPhoto} alt="" className="hidden h-14 w-14 shrink-0 rounded-full object-cover ring-4 ring-surface-card shadow-md sm:block" />
           )}
         </div>
+
+        {!hasCompletedProfile && (
+          <div className="mt-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 rounded-xl border border-brand/20 bg-brand-subtle p-4">
+            <div className="flex flex-col">
+              <span className="text-label-md font-bold text-ink">Candidate Details Incomplete</span>
+              <span className="text-body-xs text-ink-secondary">Complete your matrimony profile to activate match recommendations and unlock KYC approval.</span>
+            </div>
+            <Link href="/register">
+              <Button variant="primary" className="rounded-full shadow-sm">Complete Profile</Button>
+            </Link>
+          </div>
+        )}
 
         {/* Progress timeline */}
         <ol className="relative mt-6 grid grid-cols-5 gap-1" aria-label="Verification progress">
