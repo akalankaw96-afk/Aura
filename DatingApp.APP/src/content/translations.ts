@@ -13,6 +13,8 @@ export interface Translations {
     howItWorks: string;
     pricing: string;
     createOrLogin: string;
+    createAccount: string;
+    login: string;
     dashboard: string;
     requests: string;
     messages: string;
@@ -128,6 +130,7 @@ export interface Translations {
     matchesWaiting: string;
     seeMatches: string;
     completeProfile: string;
+    editProfile: string;
     profileStrength: string;
     profileViews: string;
     interestsReceived: string;
@@ -241,6 +244,8 @@ export const TRANSLATIONS: Record<Language, Translations> = {
       howItWorks: "How it works",
       pricing: "Pricing",
       createOrLogin: "Create/ Login",
+      createAccount: "Create New",
+      login: "Login",
       dashboard: "Dashboard",
       requests: "Requests",
       messages: "Messages",
@@ -454,6 +459,7 @@ export const TRANSLATIONS: Record<Language, Translations> = {
       matchesWaiting: "new matches and interest requests are waiting for you today.",
       seeMatches: "See new matches",
       completeProfile: "Complete profile",
+      editProfile: "Edit profile",
       profileStrength: "Profile strength",
       profileViews: "Profile views",
       interestsReceived: "Interests received",
@@ -566,6 +572,8 @@ export const TRANSLATIONS: Record<Language, Translations> = {
       howItWorks: "ක්‍රියාකාරිත්වය",
       pricing: "මිල ගණන්",
       createOrLogin: "ලියාපදිංචිය / පිවිසෙන්න",
+      createAccount: "නව ගිණුමක් සාදන්න",
+      login: "පිවිසෙන්න",
       dashboard: "පාලක පුවරුව",
       requests: "යෝජනා",
       messages: "පණිවිඩ",
@@ -779,6 +787,7 @@ export const TRANSLATIONS: Record<Language, Translations> = {
       matchesWaiting: "නව ගැළපීම් සහ කැමැත්ත ප්‍රකාශ කිරීම් අද ඔබ වෙනුවෙන් සූදානම්ව ඇත.",
       seeMatches: "නව යෝජනා බලන්න",
       completeProfile: "පැතිකඩ සම්පූර්ණ කරන්න",
+      editProfile: "පැතිකඩ සංස්කරණය",
       profileStrength: "පැතිකඩ ප්‍රගතිය",
       profileViews: "පැතිකඩ බැලීම්",
       interestsReceived: "ලැබුණු කැමැත්ත",

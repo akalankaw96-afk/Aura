@@ -1,9 +1,11 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import Link from "next/link";
 import { AddCircle, Crown1, Lock1, Lovely, TickCircle } from "iconsax-react";
+import Link from "next/link";
 import { cn } from "@/lib/cn";
+import { Button, ButtonLink } from "@/components/ui/Button";
+import { openEditProfile } from "@/components/sections/dashboard/EditProfileModal";
 import { DASH_HERO } from "@/content/dashboard";
 import { HERO } from "@/content/home";
 import { useLanguage } from "@/context/LanguageContext";
@@ -74,16 +76,21 @@ export function DashboardHero() {
                 <Lock1 size={16} color="currentColor" /> {t.dashboard.seeMatches}
               </span>
             ) : (
-              <Link href={DASH_HERO.primary.href} className="flex h-11 items-center rounded-full bg-brand-gradient px-6 text-button-md text-ink-on-brand transition-shadow hover:shadow-glow">
+              <ButtonLink href={DASH_HERO.primary.href} size="md">
                 {t.dashboard.seeMatches}
-              </Link>
+              </ButtonLink>
             )}
-            <Link
-              href={hasCompletedProfile ? "/register/status" : "/register"}
-              className="flex h-11 items-center rounded-full bg-brand-subtle px-6 text-button-md text-brand-text ring-1 ring-inset ring-brand"
-            >
-              {hasCompletedProfile ? "View Status" : t.dashboard.completeProfile}
-            </Link>
+            {locked ? (
+              // under review → View status; profile not finished → Complete profile
+              <ButtonLink href={hasCompletedProfile ? "/register/status" : "/register"} variant="secondary" size="md">
+                {hasCompletedProfile ? "View Status" : t.dashboard.completeProfile}
+              </ButtonLink>
+            ) : (
+              // approved members: only the description and photos can be changed
+              <Button variant="secondary" size="md" onClick={openEditProfile}>
+                {t.dashboard.editProfile}
+              </Button>
+            )}
           </div>
         </div>
 
@@ -188,6 +195,10 @@ function ProfileStrength() {
             {item.done ? <TickCircle size={16} color="currentColor" variant="Bold" className="text-gold-300" /> : <AddCircle size={16} color="currentColor" />}
             {item.done ? (
               todoLabels[item.label] || item.label
+            ) : !locked && /photo/i.test(item.label) ? (
+              <button type="button" onClick={() => openEditProfile("photos")} className="text-left hover:text-ink-on-brand hover:underline">
+                {todoLabels[item.label] || item.label}
+              </button>
             ) : (
               <Link href={hasCompletedProfile ? "/register/status" : "/register"} className="hover:text-ink-on-brand hover:underline">
                 {todoLabels[item.label] || item.label}

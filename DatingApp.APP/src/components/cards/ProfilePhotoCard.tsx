@@ -1,8 +1,10 @@
 "use client";
 
 import React, { useState } from "react";
+import Link from "next/link";
 import { Book1, Heart, LanguageSquare, Verify } from "iconsax-react";
 import { cn } from "@/lib/cn";
+import { requireMember } from "@/lib/session";
 import { Flag } from "@/components/ui/Flag";
 import type { MarqueeProfile } from "@/content/home";
 
@@ -21,9 +23,14 @@ export type ProfilePhotoCardStyle = "glass" | "card";
  * Style = Card — same details in the Category Card style (white card,
  * full-bleed photo, success "Verified" badge, no shortlist button).
  */
-export function ProfilePhotoCard({ profile, variant = "glass", className }: { profile: MarqueeProfile; variant?: ProfilePhotoCardStyle; className?: string }) {
-  if (variant === "card") return <ProfilePhotoCardSolid profile={profile} className={className} />;
-  return <ProfilePhotoCardGlass profile={profile} className={className} />;
+export function ProfilePhotoCard({ profile, variant = "glass", className, href }: { profile: MarqueeProfile; variant?: ProfilePhotoCardStyle; className?: string; /** opens the profile details page */ href?: string }) {
+  const card = variant === "card" ? <ProfilePhotoCardSolid profile={profile} className={className} /> : <ProfilePhotoCardGlass profile={profile} className={className} />;
+  if (!href) return card;
+  return (
+    <Link href={href} aria-label={`View ${profile.name}, ${profile.age} — ${profile.id}`} className="block shrink-0 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-focus">
+      {card}
+    </Link>
+  );
 }
 
 function ProfilePhotoCardGlass({ profile, className }: { profile: MarqueeProfile; className?: string }) {
@@ -55,7 +62,11 @@ function ProfilePhotoCardGlass({ profile, className }: { profile: MarqueeProfile
           type="button"
           aria-label={saved ? `Remove ${profile.name} from shortlist` : `Shortlist ${profile.name}`}
           aria-pressed={saved}
-          onClick={() => setSaved((s) => !s)}
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            if (requireMember("shortlist profiles")) setSaved((s) => !s);
+          }}
           className={cn(
             "absolute right-2 top-2 flex h-8 w-8 items-center justify-center rounded-full border backdrop-blur-[8px] transition-all duration-300 active:scale-90",
             saved || "group-hover/card:border-transparent group-hover/card:bg-brand",

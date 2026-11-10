@@ -3,7 +3,7 @@
 import React, { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { ArrowRight2, Crown1, SearchNormal1, Setting4, TextalignLeft, CloseCircle } from "iconsax-react";
+import { ArrowRight2, Crown1, Eye, SearchNormal1, Setting4, TextalignLeft, CloseCircle } from "iconsax-react";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { HeartPattern } from "@/components/ui/Decor";
@@ -14,9 +14,9 @@ import { RemovableFilterChip } from "@/components/ui/RemovableFilterChip";
 import { SortDropdown } from "@/components/ui/SortDropdown";
 import { ViewToggle, type ResultsView } from "@/components/ui/ViewToggle";
 import { useToast } from "@/components/ui/Toast";
-import { useSignedIn } from "@/lib/session";
+import { requireMember, useSignedIn } from "@/lib/session";
 import { cn } from "@/lib/cn";
-import { consume, useUsage } from "@/lib/usage";
+import { consumeProfileView, consume, useUsage } from "@/lib/usage";
 import { ProfileCard } from "@/components/cards/ProfileCard";
 import { ProfileCardList } from "@/components/cards/ProfileCardList";
 import { ProfileView } from "@/components/sections/search/ProfileView";
@@ -77,6 +77,8 @@ function SearchPageContent() {
 
   const initialFor = searchParams.get("for")?.toLowerCase() === "groom" ? "groom" : "bride";
   const initialId = searchParams.get("id") || "";
+  // opened from the Home page (hero marquee / featured profiles) → Back returns Home
+  const fromHome = searchParams.get("from") === "home";
   const initialCategory = (searchParams.get("category") || "").toLowerCase();
 
   const [filters, setFilters] = useState<SearchFilters>(() => {
@@ -244,6 +246,7 @@ function SearchPageContent() {
   const [applied, setApplied] = useState<{ filters: SearchFilters; sort: SortKey }>({ filters, sort });
   const { left: usageLeft, unlimited } = useUsage();
   const searchesLeft = usageLeft("searches");
+  const viewsLeft = usageLeft("profileViews");
   useEffect(() => {
     if (applied.filters === filters && applied.sort === sort) return;
     const t = window.setTimeout(() => {
@@ -312,7 +315,7 @@ function SearchPageContent() {
 
   // Open ?id= on load, and follow browser back / forward
   useEffect(() => {
-    if (initialId) setViewId(initialId);
+    if (initialId && consumeProfileView(initialId)) setViewId(initialId);
     const onPop = () => {
       pushedRef.current = false;
       setViewId(new URLSearchParams(window.location.search).get("id"));
@@ -331,6 +334,8 @@ function SearchPageContent() {
   }, [drawerOpen]);
 
   const handleOpenDetail = (p: FeaturedProfile) => {
+    // Free plan: 5 different profiles a month (Upgrade prompt at the limit)
+    if (!consumeProfileView(p.id)) return;
     const url = new URL(window.location.href);
     url.searchParams.set("id", p.id);
     // first open adds a history entry (browser Back returns to results); switching profiles replaces it
@@ -342,6 +347,13 @@ function SearchPageContent() {
     setViewId(p.id);
   };
   const closeDetail = () => {
+    if (fromHome) {
+      // came from Home: go back there (history keeps the scroll position); direct visit → push Home
+      const cameFromSite = document.referrer.startsWith(window.location.origin);
+      if (cameFromSite && window.history.length > 1) window.history.back();
+      else window.location.assign("/");
+      return;
+    }
     if (pushedRef.current) {
       pushedRef.current = false;
       window.history.back();
@@ -359,6 +371,7 @@ function SearchPageContent() {
   };
   const clearAll = () => setFilters(defaultFilters(filters.lookingFor));
   const sendInterest = (p: FeaturedProfile) => {
+    if (!requireMember("send an interest")) return false;
     // Free plan: monthly interest allowance (opens the Upgrade prompt when used up)
     if (!consume("interests")) return false;
     toast.success("Interest sent", `${p.id} will be notified. You can chat once they accept.`);
@@ -410,6 +423,7 @@ function SearchPageContent() {
           extrasById={extrasById}
           onSelect={handleOpenDetail}
           onBack={closeDetail}
+          backTo={fromHome ? "home" : "results"}
           onInterest={(p) => sendInterest(p)}
         />
       ) : (
@@ -443,14 +457,28 @@ function SearchPageContent() {
                   {results.length.toLocaleString()} proposals
                 </span>
               </p>
-              {/* Free plan: searches left this month */}
+              {/* Free plan: what's left this month — searches + profile views (countdown) */}
               {signedIn && !unlimited && (
-                <p className={cn("mt-1 inline-flex w-fit items-center gap-1.5 rounded-full px-2.5 py-1 text-label-sm", searchesLeft === 0 ? "bg-error-bg text-error-fg" : "bg-premium-bg text-premium-fg")}>
-                  {searchesLeft === 0 ? "No free searches left this month" : `${searchesLeft} free search${searchesLeft === 1 ? "" : "es"} left this month`}
-                  <Link href="/plans" className="font-bold underline-offset-2 hover:underline">
+                <div className="mt-1 flex flex-wrap items-center gap-2">
+                  {(
+                    [
+                      [searchesLeft, "search", "searches", SearchNormal1],
+                      [viewsLeft, "profile view", "profile views", Eye],
+                    ] as const
+                  ).map(([n, one, many, Icon]) => (
+                    <span
+                      key={one}
+                      className={cn("inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-label-sm", n === 0 ? "bg-error-bg text-error-fg" : "bg-premium-bg text-premium-fg")}
+                    >
+                      <Icon size={14} color="currentColor" />
+                      {n === 0 ? `No free ${many} left` : <><b key={n} className="inline-block animate-pop-in">{n}</b> free {n === 1 ? one : many} left</>}
+                    </span>
+                  ))}
+                  <span className="text-label-sm text-ink-tertiary">this month</span>
+                  <Link href="/plans" className="text-label-sm font-bold text-premium-fg underline-offset-2 hover:underline">
                     Upgrade
                   </Link>
-                </p>
+                </div>
               )}
             </div>
             <div className="flex items-center gap-2">

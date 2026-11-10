@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import Link from "next/link";
 import {
   ArrowLeft,
   ArrowRight2,
@@ -31,9 +30,10 @@ import {
 import { createPortal } from "react-dom";
 import { Share2 } from "lucide-react";
 import { cn } from "@/lib/cn";
+import { requireMember } from "@/lib/session";
 import { Badge } from "@/components/ui/Badge";
 import { BackButton } from "@/components/ui/BackButton";
-import { Button } from "@/components/ui/Button";
+import { Button, ButtonLink } from "@/components/ui/Button";
 import { Select } from "@/components/ui/Select";
 import { Textarea } from "@/components/ui/Textarea";
 import { Flag, type CountryCode } from "@/components/ui/Flag";
@@ -73,12 +73,15 @@ export function ProfileView({
   onSelect,
   onBack,
   onInterest,
+  backTo = "results",
 }: {
   results: ViewProfile[];
   selected: ViewProfile;
   extrasById: Record<string, ProfileExtras>;
   onSelect: (p: ViewProfile) => void;
   onBack: () => void;
+  /** where Back leads: the search results, or Home when the profile was opened from the Home page */
+  backTo?: "results" | "home";
   /** false when the interest couldn’t be sent (free limit reached) */
   onInterest: (p: ViewProfile) => boolean;
 }) {
@@ -106,16 +109,16 @@ export function ProfileView({
           <div className="grid grid-cols-[44px_minmax(0,1fr)] items-center gap-x-4 gap-y-1">
             <nav aria-label="Breadcrumb" className="col-start-2 flex items-center gap-2 text-body-sm text-ink-tertiary">
               <button type="button" onClick={onBack} className="transition-colors hover:text-brand">
-                Search proposals
+                {backTo === "home" ? "Home" : "Search proposals"}
               </button>
               <span>/</span>
               <span aria-current="page" className="font-semibold text-brand-text">
                 {selected.id}
               </span>
             </nav>
-            <BackButton label="Back to results" onClick={onBack} />
+            <BackButton label={backTo === "home" ? "Back to home" : "Back to results"} onClick={onBack} />
             <h1 className="text-h3 text-ink md:text-h2">Profile details</h1>
-            <p className="col-start-2 text-body-md text-ink-secondary">Browse your search results on the left — the full profile opens on the right.</p>
+            <p className="col-start-2 text-body-md text-ink-secondary">{backTo === "home" ? "More profiles on the left" : "Browse your search results on the left"} — the full profile opens on the right.</p>
           </div>
           <div className="flex items-center gap-2">
             <span className="text-body-sm text-ink-tertiary">
@@ -239,11 +242,13 @@ function Detail({ p, x, onInterest }: { p: ViewProfile; x?: ProfileExtras; onInt
   ];
 
   const share = () => {
+    if (!requireMember("share profiles")) return;
     navigator.clipboard?.writeText(`${window.location.origin}/search?id=${p.id}`);
     toast.success("Link copied", `Share ${p.id} with your family.`);
   };
   const send = () => {
     if (blocked || sent) return;
+    if (!requireMember("send an interest")) return;
     if (onInterest(p)) setSent(true);
   };
 
@@ -253,7 +258,7 @@ function Detail({ p, x, onInterest }: { p: ViewProfile; x?: ProfileExtras; onInt
       <div className="flex flex-col gap-6 md:flex-row">
         {/* Photo 280 × 340 — tap to open the full-screen photo viewer */}
         <div className="group relative aspect-[280/340] w-full shrink-0 overflow-hidden rounded-lg bg-surface-muted md:w-[280px]">
-          <button type="button" aria-label={`View ${p.id} photos`} onClick={() => setViewer(0)} className="absolute inset-0 cursor-zoom-in">
+          <button type="button" aria-label={`View ${p.id} photos`} onClick={() => requireMember("view photos") && setViewer(0)} className="absolute inset-0 cursor-zoom-in">
             <Photo p={p} className="absolute inset-0 h-full w-full transition-transform duration-500 group-hover:scale-105" />
             <span className="absolute inset-0 flex items-center justify-center bg-[rgba(0,0,0,0.25)] opacity-0 transition-opacity duration-200 group-hover:opacity-100">
               <span className="flex items-center gap-2 rounded-full bg-surface-card px-4 py-2 text-label-md text-ink shadow-md">
@@ -266,7 +271,7 @@ function Detail({ p, x, onInterest }: { p: ViewProfile; x?: ProfileExtras; onInt
           </span>
           <button
             type="button"
-            onClick={() => setViewer(0)}
+            onClick={() => requireMember("view photos") && setViewer(0)}
             className="absolute bottom-3 left-3 inline-flex h-[26px] items-center gap-1 rounded-full bg-surface-scrim px-2.5 text-label-sm text-ink-on-brand backdrop-blur-[8px] transition-colors hover:bg-black"
           >
             <Gallery size={14} color="currentColor" /> {photos.length} photos
@@ -415,6 +420,7 @@ function Detail({ p, x, onInterest }: { p: ViewProfile; x?: ProfileExtras; onInt
           aria-pressed={saved}
           aria-label={saved ? "Remove from shortlist" : "Add to shortlist"}
           onClick={() => {
+            if (!requireMember("shortlist profiles")) return;
             setSaved(!saved);
             if (!saved) toast.success("Added to shortlist", `${p.id} is saved to your shortlist.`);
           }}
@@ -425,7 +431,7 @@ function Detail({ p, x, onInterest }: { p: ViewProfile; x?: ProfileExtras; onInt
         <button
           type="button"
           disabled={reported}
-          onClick={() => setReportOpen(true)}
+          onClick={() => requireMember("report a profile") && setReportOpen(true)}
           className="flex items-center gap-1.5 px-2 text-label-md text-ink-tertiary transition-colors hover:text-error-fg disabled:pointer-events-none disabled:text-success-fg"
         >
           {reported ? <TickCircle size={16} color="currentColor" /> : <FlagIcon size={16} color="currentColor" />}
@@ -433,20 +439,26 @@ function Detail({ p, x, onInterest }: { p: ViewProfile; x?: ProfileExtras; onInt
         </button>
         <div className="flex-1" />
         <div className="flex gap-3 max-sm:w-full">
-          <Link
+          <ButtonLink
             href="/messages"
+            variant="outline"
+            size="md"
+            className="max-sm:flex-1"
+            leftIcon={<MessageText size={18} color="currentColor" />}
             onClick={(e) => {
+              if (!requireMember("message members")) {
+                e.preventDefault();
+                return;
+              }
               if (!sent) {
                 e.preventDefault();
                 toast.info("Chat unlocks after they accept", `Send an interest to ${p.id} first.`);
               }
             }}
-            className="flex h-11 items-center justify-center gap-2 rounded-full border border-line-strong px-5 text-button-md text-ink transition-colors hover:border-brand hover:text-brand max-sm:flex-1"
           >
-            <MessageText size={18} color="currentColor" /> Message
-          </Link>
-          <Button size="md" className="max-sm:flex-1" disabled={sent || blocked} onClick={send}>
-            {sent ? <TickCircle size={18} color="currentColor" /> : <HeartAdd size={18} color="currentColor" />}
+            Message
+          </ButtonLink>
+          <Button size="md" className="max-sm:flex-1" disabled={sent || blocked} onClick={send} leftIcon={sent ? <TickCircle size={18} color="currentColor" /> : <HeartAdd size={18} color="currentColor" />}>
             {sent ? "Interest sent" : "Send interest"}
           </Button>
         </div>

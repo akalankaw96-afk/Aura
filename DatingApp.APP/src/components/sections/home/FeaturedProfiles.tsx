@@ -25,7 +25,7 @@ export function FeaturedProfiles() {
 
   const router = useRouter();
   // Profile details open as a full page (search results list + profile)
-  const handleOpenDetail = (p: FeaturedProfile) => router.push(`/search?for=${p.gender}&id=${p.id}`);
+  const handleOpenDetail = (p: FeaturedProfile) => router.push(`/search?for=${p.gender}&id=${p.id}&from=home`);
 
   return (
     <section id="profiles" className="scroll-mt-28 overflow-hidden pb-16 pt-12 lg:pb-24">

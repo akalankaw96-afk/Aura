@@ -1,8 +1,8 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import Link from "next/link";
 import {
+  ArrowDown2,
   Calendar,
   Crown1,
   Eye,
@@ -19,6 +19,7 @@ import {
   Timer1,
 } from "iconsax-react";
 import { cn } from "@/lib/cn";
+import { ButtonLink } from "@/components/ui/Button";
 import { readMembership, useAccess } from "@/lib/verification";
 
 /**
@@ -52,6 +53,20 @@ export function ProPlanCard() {
   const { locked, isPaid, plan } = useAccess();
   const [m, setM] = useState<ReturnType<typeof readMembership>>(null);
   const [bar, setBar] = useState(0);
+  // collapsed by default to save space — the choice is remembered
+  const [open, setOpen] = useState(false);
+  useEffect(() => {
+    try {
+      setOpen(localStorage.getItem("vk-plan-card-open") === "1");
+    } catch {}
+  }, []);
+  const toggle = () =>
+    setOpen((o) => {
+      try {
+        localStorage.setItem("vk-plan-card-open", o ? "0" : "1");
+      } catch {}
+      return !o;
+    });
 
   useEffect(() => {
     let t = 0;
@@ -83,16 +98,16 @@ export function ProPlanCard() {
   return (
     <section aria-label={`${name} membership`} className="kyc-in overflow-hidden rounded-xl border border-premium-line bg-surface-card shadow-sm">
       {/* Header — premium band */}
-      <div className="relative isolate flex flex-col gap-5 overflow-hidden bg-[linear-gradient(120deg,var(--gold-900)_0%,var(--gold-700)_55%,var(--gold-500)_100%)] p-5 text-white sm:p-6 lg:flex-row lg:items-center">
+      <div className="relative isolate flex flex-col gap-4 overflow-hidden bg-[linear-gradient(120deg,var(--gold-900)_0%,var(--gold-700)_55%,var(--gold-500)_100%)] p-4 text-white sm:px-6 sm:py-5 lg:flex-row lg:items-center lg:gap-5">
         <Crown1 aria-hidden size={180} color="currentColor" className="pointer-events-none absolute -right-6 -top-10 -z-10 text-white opacity-10" />
 
         <div className="flex min-w-0 flex-1 items-center gap-4">
-          <span className="kyc-pop flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-white text-premium-fg shadow-lg ring-4 ring-[rgba(255,255,255,0.25)]">
-            <Crown1 size={28} color="currentColor" />
+          <span className="kyc-pop flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-white text-premium-fg shadow-lg ring-4 ring-[rgba(255,255,255,0.25)]">
+            <Crown1 size={24} color="currentColor" />
           </span>
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
-              <h2 className="text-h4 text-white">{name} member</h2>
+              <h2 className="text-h5 text-white">{name} member</h2>
               <span className="inline-flex h-6 items-center gap-1 rounded-full bg-[rgba(255,255,255,0.2)] px-2.5 text-label-sm text-white">
                 <span className="h-2 w-2 animate-pulse rounded-full bg-gold-300" /> Active
               </span>
@@ -104,7 +119,7 @@ export function ProPlanCard() {
         </div>
 
         {/* Valid until + period bar */}
-        <div className="flex w-full flex-col gap-2 rounded-lg bg-[rgba(255,255,255,0.14)] p-4 backdrop-blur-[8px] lg:w-[340px]">
+        <div className="flex w-full flex-col gap-2 rounded-lg bg-[rgba(255,255,255,0.14)] px-4 py-3 backdrop-blur-[8px] lg:w-[320px]">
           <div className="flex items-center justify-between gap-3">
             <span className="flex items-center gap-2 text-label-md">
               <Calendar size={18} color="currentColor" /> Valid until
@@ -119,18 +134,34 @@ export function ProPlanCard() {
             {m.daysLeft === 0 ? "Expires today" : `${m.daysLeft} day${m.daysLeft === 1 ? "" : "s"} left`} · Plans don’t auto-renew
           </p>
         </div>
+              {/* expand / collapse plan details */}
+        <button
+          type="button"
+          onClick={toggle}
+          aria-expanded={open}
+          aria-controls="plan-details"
+          className="flex h-10 shrink-0 items-center justify-center gap-1.5 rounded-full bg-[rgba(255,255,255,0.16)] px-4 text-button-sm text-white ring-1 ring-inset ring-[rgba(255,255,255,0.35)] transition-colors hover:bg-[rgba(255,255,255,0.26)] max-lg:w-full"
+        >
+          {open ? "Hide details" : "Plan details"}
+          <ArrowDown2 size={16} color="currentColor" className={cn("transition-transform duration-300", open && "rotate-180")} />
+        </button>
       </div>
 
+      {/* renew reminder stays visible even when collapsed */}
+      {soon && (
+        <div className="mx-4 mt-4 flex flex-wrap items-center gap-3 rounded-[16px] border border-premium-line bg-premium-bg px-4 py-3 text-body-sm text-premium-fg sm:mx-6">
+          <Timer1 size={18} color="currentColor" />
+          <span className="flex-1">Your {name} plan ends on {fmt(m.expires)}. Renew now to keep every feature.</span>
+          <ButtonLink href="/plans" size="sm">
+            Renew now
+          </ButtonLink>
+        </div>
+      )}
+
+      {/* collapsible details — animates height with grid rows */}
+      <div id="plan-details" className={cn("grid transition-[grid-template-rows] duration-300 ease-out", open ? "grid-rows-[1fr]" : "grid-rows-[0fr]")}>
+      <div className="min-h-0 overflow-hidden" inert={!open}>
       <div className="flex flex-col gap-5 p-5 sm:p-6">
-        {soon && (
-          <div className="flex flex-wrap items-center gap-3 rounded-[16px] border border-premium-line bg-premium-bg px-4 py-3 text-body-sm text-premium-fg">
-            <Timer1 size={18} color="currentColor" />
-            <span className="flex-1">Your {name} plan ends on {fmt(m.expires)}. Renew now to keep every feature.</span>
-            <Link href="/plans" className="font-bold underline-offset-2 hover:underline">
-              Renew
-            </Link>
-          </div>
-        )}
 
         {/* Allowances — all unlimited */}
         <div className="grid grid-cols-3 gap-2 sm:gap-3">
@@ -183,14 +214,16 @@ export function ProPlanCard() {
             Paid {fmt(m.start)} · Renew any time to add {m.months} more month{m.months > 1 ? "s" : ""} from {fmt(m.expires)}.
           </p>
           {!platinum && (
-            <Link href="/plans" className="flex h-11 items-center gap-2 rounded-full bg-brand-subtle px-5 text-button-md text-brand-text ring-1 ring-inset ring-brand transition-colors hover:bg-brand hover:text-white">
-              <Crown1 size={18} color="currentColor" /> Upgrade to Platinum
-            </Link>
+            <ButtonLink href="/plans" variant="secondary" size="md" leftIcon={<Crown1 size={18} color="currentColor" />}>
+              Upgrade to Platinum
+            </ButtonLink>
           )}
-          <Link href="/plans" className="flex h-11 items-center gap-2 rounded-full bg-brand-gradient px-6 text-button-md text-ink-on-brand transition-shadow hover:shadow-glow">
+          <ButtonLink href="/plans" size="md">
             {soon ? "Renew now" : "Extend plan"}
-          </Link>
+          </ButtonLink>
         </div>
+      </div>
+      </div>
       </div>
     </section>
   );

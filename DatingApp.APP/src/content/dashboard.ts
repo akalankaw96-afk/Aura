@@ -29,7 +29,7 @@ export const DASH_HERO = {
   eyebrow: "Welcome back",
   /** {name} is replaced with the member's first name; greeting follows the time of day */
   subtitle: "8 new matches and 3 interest requests are waiting for you today.",
-  primary: { label: "See new matches", href: "#matches" },
+  primary: { label: "See new matches", href: "/search?for=groom" },
   secondary: { label: "Complete profile", href: "/register" },
 };
 

@@ -16,6 +16,7 @@ import {
   User,
 } from "iconsax-react";
 import { cn } from "@/lib/cn";
+import { ButtonLink } from "@/components/ui/Button";
 import { LanguageSwitch, Logo, ThemeToggle } from "@/components/ui/Brand";
 import { useLanguage } from "@/context/LanguageContext";
 import { MEMBER, MESSAGES, REQUESTS } from "@/content/dashboard";
@@ -107,10 +108,6 @@ export function Navbar({ variant = "light" }: { variant?: NavbarVariant }) {
   const glass = variant === "glass";
   const isMember = variant === "member" || !!session;
 
-  const cta = isMember
-    ? { label: t.nav.logout, href: "/" }
-    : { label: t.nav.createOrLogin, href: "/login" };
-
   // unread counts shown next to Requests / Messages (same source as the mobile tab bar)
   const { locked: kycLocked } = useKyc();
   const requestCount = REQUESTS.length;
@@ -185,12 +182,15 @@ export function Navbar({ variant = "light" }: { variant?: NavbarVariant }) {
           {isMember ? (
             <AccountMenu session={session} onLogout={handleLogout} />
           ) : (
-            <Link
-              href={cta.href}
-              className="flex h-[41px] items-center whitespace-nowrap rounded-full bg-brand-gradient px-4 text-button-sm text-ink-on-brand transition-shadow hover:shadow-glow"
-            >
-              {cta.label}
-            </Link>
+            // guests: Create New (Secondary) + Login (Primary) — Figma Button S
+            <div className="flex items-center gap-2">
+              <ButtonLink href="/register" variant={glass ? "white" : "secondary"} size="sm" className="whitespace-nowrap">
+                {t.nav.createAccount}
+              </ButtonLink>
+              <ButtonLink href="/login" size="sm" className="whitespace-nowrap">
+                {t.nav.login}
+              </ButtonLink>
+            </div>
           )}
         </div>
 
@@ -254,13 +254,14 @@ export function Navbar({ variant = "light" }: { variant?: NavbarVariant }) {
                 </button>
               </div>
             ) : (
-              <Link
-                href={cta.href}
-                onClick={() => setOpen(false)}
-                className="mt-4 flex h-14 items-center justify-center rounded-full bg-brand-gradient text-button-lg text-ink-on-brand"
-              >
-                {cta.label}
-              </Link>
+              <div className="mt-4 grid gap-3">
+                <ButtonLink href="/login" fullWidth onClick={() => setOpen(false)}>
+                  {t.nav.login}
+                </ButtonLink>
+                <ButtonLink href="/register" variant="secondary" fullWidth onClick={() => setOpen(false)}>
+                  {t.nav.createAccount}
+                </ButtonLink>
+              </div>
             )}
           </nav>
         </div>

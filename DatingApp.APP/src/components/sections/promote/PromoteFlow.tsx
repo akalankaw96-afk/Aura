@@ -91,7 +91,7 @@ export function PromoteCard() {
           ))}
         </div>
 
-        <Button variant="secondary" className="rounded-full" onClick={openPromote}>
+        <Button variant="outline" size="md" onClick={openPromote} leftIcon={<Crown1 size={18} color="currentColor" />}>
           Extend 7 days
         </Button>
       </section>
@@ -115,13 +115,9 @@ export function PromoteCard() {
           <span className="text-h5 text-ink">{lkr(BOOST.price)}</span>
           <span className="text-caption text-ink-tertiary">{BOOST.days} days · one-time</span>
         </span>
-        <button
-          type="button"
-          onClick={openPromote}
-          className="flex h-12 items-center gap-2 rounded-full bg-brand-gradient px-6 text-button-md text-ink-on-brand shadow-sm transition-shadow hover:shadow-glow active:scale-[0.98]"
-        >
-          <Crown1 size={18} color="currentColor" /> Promote my profile
-        </button>
+        <Button size="md" onClick={openPromote} leftIcon={<Crown1 size={18} color="currentColor" />}>
+          Promote my profile
+        </Button>
       </div>
     </section>
   );
@@ -222,7 +218,7 @@ export function PromoteModal() {
         )}
 
         {step === "done" ? (
-          <div className="flex flex-col items-center gap-4 p-8 text-center">
+          <div className="flex shrink-0 flex-col items-center gap-4 p-8 text-center">
             <span className="kyc-pop flex h-20 w-20 items-center justify-center rounded-full bg-[linear-gradient(135deg,var(--gold-300),var(--gold-500))] text-gold-900 shadow-lg">
               <Crown1 size={40} color="currentColor" />
             </span>
@@ -244,7 +240,7 @@ export function PromoteModal() {
         ) : (
           <>
             {/* Header with preview */}
-            <div className="relative overflow-hidden rounded-t-xl bg-[linear-gradient(120deg,var(--gold-900)_0%,var(--gold-700)_55%,var(--gold-500)_100%)] px-6 pb-6 pt-7 text-white">
+            <div className="relative shrink-0 overflow-hidden rounded-t-xl bg-[linear-gradient(120deg,var(--gold-900)_0%,var(--gold-700)_55%,var(--gold-500)_100%)] px-6 pb-6 pt-7 text-white">
               <p className="flex items-center gap-1.5 text-label-sm uppercase tracking-wide text-[rgba(255,255,255,0.8)]">
                 <Crown1 size={14} color="currentColor" /> Profile boost
               </p>
@@ -269,7 +265,7 @@ export function PromoteModal() {
               </div>
             </div>
 
-            <div className="flex flex-col gap-5 p-6">
+            <div className="flex shrink-0 flex-col gap-5 p-6">
               <ul className="flex flex-col gap-3">
                 {PERKS.map(({ Icon, title, text }) => (
                   <li key={title} className="flex gap-3">

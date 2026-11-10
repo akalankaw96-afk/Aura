@@ -17,6 +17,7 @@ import {
   Verify,
 } from "iconsax-react";
 import { cn } from "@/lib/cn";
+import { requireMember } from "@/lib/session";
 import { Flag } from "@/components/ui/Flag";
 import { Button } from "@/components/ui/Button";
 import type { FeaturedProfile } from "@/content/home";
@@ -123,7 +124,7 @@ export function ProfileCardList({
             type="button"
             aria-pressed={saved}
             aria-label={saved ? `Remove ${profile.id} from shortlist` : `Shortlist ${profile.id}`}
-            onClick={() => setSaved((v) => !v)}
+            onClick={() => requireMember("shortlist profiles") && setSaved((v) => !v)}
             className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-brand-border bg-surface-card text-brand transition-transform hover:scale-105 active:scale-95"
           >
             <Heart
@@ -170,6 +171,7 @@ export function ProfileCardList({
               disabled={sent}
               leftIcon={<HeartAdd size={18} color="currentColor" />}
               onClick={() => {
+                if (!requireMember("send an interest")) return;
                 if (onInterest(profile) !== false) setSent(true);
               }}
             >

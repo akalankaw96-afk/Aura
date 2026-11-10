@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import Link from "next/link";
 import { cn } from "@/lib/cn";
 
 /**
@@ -81,6 +82,42 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
   )
 );
 Button.displayName = "Button";
+
+const base =
+  "inline-flex select-none items-center justify-center rounded-full transition-all duration-150 focus-visible:outline-none focus-visible:shadow-ring-brand";
+
+/** Same classes as <Button> — for links and other elements that must look like a button. */
+export function buttonClasses({ variant = "primary", size = "lg", fullWidth }: { variant?: ButtonVariant; size?: ButtonSize; fullWidth?: boolean } = {}) {
+  return cn(base, sizes[size], variants[variant], fullWidth && "w-full");
+}
+
+/** Figma Button as a navigation link (next/link). */
+export function ButtonLink({
+  href,
+  variant = "primary",
+  size = "lg",
+  leftIcon,
+  rightIcon,
+  fullWidth,
+  className,
+  children,
+  ...rest
+}: Omit<React.ComponentProps<typeof Link>, "href"> & {
+  href: string;
+  variant?: ButtonVariant;
+  size?: ButtonSize;
+  leftIcon?: React.ReactNode;
+  rightIcon?: React.ReactNode;
+  fullWidth?: boolean;
+}) {
+  return (
+    <Link href={href} className={cn(buttonClasses({ variant, size, fullWidth }), className)} {...rest}>
+      {leftIcon}
+      {children}
+      {rightIcon}
+    </Link>
+  );
+}
 
 /** Text link styled like Figma Link/SM. */
 export function TextLink({

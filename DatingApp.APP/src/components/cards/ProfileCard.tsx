@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import Link from "next/link";
 import { ArrowRight2, Book1, Briefcase, Cake, Crown1, Heart, Ruler, ShieldTick, Star1, Verify } from "iconsax-react";
 import { cn } from "@/lib/cn";
+import { requireMember } from "@/lib/session";
 import { Flag } from "@/components/ui/Flag";
 import type { FeaturedProfile } from "@/content/home";
 
@@ -27,7 +28,7 @@ export function ProfileCard({
   promoted?: boolean;
   className?: string;
   style?: React.CSSProperties;
-  onInterest?: (p: FeaturedProfile) => void;
+  onInterest?: (p: FeaturedProfile) => boolean | void;
   onView?: (p: FeaturedProfile) => void;
   onShortlist?: (p: FeaturedProfile, saved: boolean) => void;
 }) {
@@ -83,6 +84,7 @@ export function ProfileCard({
               aria-pressed={saved}
               onClick={(e) => {
                 e.stopPropagation();
+                if (!requireMember("shortlist profiles")) return;
                 const nextSaved = !saved;
                 setSaved(nextSaved);
                 onShortlist?.(profile, nextSaved);
@@ -125,8 +127,8 @@ export function ProfileCard({
             <button
               type="button"
               onClick={() => {
-                setSent(true);
-                onInterest(profile);
+                if (!requireMember("send an interest")) return;
+                if (onInterest(profile) !== false) setSent(true);
               }}
               disabled={sent}
               className="flex h-[42px] flex-1 items-center justify-center gap-2 rounded-full bg-brand-subtle px-4 text-button-sm text-brand-text transition-shadow hover:ring-1 hover:ring-inset hover:ring-brand disabled:cursor-default disabled:ring-0"

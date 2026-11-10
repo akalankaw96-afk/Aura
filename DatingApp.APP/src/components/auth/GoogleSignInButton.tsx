@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
+import { takeReturnTo } from "@/lib/session";
 import { apiService, AuthSession } from "@/services/api";
 import { useToast } from "@/components/ui/Toast";
 
@@ -210,7 +211,7 @@ export function GoogleSignInButton({ isSignUp = false, onSuccess, className = ""
         toast.info("Complete Your Matrimony Profile", "Just a few quick details to activate match recommendations.");
         router.push("/register");
       } else {
-        router.push("/dashboard");
+        router.push(takeReturnTo());
       }
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Failed to sign in with Google.";

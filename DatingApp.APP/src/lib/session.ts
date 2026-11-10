@@ -116,3 +116,37 @@ export function useAuthSession() {
     hasCompletedProfile,
   };
 }
+
+/* ------------------------------------------------------------------ */
+/* Guest gate — actions on profiles need an account                    */
+/* ------------------------------------------------------------------ */
+const RETURN_KEY = "vk-return-to";
+const safePath = (p: string | null | undefined) => (p && p.startsWith("/") && !p.startsWith("//") ? p : null);
+
+export const LOGIN_REQUIRED_EVENT = "vk-login-required";
+
+/**
+ * Guests (not logged in) who tap an action — send interest, message, shortlist, share, report —
+ * see the "Log in to continue" dialog (components/layout/LoginRequiredModal) with
+ * Log in · Create account · Cancel. After logging in they come back to the same page.
+ * Returns true when the visitor is a member and the action may continue.
+ */
+export function requireMember(action = "continue"): boolean {
+  if (hasSession()) return true;
+  const here = window.location.pathname + window.location.search;
+  try {
+    sessionStorage.setItem(RETURN_KEY, here);
+  } catch {}
+  window.dispatchEvent(new CustomEvent(LOGIN_REQUIRED_EVENT, { detail: { action, next: here } }));
+  return false;
+}
+
+/** Where to go after logging in: ?next=… or the page the guest came from, else the dashboard. */
+export function takeReturnTo(fallback = "/dashboard"): string {
+  let next: string | null = null;
+  try {
+    next = safePath(new URLSearchParams(window.location.search).get("next")) ?? safePath(sessionStorage.getItem(RETURN_KEY));
+    sessionStorage.removeItem(RETURN_KEY);
+  } catch {}
+  return next ?? fallback;
+}

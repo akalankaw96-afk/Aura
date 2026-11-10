@@ -1,9 +1,9 @@
 "use client";
 
 import React from "react";
-import Link from "next/link";
 import { Crown1, Eye, Heart, Lock1, Messages2, SearchNormal1, Sms, Star1 } from "iconsax-react";
 import { cn } from "@/lib/cn";
+import { ButtonLink } from "@/components/ui/Button";
 import { useAccess } from "@/lib/verification";
 import { FREE_LIMITS, USAGE_LABEL, useUsage, type UsageKind } from "@/lib/usage";
 
@@ -14,9 +14,18 @@ import { FREE_LIMITS, USAGE_LABEL, useUsage, type UsageKind } from "@/lib/usage"
  */
 const METERS: { kind: UsageKind; Icon: typeof Heart }[] = [
   { kind: "profileViews", Icon: Eye },
-  { kind: "chats", Icon: Messages2 },
+  { kind: "searches", Icon: SearchNormal1 },
   { kind: "interests", Icon: Heart },
+  { kind: "chats", Icon: Messages2 },
 ];
+
+/** Days until the monthly reset (1st of next month) — the countdown under the title */
+function resetInfo() {
+  const now = new Date();
+  const next = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+  const days = Math.ceil((next.getTime() - now.getTime()) / 86_400_000);
+  return { days, label: next.toLocaleDateString("en-GB", { day: "numeric", month: "short" }) };
+}
 const GOLD = [
   { Icon: Eye, label: "Unlimited profile views" },
   { Icon: Messages2, label: "Unlimited chat connections" },
@@ -28,36 +37,38 @@ const GOLD = [
 
 export function PlanUsageCard() {
   const { locked, isPaid } = useAccess();
-  const { usage, left } = useUsage();
+  const { left } = useUsage();
   if (locked || isPaid) return null;
 
   const outMeter = METERS.find(({ kind }) => left(kind) === 0);
   const outLabel = outMeter ? USAGE_LABEL[outMeter.kind] : null;
   const anyOut = Boolean(outMeter);
+  const reset = resetInfo();
 
   return (
     <section aria-label="Your plan and usage" className="kyc-in flex flex-col gap-5 rounded-xl border border-premium-line bg-surface-card p-5 shadow-sm sm:p-6">
       <div className="flex flex-wrap items-center gap-3">
         <span className="inline-flex h-7 items-center rounded-full bg-surface-muted px-3 text-label-sm text-ink-secondary">Free plan</span>
         <h2 className="flex-1 text-h5 text-ink">This month’s usage</h2>
-        <span className="text-label-sm text-ink-tertiary">Resets on the 1st</span>
+        <span className="text-label-sm text-ink-tertiary max-sm:w-full">
+          Resets in {reset.days} day{reset.days === 1 ? "" : "s"} · {reset.label}
+        </span>
       </div>
 
       {anyOut && outLabel && (
         <div className="flex animate-fade-up items-start gap-3 rounded-md bg-premium-bg px-4 py-3 text-body-sm text-premium-fg">
           <Lock1 size={18} color="currentColor" className="shrink-0 mt-0.5" />
           <div className="flex-1">
-            <p className="font-bold">{outLabel.limitReachedTitle || "Free Limit Reached"}</p>
+            <p className="font-bold">{outLabel.limitReachedTitle || `You’ve used all your free ${outLabel.title.toLowerCase()}`}</p>
             <p className="text-body-xs">{outLabel.limitReachedMsg || "You’ve reached a free limit. Upgrade to keep exploring."}</p>
           </div>
         </div>
       )}
 
       {/* meters */}
-      <div className="grid gap-3 sm:grid-cols-3">
+      <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
         {METERS.map(({ kind, Icon }, i) => {
           const total = FREE_LIMITS[kind];
-          const used = Math.min(usage[kind], total);
           const l = left(kind);
           const out = l === 0;
           const low = l === 1;
@@ -71,22 +82,22 @@ export function PlanUsageCard() {
                 <span className={cn("flex h-8 w-8 items-center justify-center rounded-full", out ? "bg-surface-card text-error-fg" : "bg-brand-subtle text-brand")}>
                   <Icon size={16} color="currentColor" />
                 </span>
-                <span className="flex-1 text-label-md text-ink">{USAGE_LABEL[kind].title}</span>
+                <span className="min-w-0 flex-1 text-label-md text-ink">{USAGE_LABEL[kind].title}</span>
                 {out ? (
-                  <span className="inline-flex h-6 items-center gap-1 rounded-full bg-surface-card px-2 text-label-sm text-error-fg">
+                  <span aria-label="Limit reached" className="inline-flex h-6 max-sm:hidden items-center gap-1 rounded-full bg-surface-card px-2 text-label-sm text-error-fg">
                     <Lock1 size={12} color="currentColor" /> Limit reached
                   </span>
-                ) : (
-                  <span className={cn("text-label-sm", low ? "text-premium-fg" : "text-ink-tertiary")}>{l} left</span>
-                )}
+                ) : null}
               </div>
+              {/* countdown: what's left this month */}
               <p className="text-body-sm text-ink-secondary">
-                <b key={used} className="inline-block animate-pop-in text-h6 text-ink">{used}</b> of {total} used
+                <b key={l} className={cn("inline-block animate-pop-in text-h4", out ? "text-error-fg" : low ? "text-premium-fg" : "text-ink")}>{l}</b> of {total} left
               </p>
-              <div className="h-2 overflow-hidden rounded-full bg-surface-card" role="progressbar" aria-label={`${USAGE_LABEL[kind].title} used`} aria-valuenow={used} aria-valuemin={0} aria-valuemax={total}>
+              <div className="h-2 overflow-hidden rounded-full bg-surface-card" role="progressbar" aria-label={`${USAGE_LABEL[kind].title} left`} aria-valuenow={l} aria-valuemin={0} aria-valuemax={total}>
                 <div
                   className={cn("h-full rounded-full transition-[width] duration-700 ease-out", out ? "bg-error-fg" : low ? "bg-premium-fg" : "bg-brand-gradient")}
-                  style={{ width: `${(used / total) * 100}%` }}
+                  // countdown bar: shrinks as the allowance is used
+                  style={{ width: `${(l / total) * 100}%` }}
                 />
               </div>
             </div>
@@ -109,11 +120,9 @@ export function PlanUsageCard() {
             ))}
           </ul>
         </div>
-        <Link href="/plans" className="group flex h-12 shrink-0 items-center justify-center gap-2 rounded-full bg-brand-gradient px-6 text-button-md text-ink-on-brand transition-shadow hover:shadow-glow">
-          <Crown1 size={18} color="currentColor" />
+        <ButtonLink href="/plans" size="md" className="shrink-0" leftIcon={<Crown1 size={18} color="currentColor" />}>
           Upgrade to Gold
-          <span aria-hidden className="transition-transform group-hover:translate-x-0.5">›</span>
-        </Link>
+        </ButtonLink>
       </div>
 
     </section>

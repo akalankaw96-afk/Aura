@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { hasSession } from "@/lib/session";
+import { hasSession, takeReturnTo } from "@/lib/session";
 
 /**
  * Signed-in members never land on the public pages (Home, Log in, Create account):
@@ -11,7 +11,7 @@ import { hasSession } from "@/lib/session";
 export function MemberRedirect({ to = "/dashboard" }: { to?: string }) {
   const router = useRouter();
   useEffect(() => {
-    if (hasSession()) router.replace(to);
+    if (hasSession()) router.replace(takeReturnTo(to));
   }, [router, to]);
   return null;
 }

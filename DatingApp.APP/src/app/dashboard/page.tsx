@@ -8,6 +8,7 @@ import { FeatureGate } from "@/components/sections/dashboard/FeatureGate";
 import { PlanUsageCard } from "@/components/sections/dashboard/PlanUsageCard";
 import { ProPlanCard } from "@/components/sections/dashboard/ProPlanCard";
 import { PromoteCard, PromoteModal } from "@/components/sections/promote/PromoteFlow";
+import { EditProfileModal } from "@/components/sections/dashboard/EditProfileModal";
 import { DashboardDemo } from "@/components/sections/dashboard/DashboardDemo";
 
 export const metadata: Metadata = { title: "Dashboard | Aura Matrimony" };
@@ -19,6 +20,9 @@ export const metadata: Metadata = { title: "Dashboard | Aura Matrimony" };
  * Best matches band and Footer. /dashboard?empty=1 shows the new-member empty states.
  * Data is mock (src/content/dashboard.ts).
  */
+/** Dashboard → "Find your match" quick-search card. Hidden for now; flip to true to show it again. */
+const SHOW_QUICK_SEARCH = false;
+
 export default function DashboardPage() {
   return (
     <div className="relative isolate bg-page-gradient">
@@ -43,9 +47,12 @@ export default function DashboardPage() {
           <FeatureGate title="Requests & messages unlock after approval">
             <Inbox />
           </FeatureGate>
-          <FeatureGate title="Search unlocks after approval">
-            <SearchCard />
-          </FeatureGate>
+          {/* "Find your match" quick search — hidden for now (kept, not removed). Set SHOW_QUICK_SEARCH = true to bring it back. */}
+          {SHOW_QUICK_SEARCH && (
+            <FeatureGate title="Search unlocks after approval">
+              <SearchCard />
+            </FeatureGate>
+          )}
         </div>
         <FeatureGate title="Your matches are almost ready" text="Once you’re approved you can view profiles and send interests.">
           <BestMatches />
@@ -55,6 +62,7 @@ export default function DashboardPage() {
       {/* demo only: switch KYC pending / rejected / approved Free / approved Pro */}
       <DashboardDemo />
       <PromoteModal />
+      <EditProfileModal />
     </div>
   );
 }

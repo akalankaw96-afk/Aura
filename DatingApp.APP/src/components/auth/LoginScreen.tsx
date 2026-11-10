@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { takeReturnTo } from "@/lib/session";
 import { ArrowRight2, Messages2, Sms, Call } from "iconsax-react";
 import {
   Alert,
@@ -96,7 +97,7 @@ export function LoginScreen() {
       setLoading(false);
       flashToast("success", `Welcome back, ${session.fullName || "Member"}!`, "You’re logged in.");
       toast.success(`Welcome back, ${session.fullName || "Member"}!`, "You’re logged in.");
-      router.push("/dashboard");
+      router.push(takeReturnTo()); // back to the profile / page the guest came from
     } catch (err: unknown) {
       setLoading(false);
       const msg = err instanceof Error ? err.message : "Invalid credentials. Please try again.";

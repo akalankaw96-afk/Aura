@@ -5,6 +5,7 @@ import Link from "next/link";
 import { ArrowDown2 } from "iconsax-react";
 import { LanguageSwitch, Logo, ThemeToggle } from "@/components/ui/Brand";
 import { loadDraft } from "@/lib/demo";
+import { ButtonLink } from "@/components/ui/Button";
 
 /**
  * Figma: Auth Header (Action = Create account / Log in / Avatar)
@@ -27,22 +28,22 @@ export function AuthHeader({ action = "none" }: { action?: AuthHeaderAction }) {
         <LanguageSwitch />
         <ThemeToggle />
         {/* Figma: Button Primary S — "Register" on Log in pages, "Login" on Register pages */}
-        {action === "create-account" && <HeaderButton href="/register">Register</HeaderButton>}
-        {action === "login" && <HeaderButton href="/login">Login</HeaderButton>}
+        {action === "create-account" && (
+          <ButtonLink href="/register" variant="secondary" size="sm" className="whitespace-nowrap">
+            Create New
+          </ButtonLink>
+        )}
+        {action === "login" && (
+          <ButtonLink href="/login" size="sm" className="whitespace-nowrap">
+            Login
+          </ButtonLink>
+        )}
         {action === "avatar" && <MemberAvatar />}
       </div>
     </header>
   );
 }
 
-/** Figma: Button (Style = Primary, Size = S) */
-function HeaderButton({ href, children }: { href: string; children: React.ReactNode }) {
-  return (
-    <Link href={href} className="flex h-[41px] items-center whitespace-nowrap rounded-full bg-brand-gradient px-4 text-button-sm text-ink-on-brand transition-shadow hover:shadow-glow">
-      {children}
-    </Link>
-  );
-}
 
 /** Figma: Account pill — avatar 36px + first name + chevron (same as the member Navbar). Falls back to the couple illustration. */
 function MemberAvatar() {

@@ -46,7 +46,7 @@ export function DashboardDemo() {
       tips={[
         { label: "KYC status", value: status === "live" ? "approved" : status === "changes" ? "rejected" : status },
         { label: "Plan", value: paid ? plan : "free" },
-        { label: "Free limits", value: `${FREE_LIMITS.profileViews} views/day · ${FREE_LIMITS.chats} chats · ${FREE_LIMITS.interests} int.` },
+        { label: "Free limits", value: `${FREE_LIMITS.profileViews} views/mo · ${FREE_LIMITS.chats} chats · ${FREE_LIMITS.interests} int.` },
       ]}
       actions={[
         { label: "1 · KYC pending", active: status === "pending" || status === "resubmitted", onClick: () => go("pending", false, "KYC pending", "Profile under review — features are locked.") },

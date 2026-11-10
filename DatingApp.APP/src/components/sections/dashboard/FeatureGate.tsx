@@ -1,9 +1,9 @@
 "use client";
 
 import React from "react";
-import Link from "next/link";
 import { Crown1, Lock1 } from "iconsax-react";
 import { cn } from "@/lib/cn";
+import { ButtonLink } from "@/components/ui/Button";
 import { useAccess } from "@/lib/verification";
 
 /**
@@ -54,12 +54,9 @@ export function FeatureGate({
               : "We’re reviewing your profile — this usually takes less than 24 hours."}
           </p>
           {planLock && (
-            <Link
-              href="/plans"
-              className="mt-1 flex h-10 items-center gap-1.5 rounded-full bg-brand-gradient px-5 text-button-sm text-ink-on-brand transition-shadow hover:shadow-glow"
-            >
-              <Crown1 size={16} color="currentColor" /> Upgrade to Gold
-            </Link>
+            <ButtonLink href="/plans" size="sm" className="mt-1" leftIcon={<Crown1 size={16} color="currentColor" />}>
+              Upgrade to Gold
+            </ButtonLink>
           )}
         </div>
       </div>

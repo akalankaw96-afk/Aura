@@ -7,14 +7,11 @@ import {
   ArrowLeft,
   ArrowRight2,
   Calendar,
-  Edit2,
   EmojiHappy,
   Gallery,
-  GalleryAdd,
   InfoCircle,
   MessageText1,
   TickCircle,
-  Trash,
 } from "iconsax-react";
 import {
   Alert,
@@ -47,6 +44,7 @@ import { setKyc } from "@/lib/verification";
 import { AVATARS, avatarDataUri, isIllustration, type AvatarGender } from "@/content/avatars";
 import type { CountryCode } from "@/components/ui/Flag";
 import { apiService } from "@/services/api";
+import { PhotoSlot } from "@/components/ui/PhotoSlot";
 
 /**
  * Registration journeys 3–6 (Figma 02 Account, 03 Verify, 04 Profile,
@@ -1019,46 +1017,3 @@ function IllustrationPicker({ gender, value, onPick }: { gender?: AvatarGender; 
   );
 }
 
-/** Figma: Main photo (filled: Badge + 32px Edit button, padding 10) / Empty slot (radius lg, brand-subtle, 1.5px dashed rose-300). Size comes from `className`. */
-function PhotoSlot({ src, main, rejected, label = "Add photo", onPick, onRemove, className }: { src: string | null; main?: boolean; rejected?: boolean; label?: string; onPick: () => void; onRemove: () => void; className?: string }) {
-  if (src) {
-    return (
-      <div className={cn("group relative overflow-hidden rounded-lg bg-surface-muted", rejected && "ring-2 ring-error-fg ring-offset-2 ring-offset-surface-card", className)}>
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={src} alt={main ? "Main photo" : "Photo"} className="h-full w-full object-cover" />
-        {main && (
-          <span className="absolute left-2.5 top-2.5">
-            {rejected ? (
-              <Badge tone="error">Rejected</Badge>
-            ) : (
-              <Badge tone={isIllustration(src) ? "info" : "success"}>{isIllustration(src) ? "Illustration" : "Main photo"}</Badge>
-            )}
-          </span>
-        )}
-        <div className="absolute bottom-2.5 left-2.5 flex gap-2">
-          <button type="button" onClick={onPick} aria-label="Change photo" className="flex h-8 w-8 items-center justify-center rounded-full bg-surface-glass-strong text-brand shadow-sm hover:bg-surface-card">
-            <Edit2 size={16} color="currentColor" />
-          </button>
-          <button type="button" onClick={onRemove} aria-label="Remove photo" className="flex h-8 w-8 items-center justify-center rounded-full bg-surface-glass-strong text-error-fg shadow-sm hover:bg-surface-card">
-            <Trash size={16} color="currentColor" />
-          </button>
-        </div>
-      </div>
-    );
-  }
-  return (
-    <button
-      type="button"
-      onClick={onPick}
-      className={cn(
-        "flex flex-col items-center justify-center gap-1.5 rounded-lg border-[1.5px] border-dashed border-brand-focus bg-brand-subtle px-2 text-center text-brand transition-colors hover:border-brand hover:bg-surface-card",
-        main ? "text-body-sm font-semibold" : "text-label-sm",
-        className
-      )}
-    >
-      {main ? <Gallery size={28} color="currentColor" /> : <GalleryAdd size={22} color="currentColor" />}
-      {main ? "Add your main photo" : label}
-      {main && <span className="text-body-xs font-normal text-ink-tertiary">JPG or PNG, up to 5 MB</span>}
-    </button>
-  );
-}
