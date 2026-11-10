@@ -39,6 +39,7 @@ export function ProfileCard({
       style={style}
       className={cn(
         "flex flex-col rounded-lg border border-line bg-surface-card p-2 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-brand-focus hover:shadow-lg",
+        promoted && "promo-shine border-premium-line",
         className
       )}
     >
@@ -67,7 +68,7 @@ export function ProfileCard({
                 <Verify size={14} color="currentColor" /> Verified
               </span>
               {promoted ? (
-                <span className="inline-flex h-[22px] items-center gap-1 rounded-full bg-premium-bg px-2 text-label-sm text-premium-fg">
+                <span className="promo-badge inline-flex h-[22px] items-center gap-1 rounded-full bg-premium-bg px-2 text-label-sm text-premium-fg">
                   <Crown1 size={14} color="currentColor" /> Promoted
                 </span>
               ) : profile.horoscope && (

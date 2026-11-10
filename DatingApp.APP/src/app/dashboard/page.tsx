@@ -7,6 +7,7 @@ import { VerificationPanel } from "@/components/sections/dashboard/VerificationP
 import { FeatureGate } from "@/components/sections/dashboard/FeatureGate";
 import { PlanUsageCard } from "@/components/sections/dashboard/PlanUsageCard";
 import { ProPlanCard } from "@/components/sections/dashboard/ProPlanCard";
+import { PromoteCard, PromoteModal } from "@/components/sections/promote/PromoteFlow";
 import { DashboardDemo } from "@/components/sections/dashboard/DashboardDemo";
 
 export const metadata: Metadata = { title: "Dashboard | Aura Matrimony" };
@@ -30,6 +31,8 @@ export default function DashboardPage() {
           <DashboardHero />
           {/* approved Free members: allowance + what Gold unlocks (hidden for paid members) */}
           <PlanUsageCard />
+          {/* approved Pro members: promote profile (LKR 500 · 7 days) */}
+          <PromoteCard />
           {/* approved Gold / Platinum members: plan, expiry date and included features */}
           <ProPlanCard />
           {/* profile insights are a paid feature */}
@@ -51,6 +54,7 @@ export default function DashboardPage() {
       <Footer />
       {/* demo only: switch KYC pending / rejected / approved Free / approved Pro */}
       <DashboardDemo />
+      <PromoteModal />
     </div>
   );
 }

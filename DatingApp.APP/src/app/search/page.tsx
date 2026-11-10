@@ -502,7 +502,7 @@ function SearchPageContent() {
                   <div className="flex items-center gap-2">
                     <Crown1 size={20} color="currentColor" className="text-premium-fg" />
                     <h2 className="flex-1 text-h6 text-premium-fg">Promoted profiles</h2>
-                    <Link href="/plans" className="group text-label-md text-premium-fg">
+                    <Link href={signedIn && !unlimited ? "/plans" : signedIn ? "/dashboard?promote=1" : "/register"} className="group text-label-md text-premium-fg">
                       Promote your profile <span className="inline-block transition-transform group-hover:translate-x-0.5">›</span>
                     </Link>
                   </div>
@@ -513,7 +513,8 @@ function SearchPageContent() {
                         profile={p}
                         promoted
                         onView={handleOpenDetail}
-                        style={{ animation: `fade-up 500ms cubic-bezier(0.22,1,0.36,1) ${i * 80}ms backwards` }}
+                        // light sweep is staggered card to card
+                        style={{ animation: `fade-up 500ms cubic-bezier(0.22,1,0.36,1) ${i * 80}ms backwards`, ["--promo-delay" as string]: `${i * 0.35}s` }}
                       />
                     ))}
                   </div>

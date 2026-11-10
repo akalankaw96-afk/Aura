@@ -5,6 +5,7 @@ import { DemoTips } from "@/components/auth/DemoTips";
 import { useToast } from "@/components/ui/Toast";
 import { useAccess } from "@/lib/verification";
 import { FREE_LIMITS, resetUsage } from "@/lib/usage";
+import { setBoostRecord, useBoost } from "@/lib/promotion";
 
 /**
  * Dashboard demo switcher (no API): jump between the four member states.
@@ -17,6 +18,7 @@ export function DashboardDemo() {
   const toast = useToast();
   const { status, plan, setStatus, setPlan } = useAccess();
   const paid = plan !== "free";
+  const boost = useBoost();
 
   const go = (kyc: "pending" | "changes" | "live", gold: boolean | "platinum", title: string, text: string) => {
     setPlan(gold === "platinum" ? "platinum" : gold ? "gold" : "free");
@@ -51,6 +53,13 @@ export function DashboardDemo() {
               localStorage.setItem("vk-membership", JSON.stringify({ plan: "gold", startedAt: d.toISOString(), months: 1 }));
             } catch {}
             window.dispatchEvent(new Event("vk-plan-change"));
+          },
+        },
+        {
+          label: boost.active ? "Stop promotion" : "Promoted · 3 days in",
+          onClick: () => {
+            if (!paid || status !== "live") go("live", true, "Approved · Gold", "Promotion needs KYC approval + Pro.");
+            setBoostRecord(boost.active ? null : { startedAt: new Date(Date.now() - 3 * 86_400_000).toISOString(), days: 7 });
           },
         },
         { label: "Reset usage", onClick: () => { resetUsage(); toast.success("Usage reset", "This month’s free allowance is back to full."); } },

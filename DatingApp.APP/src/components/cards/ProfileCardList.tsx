@@ -57,7 +57,7 @@ export function ProfileCardList({
       className={cn(
         "group/card flex flex-col gap-5 rounded-lg border p-3 shadow-sm transition-all duration-300 sm:flex-row sm:pr-5",
         promoted
-          ? "border-premium-line bg-premium-bg hover:shadow-lg"
+          ? "promo-shine border-premium-line bg-premium-bg hover:shadow-lg"
           : "border-line bg-surface-card hover:border-brand-focus hover:shadow-lg"
       )}
     >
@@ -83,7 +83,7 @@ export function ProfileCardList({
         />
         <span className="absolute left-2.5 top-2.5">
           {promoted ? (
-            <span className="inline-flex h-[22px] items-center gap-1 rounded-full bg-premium-bg px-2 text-label-sm text-premium-fg">
+            <span className="promo-badge inline-flex h-[22px] items-center gap-1 rounded-full bg-premium-bg px-2 text-label-sm text-premium-fg">
               <Crown1 size={14} color="currentColor" /> Promoted
             </span>
           ) : (
