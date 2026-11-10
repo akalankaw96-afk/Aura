@@ -1,5 +1,4 @@
-/* Vikasitha service worker — minimal: makes the site installable and keeps a tiny
-   offline fallback for the app shell. Network-first, so members always get fresh data. */
+/* Keep the install icon and logo available without caching pages or API data. */
 const CACHE = "vk-shell-v1";
 const SHELL = ["/brand/logo.png", "/icons/vk-icon-192.png"];
 
@@ -10,12 +9,18 @@ self.addEventListener("install", (e) => {
 
 self.addEventListener("activate", (e) => {
   e.waitUntil(
-    caches.keys().then((keys) => Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k))))
+    caches.keys().then((keys) => Promise.all(keys.filter((k) => k.startsWith("vk-shell-") && k !== CACHE).map((k) => caches.delete(k))))
   );
   self.clients.claim();
 });
 
 self.addEventListener("fetch", (e) => {
   if (e.request.method !== "GET") return;
-  e.respondWith(fetch(e.request).catch(() => caches.match(e.request)));
+  const url = new URL(e.request.url);
+  if (url.origin !== self.location.origin || !SHELL.includes(url.pathname)) return;
+  e.respondWith(fetch(e.request).catch(async (error) => {
+    const cached = await caches.match(url.pathname, { cacheName: CACHE });
+    if (cached) return cached;
+    throw error;
+  }));
 });

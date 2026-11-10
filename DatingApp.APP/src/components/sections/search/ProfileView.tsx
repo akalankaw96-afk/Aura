@@ -12,12 +12,10 @@ import {
   Flag as FlagIcon,
   Gallery,
   Heart,
-  HeartAdd,
   Home2,
   Location,
   Lock1,
   Maximize4,
-  MessageText,
   People,
   Profile,
   Ruler,
@@ -28,10 +26,10 @@ import {
   Verify,
 } from "iconsax-react";
 import { createPortal } from "react-dom";
-import { useRouter } from "next/navigation";
 import { Share2 } from "lucide-react";
 import { cn } from "@/lib/cn";
-import { requirePaidAction } from "@/lib/usage";
+import { ProfileActions } from "@/components/profile/ProfileActions";
+import { favouriteProfile, useFavourites, useSentInterests } from "@/lib/connections";
 import { allowVerificationAction, requireMember } from "@/lib/session";
 import { Badge } from "@/components/ui/Badge";
 import { BackButton } from "@/components/ui/BackButton";
@@ -219,10 +217,11 @@ function Photo({ p, className }: { p: ViewProfile; className?: string }) {
 }
 
 function Detail({ p, x, onInterest }: { p: ViewProfile; x?: ProfileExtras; onInterest: (p: ViewProfile) => boolean }) {
-  const router = useRouter();
   const toast = useToast();
-  const [saved, setSaved] = useState(false);
-  const [sent, setSent] = useState(false);
+  const { profiles: favourites, save } = useFavourites();
+  const saved = favourites.some((profile) => profile.id === p.id);
+  const { profiles: sentInterests } = useSentInterests();
+  const sent = sentInterests.some((profile) => profile.id === p.id);
   const [note, setNote] = useState("");
   const [reportOpen, setReportOpen] = useState(false);
   const [viewer, setViewer] = useState<number | null>(null);
@@ -252,7 +251,7 @@ function Detail({ p, x, onInterest }: { p: ViewProfile; x?: ProfileExtras; onInt
   const send = () => {
     if (!requireMember("send an interest")) return;
     if (blocked || sent) return;
-    if (onInterest(p)) setSent(true);
+    onInterest(p);
   };
 
   return (
@@ -268,6 +267,20 @@ function Detail({ p, x, onInterest }: { p: ViewProfile; x?: ProfileExtras; onInt
                 <Maximize4 size={16} color="currentColor" /> View photos
               </span>
             </span>
+          </button>
+          <button
+            type="button"
+            aria-pressed={saved}
+            aria-label={saved ? "Remove from favourites" : "Add to favourites"}
+            onClick={() => {
+              if (!requireMember("shortlist profiles")) return;
+              if (save(favouriteProfile({ ...p, photo: p.photo || fallbackPhoto(p.gender) }))) {
+                toast.success("Added to favourites", `${p.id} is saved to your favourites.`);
+              }
+            }}
+            className="absolute right-3 top-3 z-10 flex h-10 w-10 items-center justify-center rounded-full bg-surface-glass-strong text-brand transition-transform hover:scale-105 focus-visible:shadow-ring-brand active:scale-95"
+          >
+            <Heart size={20} color="currentColor" variant={saved ? "Bold" : "Linear"} />
           </button>
           <span className="pointer-events-none absolute left-3 top-3">
             <Badge tone="success">Photo verified</Badge>
@@ -425,19 +438,6 @@ function Detail({ p, x, onInterest }: { p: ViewProfile; x?: ProfileExtras; onInt
       <div className="flex flex-wrap items-center gap-3">
         <button
           type="button"
-          aria-pressed={saved}
-          aria-label={saved ? "Remove from shortlist" : "Add to shortlist"}
-          onClick={() => {
-            if (!requireMember("shortlist profiles")) return;
-            setSaved(!saved);
-            if (!saved) toast.success("Added to shortlist", `${p.id} is saved to your shortlist.`);
-          }}
-          className={cn("flex h-12 w-12 items-center justify-center rounded-full border transition-colors", saved ? "border-brand bg-brand-subtle text-brand" : "border-line-strong text-icon-brand hover:bg-brand-subtle")}
-        >
-          <Heart size={20} color="currentColor" variant={saved ? "Bold" : "Linear"} />
-        </button>
-        <button
-          type="button"
           disabled={reported}
           onClick={() => requireMember("report a profile") && setReportOpen(true)}
           className="flex items-center gap-1.5 px-2 text-label-md text-ink-tertiary transition-colors hover:text-error-fg disabled:pointer-events-none disabled:text-success-fg"
@@ -446,27 +446,7 @@ function Detail({ p, x, onInterest }: { p: ViewProfile; x?: ProfileExtras; onInt
           {reported ? "Reported" : "Report profile"}
         </button>
         <div className="flex-1" />
-        <div className="flex gap-3 max-sm:w-full">
-          <Button
-            variant="outline"
-            size="md"
-            className="max-sm:flex-1"
-            leftIcon={<MessageText size={18} color="currentColor" />}
-            onClick={() => {
-              if (!requirePaidAction("messages", "message members")) return;
-              if (!sent) {
-                toast.info("Chat unlocks after they accept", `Send an interest to ${p.id} first.`);
-                return;
-              }
-              router.push("/messages");
-            }}
-          >
-            Message
-          </Button>
-          <Button size="md" className="max-sm:flex-1" disabled={sent || blocked} onClick={send} leftIcon={sent ? <TickCircle size={18} color="currentColor" /> : <HeartAdd size={18} color="currentColor" />}>
-            {sent ? "Interest sent" : "Send interest"}
-          </Button>
-        </div>
+        <ProfileActions profileId={p.id} sent={sent} blocked={blocked} onSend={send} />
       </div>
 
       {/* portals: the article animates (transform), which would trap position:fixed */}

@@ -1,5 +1,6 @@
 "use client";
 
+import { favouriteProfile, useFavourites } from "@/lib/connections";
 import React, { useState } from "react";
 import Link from "next/link";
 import { Book1, Heart, LanguageSquare, Verify } from "iconsax-react";
@@ -34,7 +35,8 @@ export function ProfilePhotoCard({ profile, variant = "glass", className, href }
 }
 
 function ProfilePhotoCardGlass({ profile, className }: { profile: MarqueeProfile; className?: string }) {
-  const [saved, setSaved] = useState(false);
+  const { profiles, save } = useFavourites();
+  const saved = profiles.some((entry) => entry.id === profile.id);
 
   return (
     <article
@@ -65,7 +67,7 @@ function ProfilePhotoCardGlass({ profile, className }: { profile: MarqueeProfile
           onClick={(e) => {
             e.preventDefault();
             e.stopPropagation();
-            if (requireMember("shortlist profiles")) setSaved((s) => !s);
+            if (requireMember("shortlist profiles")) save(favouriteProfile(profile));
           }}
           className={cn(
             "absolute right-2 top-2 flex h-8 w-8 items-center justify-center rounded-full border backdrop-blur-[8px] transition-all duration-300 active:scale-90",

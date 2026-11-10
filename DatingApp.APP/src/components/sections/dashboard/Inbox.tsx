@@ -2,19 +2,22 @@
 
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
-import { ArrowRight2, Heart, MessageText, TickCircle, Verify } from "iconsax-react";
+import { ArrowRight2, MessageText, TickCircle, Verify } from "iconsax-react";
 import { cn } from "@/lib/cn";
 import { Badge } from "@/components/ui/Badge";
-import { Button } from "@/components/ui/Button";
+import { Button, ButtonLink } from "@/components/ui/Button";
 import { SegmentedTabs } from "@/components/ui/SegmentedTabs";
 import { useToast } from "@/components/ui/Toast";
 import { useLanguage } from "@/context/LanguageContext";
-import { FRIENDS, MESSAGES, REQUESTS, type Friend, type InterestRequest } from "@/content/dashboard";
+import { FRIENDS, MESSAGES, REQUESTS, friendProfileId, type Friend, type InterestRequest } from "@/content/dashboard";
 import { useAuthSession } from "@/lib/session";
+import { useAddedFriends, useFavourites } from "@/lib/connections";
+import { requirePaidAction } from "@/lib/usage";
+import { ConnectionEmptyState } from "@/components/sections/member/ConnectionEmptyState";
 
 /**
  * Figma: Dashboard — Version B (tabs) → Requests + Messages (two cards, gap 24).
- *  - Requests & friends card: Segmented Tabs [Friends · New requests]
+ *  - Requests & friends card: Segmented Tabs [Friends · Favourites · New requests]
  *      Friends tab → Friend Row (Profile + Message); a just-accepted friend is first, green, "New friend".
  *      New requests tab → Request Row (Decline / Accept). Accepting turns the row green
  *      ("Accepted · added to your friends" + Say hello) and adds the person to Friends.
@@ -107,26 +110,42 @@ function Row({ i, leaving, last, highlight, children }: { i: number; leaving?: b
 
 /* ── Requests & friends ─────────────────────────────────────────── */
 
-type RFTab = "friends" | "requests";
+type RFTab = "friends" | "favourites" | "requests";
 
 function RequestsFriendsCard({ empty }: { empty: boolean }) {
   const { t } = useLanguage();
   const toast = useToast();
   const [tab, setTab] = useState<RFTab>("friends");
-  const [friends, setFriends] = useState<Friend[]>(empty ? [] : FRIENDS);
+  const { profiles: addedFriends, save: addFriend } = useAddedFriends();
+  const { profiles: favourites } = useFavourites();
   const [requests, setRequests] = useState<InterestRequest[]>(empty ? [] : REQUESTS);
   const [status, setStatus] = useState<Record<string, "accepted" | "leaving">>({});
-  const pending = requests.filter((r) => !status[r.id]).length;
+  const addedIds = new Set(addedFriends.map((profile) => profile.id));
+  const friends: Friend[] = empty ? [] : [
+    ...addedFriends.map((profile) => ({ ...profile, isNew: true, lastSeen: t.dashboard.connectedJustNow })),
+    ...FRIENDS.filter((friend) => !addedIds.has(friendProfileId(friend))),
+  ];
+  const members: Friend[] = tab === "favourites" ? favourites : friends;
+  const pending = requests.filter((r) => !status[r.id] && !addedIds.has(r.id)).length;
 
   const accept = (r: InterestRequest) => {
+    if (!requirePaidAction("interests", "accept a request")) return;
+    if (!addFriend({
+      ...r,
+      fullName: r.name,
+      country: r.location.endsWith("Australia") ? "au" : r.location.endsWith("Canada") ? "ca" : "lk",
+      note: "You accepted this interest.",
+      about: "",
+      details: [
+        { icon: "calendar", label: "Age", value: `${r.age} years` },
+        { icon: "location", label: "Living in", value: r.location },
+      ],
+    })) return;
     setStatus((s) => ({ ...s, [r.id]: "accepted" }));
-    setFriends((f) => [
-      { id: r.id, name: r.name, fullName: r.name, age: r.age, location: r.location, photo: r.photo, photoHidden: r.photoHidden, isNew: true, lastSeen: t.dashboard.connectedJustNow },
-      ...f.map((x) => ({ ...x, isNew: false })),
-    ]);
     toast.success(`${r.name} is now your friend`, "Photos and chat are unlocked — say hello!");
   };
   const decline = (r: InterestRequest) => {
+    if (!requirePaidAction("interests", "decline a request")) return;
     setStatus((s) => ({ ...s, [r.id]: "leaving" }));
     window.setTimeout(() => setRequests((list) => list.filter((x) => x.id !== r.id)), 320);
     toast.info("Request declined", `${r.name} won’t be notified.`);
@@ -137,36 +156,36 @@ function RequestsFriendsCard({ empty }: { empty: boolean }) {
       <CardHeader
         tabs={
           <SegmentedTabs<RFTab>
-            label="Requests and friends"
+            label="Friends, favourites and requests"
+            className="max-w-full overflow-x-auto"
             value={tab}
             onChange={setTab}
             tabs={[
               { id: "friends", label: t.dashboard.friends, count: friends.length },
+              { id: "favourites", label: t.dashboard.favourites, count: favourites.length },
               { id: "requests", label: t.dashboard.newRequests, count: pending },
             ]}
           />
         }
-        link={tab === "friends" ? t.dashboard.allFriends : t.dashboard.viewAllRequests}
-        href="/requests"
+        link={tab === "friends" ? t.dashboard.allFriends : tab === "favourites" ? t.dashboard.allFavourites : t.dashboard.viewAllRequests}
+        href={`/requests?tab=${tab === "requests" ? "received" : tab}`}
       />
 
       <div key={tab} className="animate-fade-up">
-        {tab === "friends" &&
-          (friends.length === 0 ? (
-            <EmptyState
-              icon={<Heart size={26} color="currentColor" />}
-              title={t.dashboard.noFriendsTitle}
-              body={t.dashboard.noFriendsBody}
+        {tab !== "requests" &&
+          (members.length === 0 ? (
+            <ConnectionEmptyState
+              compact
+              title={tab === "favourites" ? t.dashboard.noFavouritesTitle : t.dashboard.noFriendsTitle}
+              body={tab === "favourites" ? t.dashboard.noFavouritesBody : t.dashboard.noFriendsBody}
               action={
-                <Link href="/register" className="flex h-10 items-center rounded-full bg-brand-gradient px-5 text-button-sm text-ink-on-brand">
-                  {t.dashboard.addPhotos}
-                </Link>
+                <ButtonLink href="/search" size="sm">{t.dashboard.browseProfiles}</ButtonLink>
               }
             />
           ) : (
             <ul className="flex flex-col gap-1">
-              {friends.map((f, i) => (
-                <Row key={f.id} i={i} last={i === friends.length - 1} highlight={f.isNew}>
+              {members.map((f, i) => (
+                <Row key={f.id} i={i} last={i === members.length - 1} highlight={f.isNew}>
                   <Avatar src={f.photo} hidden={f.photoHidden} online={f.online} />
                   <div className="flex min-w-0 flex-1 flex-col gap-0.5">
                     <p className="flex flex-wrap items-center gap-1.5 text-label-lg text-ink">
@@ -178,19 +197,19 @@ function RequestsFriendsCard({ empty }: { empty: boolean }) {
                       )}
                     </p>
                     <p className={cn("truncate text-caption", f.online || f.isNew ? "text-success-fg" : "text-ink-tertiary")}>
-                      {f.online ? t.dashboard.onlineNow : f.lastSeen}
+                      {f.online ? t.dashboard.onlineNow : f.lastSeen || f.location}
                     </p>
                   </div>
                   <div className="flex gap-2 max-sm:w-full max-sm:pl-[60px]">
-                    <Link href="/requests" className="flex h-[41px] items-center rounded-full px-4 text-button-sm text-ink ring-1 ring-inset ring-line-strong transition-colors hover:bg-surface-subtle">
+                    <Link href={`/requests?tab=${tab}&id=${encodeURIComponent(tab === "friends" ? friendProfileId(f) : f.id)}`} className="flex h-[41px] items-center rounded-full px-4 text-button-sm text-ink ring-1 ring-inset ring-line-strong transition-colors hover:bg-surface-subtle">
                       {t.dashboard.profile}
                     </Link>
-                    <Link
+                    {tab === "friends" && <Link
                       href={`/messages?c=${f.id}`}
                       className="flex h-[41px] items-center gap-1.5 rounded-full bg-brand-gradient px-4 text-button-sm text-ink-on-brand transition-shadow hover:shadow-glow"
                     >
                       {t.dashboard.message}
-                    </Link>
+                    </Link>}
                   </div>
                 </Row>
               ))}
@@ -199,20 +218,18 @@ function RequestsFriendsCard({ empty }: { empty: boolean }) {
 
         {tab === "requests" &&
           (requests.length === 0 ? (
-            <EmptyState
-              icon={<Heart size={26} color="currentColor" />}
+            <ConnectionEmptyState
+              compact
               title={t.dashboard.noRequestsTitle}
               body={t.dashboard.noRequestsBody}
               action={
-                <Link href="/register" className="flex h-10 items-center rounded-full bg-brand-gradient px-5 text-button-sm text-ink-on-brand">
-                  {t.dashboard.addPhotos}
-                </Link>
+                <ButtonLink href="/search" size="sm">{t.dashboard.browseProfiles}</ButtonLink>
               }
             />
           ) : (
             <ul className="flex flex-col gap-1">
               {requests.map((r, i) => {
-                const accepted = status[r.id] === "accepted";
+                const accepted = status[r.id] === "accepted" || addedIds.has(r.id);
                 return (
                   <Row key={r.id} i={i} last={i === requests.length - 1} leaving={status[r.id] === "leaving"} highlight={accepted}>
                     <Avatar src={r.photo} hidden={r.photoHidden} />

@@ -15,6 +15,7 @@ import { SortDropdown } from "@/components/ui/SortDropdown";
 import { ViewToggle, type ResultsView } from "@/components/ui/ViewToggle";
 import { useToast } from "@/components/ui/Toast";
 import { hasSession, requireMember, useSignedIn } from "@/lib/session";
+import { favouriteProfile, useSentInterests } from "@/lib/connections";
 import { cn } from "@/lib/cn";
 import { consumeProfileView, consume, allSearchLimitsExhausted, useUsage } from "@/lib/usage";
 import { ProfileCard } from "@/components/cards/ProfileCard";
@@ -73,6 +74,7 @@ function SearchPageContent() {
   const searchParams = useSearchParams();
   const toast = useToast();
   const signedIn = useSignedIn();
+  const { save: saveInterest } = useSentInterests();
   const topRef = useRef<HTMLDivElement>(null);
 
   const initialFor = searchParams.get("for")?.toLowerCase() === "groom" ? "groom" : "bride";
@@ -379,8 +381,8 @@ function SearchPageContent() {
   const sendInterest = (p: FeaturedProfile) => {
     if (!requireMember("send an interest")) return false;
     if (allSearchLimitsExhausted()) return false;
-    // Free plan: monthly interest allowance (opens the Upgrade prompt when used up)
     if (!consume("interests")) return false;
+    if (!saveInterest({ ...favouriteProfile(p), time: "Just now", note: "You sent an interest. Waiting for a reply." })) return false;
     toast.success("Interest sent", `${p.id} will be notified. You can chat once they accept.`);
     return true;
   };

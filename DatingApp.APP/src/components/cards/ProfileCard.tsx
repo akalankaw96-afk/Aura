@@ -1,5 +1,6 @@
 "use client";
 
+import { favouriteProfile, useFavourites } from "@/lib/connections";
 import React, { useState } from "react";
 import Link from "next/link";
 import { ArrowRight2, Book1, Briefcase, Cake, Crown1, Heart, Ruler, ShieldTick, Star1, Verify } from "iconsax-react";
@@ -33,7 +34,8 @@ export function ProfileCard({
   onView?: (p: FeaturedProfile) => void;
   onShortlist?: (p: FeaturedProfile, saved: boolean) => void;
 }) {
-  const [saved, setSaved] = useState(false);
+  const { profiles, save } = useFavourites();
+  const saved = profiles.some((entry) => entry.id === profile.id);
   const [sent, setSent] = useState(false);
 
   return (
@@ -86,8 +88,7 @@ export function ProfileCard({
               onClick={(e) => {
                 e.stopPropagation();
                 if (!requireMember("shortlist profiles")) return;
-                const nextSaved = !saved;
-                setSaved(nextSaved);
+                const nextSaved = save(favouriteProfile(profile));
                 onShortlist?.(profile, nextSaved);
               }}
               className="pointer-events-auto flex h-10 w-10 items-center justify-center rounded-full bg-surface-glass-strong text-brand transition-transform hover:scale-105 active:scale-95"

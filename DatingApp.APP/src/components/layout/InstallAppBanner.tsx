@@ -19,12 +19,12 @@ import { Button } from "@/components/ui/Button";
 import { useLanguage } from "@/context/LanguageContext";
 
 /* ------------------------------------------------------------------ */
-/* Install the web app (PWA) — mobile only                             */
+/* Install the web app (PWA)                                          */
 /*  1. A slim banner slides down at the very top of the page.          */
 /*  2. "Install" → Android/Chrome: the native install prompt.          */
 /*     iPhone/Safari (no prompt API) or no prompt yet → a bottom sheet  */
 /*     with what you get + step-by-step instructions per platform.     */
-/*  Hidden on desktop, when already installed, and for 14 days after   */
+/*  Hidden when already installed and for 14 days after                */
 /*  "not now".                                                          */
 /* ------------------------------------------------------------------ */
 
@@ -36,6 +36,9 @@ interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>;
   userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
 }
+
+type InstallWindow = Window & { __vkInstallPrompt?: BeforeInstallPromptEvent };
+type InstallNavigator = Navigator & { install?: () => Promise<unknown> };
 
 type Platform = "ios" | "android";
 
@@ -58,7 +61,7 @@ const COPY = {
     ios: [
       { icon: "share", text: "Tap the Share button at the bottom of Safari" },
       { icon: "add", text: "Scroll down and tap “Add to Home Screen”" },
-      { icon: "done", text: "Tap “Add” — Vikasitha appears on your home screen" },
+      { icon: "done", text: "Turn on “Open as Web App” if shown, then tap “Add”" },
     ],
     androidSteps: [
       { icon: "more", text: "Tap the ⋮ menu at the top right of Chrome" },
@@ -89,7 +92,7 @@ const COPY = {
     ios: [
       { icon: "share", text: "Safari පහළ ඇති Share බොත්තම ඔබන්න" },
       { icon: "add", text: "පහළට ගොස් “Add to Home Screen” ඔබන්න" },
-      { icon: "done", text: "“Add” ඔබන්න — විකසිත ඔබේ මුල් තිරයේ දිස්වේ" },
+      { icon: "done", text: "“Open as Web App” පෙන්වන්නේ නම් එය සක්‍රිය කර “Add” ඔබන්න" },
     ],
     androidSteps: [
       { icon: "more", text: "Chrome හි ඉහළ දකුණේ ⋮ මෙනුව ඔබන්න" },
@@ -134,18 +137,24 @@ export function InstallAppBanner() {
   const [sheet, setSheet] = useState(false);
   const [platform, setPlatform] = useState<Platform>("android");
   const [deferred, setDeferred] = useState<BeforeInstallPromptEvent | null>(null);
+  const [supportsInstall, setSupportsInstall] = useState(false);
+  const [mobileDevice, setMobileDevice] = useState(false);
+  const [installing, setInstalling] = useState(false);
   const [done, setDone] = useState(false);
+  const canInstall = supportsInstall || deferred !== null;
 
-  // register the service worker (needed for install on Android) — production only
   useEffect(() => {
-    if ("serviceWorker" in navigator && process.env.NODE_ENV === "production") {
+    if (window.isSecureContext && "serviceWorker" in navigator) {
       navigator.serviceWorker.register("/sw.js").catch(() => {});
     }
   }, []);
 
   useEffect(() => {
     const ua = navigator.userAgent;
-    setPlatform(/iphone|ipad|ipod/i.test(ua) || (ua.includes("Mac") && "ontouchend" in document) ? "ios" : "android");
+    const ios = /iphone|ipad|ipod/i.test(ua) || (ua.includes("Mac") && navigator.maxTouchPoints > 1);
+    setPlatform(ios ? "ios" : "android");
+    setMobileDevice(ios || /android/i.test(ua));
+    setSupportsInstall(window.isSecureContext && typeof (navigator as InstallNavigator).install === "function");
 
     let dismissedRecently = false;
     try {
@@ -155,12 +164,15 @@ export function InstallAppBanner() {
     if (!isStandalone() && !dismissedRecently) {
       // let the page loader finish first
       const t = window.setTimeout(() => setVisible(true), 1200);
+      setDeferred((window as InstallWindow).__vkInstallPrompt ?? null);
       const onPrompt = (e: Event) => {
         e.preventDefault();
         setDeferred(e as BeforeInstallPromptEvent);
       };
       const onInstalled = () => {
+        setDeferred(null);
         setDone(true);
+        setSheet(false);
         close(false);
       };
       window.addEventListener("beforeinstallprompt", onPrompt);
@@ -193,31 +205,46 @@ export function InstallAppBanner() {
   }
 
   async function install() {
-    if (deferred) {
-      await deferred.prompt();
-      const { outcome } = await deferred.userChoice;
-      setDeferred(null);
-      if (outcome === "accepted") {
-        setDone(true);
-        setSheet(false);
-        close(false);
-      }
+    if (installing) return;
+    if (!canInstall) {
+      setSheet(true);
       return;
     }
-    setSheet(true);
+
+    setInstalling(true);
+    try {
+      const prompt = deferred;
+      delete (window as InstallWindow).__vkInstallPrompt;
+      setDeferred(null);
+      if (supportsInstall) {
+        await (navigator as InstallNavigator).install?.();
+      } else if (prompt) {
+        await prompt.prompt();
+        const { outcome } = await prompt.userChoice;
+        if (outcome !== "accepted") return;
+      }
+      setDone(true);
+      setSheet(false);
+      close(false);
+    } catch (error) {
+      if (!(error instanceof DOMException && error.name === "AbortError")) setSheet(true);
+    } finally {
+      setInstalling(false);
+    }
   }
 
   if (HIDDEN_ON.some((r) => r.test(pathname))) return null;
 
   return (
     <>
-      {/* Banner — mobile/tablet only */}
+      {/* Banner — phone and tablet, plus desktop when native install is available */}
       {visible && (
         <div
           role="region"
           aria-label={c.title}
           className={cn(
-            "relative z-[55] overflow-hidden border-b border-line bg-[linear-gradient(90deg,var(--color-surface-card),var(--rose-100))] lg:hidden",
+            "relative z-[55] overflow-hidden border-b border-line bg-[linear-gradient(90deg,var(--color-surface-card),var(--rose-100))]",
+            !mobileDevice && !canInstall && "lg:hidden",
             leaving ? "install-bar-out" : "install-bar-in"
           )}
         >
@@ -249,8 +276,8 @@ export function InstallAppBanner() {
                 </button>
               </p>
             </div>
-            <Button size="sm" variant="primary" className="shrink-0 rounded-full" leftIcon={<Import size={16} color="currentColor" />} onClick={install}>
-              {c.install}
+            <Button size="sm" variant="primary" className="shrink-0 rounded-full" leftIcon={<Import size={16} color="currentColor" />} onClick={install} loading={installing}>
+              {canInstall ? c.install : c.stepsTitle}
             </Button>
           </div>
         </div>
@@ -348,10 +375,10 @@ export function InstallAppBanner() {
 
             <div className="mt-6 flex gap-3">
               <Button variant="outline" className="flex-1 rounded-full" onClick={() => setSheet(false)}>
-                {deferred ? c.notNow : c.gotIt}
+                {canInstall ? c.notNow : c.gotIt}
               </Button>
-              {deferred && (
-                <Button variant="primary" className="flex-1 rounded-full" leftIcon={<Import size={18} color="currentColor" />} onClick={install}>
+              {canInstall && (
+                <Button variant="primary" className="flex-1 rounded-full" leftIcon={<Import size={18} color="currentColor" />} onClick={install} loading={installing}>
                   {c.installNow}
                 </Button>
               )}

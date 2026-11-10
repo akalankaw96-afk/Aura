@@ -38,11 +38,15 @@ export const viewport: Viewport = {
 /** Before paint: marks JS as on (motion CSS), restores theme and language so no flash occurs. */
 const themeScript = `document.documentElement.classList.add("js");try{var t=localStorage.getItem("vk-theme");if(t==="dark")document.documentElement.setAttribute("data-theme","dark");var l=localStorage.getItem("vk-lang");if(l==="si")document.documentElement.setAttribute("lang","si")}catch(e){}`;
 
+// The browser can make the install prompt available before React hydrates.
+const installScript = `window.addEventListener("beforeinstallprompt",function(event){event.preventDefault();window.__vkInstallPrompt=event;});window.addEventListener("appinstalled",function(){delete window.__vkInstallPrompt;});`;
+
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
+        <script dangerouslySetInnerHTML={{ __html: installScript }} />
       </head>
       <body>
         <PageLoader />

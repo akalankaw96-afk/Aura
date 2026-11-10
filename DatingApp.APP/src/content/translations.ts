@@ -137,6 +137,11 @@ export interface Translations {
     shortlistedYou: string;
     unreadMessages: string;
     newRequests: string;
+    favourites: string;
+    allFavourites: string;
+    noFavouritesTitle: string;
+    noFavouritesBody: string;
+    browseProfiles: string;
     viewAllRequests: string;
     newMessages: string;
     openInbox: string;
@@ -466,6 +471,11 @@ export const TRANSLATIONS: Record<Language, Translations> = {
       shortlistedYou: "Shortlisted you",
       unreadMessages: "Unread messages",
       newRequests: "New requests",
+      favourites: "Favourites",
+      allFavourites: "All favourites",
+      noFavouritesTitle: "No favourites yet",
+      noFavouritesBody: "Tap the heart on a profile to save it here.",
+      browseProfiles: "Browse profiles",
       viewAllRequests: "View all requests",
       newMessages: "New messages",
       openInbox: "Open inbox",
@@ -489,7 +499,7 @@ export const TRANSLATIONS: Record<Language, Translations> = {
       noFriendsTitle: "No friends yet",
       noFriendsBody: "When you accept an interest — or someone accepts yours — they’ll appear here so you can message them or view their profile.",
       noRequestsTitle: "No new requests",
-      noRequestsBody: "Members who like your profile will appear here. Profiles with 3+ photos get up to 3× more interest.",
+      noRequestsBody: "When someone sends you an interest, you’ll see it here.",
       noMessagesTitle: "No messages yet",
       noMessagesBody: "Accept an interest or get yours accepted to start chatting safely.",
       addPhotos: "Add photos",
@@ -794,6 +804,11 @@ export const TRANSLATIONS: Record<Language, Translations> = {
       shortlistedYou: "ඔබව තෝරාගත් අය",
       unreadMessages: "නොකියවූ පණිවිඩ",
       newRequests: "නව යෝජනා",
+      favourites: "ප්‍රියතම",
+      allFavourites: "සියලු ප්‍රියතම පැතිකඩ",
+      noFavouritesTitle: "තවම ප්‍රියතම පැතිකඩ නැත",
+      noFavouritesBody: "පැතිකඩක් සුරැකීමට හෘද සලකුණ ඔබන්න.",
+      browseProfiles: "පැතිකඩ බලන්න",
       viewAllRequests: "සියලු යෝජනා බලන්න",
       newMessages: "නව පණිවිඩ",
       openInbox: "පණිවිඩ වෙත යන්න",
@@ -817,7 +832,7 @@ export const TRANSLATIONS: Record<Language, Translations> = {
       noFriendsTitle: "තවම මිතුරන් නැත",
       noFriendsBody: "ඔබ කැමැත්තක් පිළිගත් විට — හෝ කෙනෙක් ඔබේ කැමැත්ත පිළිගත් විට — ඔවුන් මෙහි පෙන්වයි.",
       noRequestsTitle: "නව යෝජනා නැත",
-      noRequestsBody: "ඔබේ පැතිකඩට කැමති සාමාජිකයින් මෙහි පෙන්වයි. ඡායාරූප 3+ ඇති පැතිකඩවලට 3× වැඩි කැමැත්තක් ලැබේ.",
+      noRequestsBody: "කෙනෙක් ඔබට කැමැත්තක් එවූ විට එය මෙහි පෙන්වයි.",
       noMessagesTitle: "තවම පණිවිඩ නැත",
       noMessagesBody: "කතාබහ ආරම්භ කිරීමට කැමැත්තක් පිළිගන්න.",
       addPhotos: "ඡායාරූප එක් කරන්න",

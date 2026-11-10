@@ -94,6 +94,7 @@ export const MESSAGES: InboxMessage[] = [
 
 /* ── Requests screen (Figma: Requests — Desktop 1440) ─────────────────── */
 export type RequestTab = "received" | "sent" | "accepted";
+export type ConnectionTab = "friends" | "favourites" | Exclude<RequestTab, "accepted">;
 
 export interface RequestProfile {
   id: string;
@@ -127,10 +128,11 @@ const details = (age: number, height: string, religion: string, ethnicity: strin
     { icon: "location", label: "Living in", value: living },
   ] as RequestProfile["details"];
 
-export const REQUEST_TABS: { id: RequestTab; label: string }[] = [
+export const REQUEST_TABS: { id: ConnectionTab; label: string }[] = [
+  { id: "friends", label: "Friends" },
+  { id: "favourites", label: "Favourites" },
   { id: "received", label: "Received" },
   { id: "sent", label: "Sent" },
-  { id: "accepted", label: "Accepted" },
 ];
 
 export const REQUEST_PROFILES: RequestProfile[] = [
@@ -272,3 +274,7 @@ export const FRIENDS: Friend[] = [
   { id: "rizwan", name: "Rizwan", fullName: "Rizwan Mohamed", age: 30, location: "Colombo, Sri Lanka", photo: "/images/profiles/mp-24751.jpg", lastSeen: "Last seen 1h ago" },
   { id: "pradeep", name: "Pradeep", fullName: "Pradeep Fernando", age: 34, location: "Galle, Sri Lanka", photo: "/images/profiles/mp-24671.jpg", lastSeen: "Last seen yesterday" },
 ];
+
+export function friendProfileId(friend: Friend) {
+  return REQUEST_PROFILES.find((profile) => profile.fullName === friend.fullName)?.id ?? friend.id;
+}

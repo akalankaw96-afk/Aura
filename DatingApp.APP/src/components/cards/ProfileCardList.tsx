@@ -1,5 +1,6 @@
 "use client";
 
+import { favouriteProfile, useFavourites } from "@/lib/connections";
 import React, { useState } from "react";
 import {
   Book1,
@@ -49,7 +50,8 @@ export function ProfileCardList({
   onInterest: (p: FeaturedProfile) => boolean | void;
   style?: React.CSSProperties;
 }) {
-  const [saved, setSaved] = useState(false);
+  const { profiles, save } = useFavourites();
+  const saved = profiles.some((entry) => entry.id === profile.id);
   const [sent, setSent] = useState(false);
   const online = extras.active === "Active now";
 
@@ -125,7 +127,7 @@ export function ProfileCardList({
             type="button"
             aria-pressed={saved}
             aria-label={saved ? `Remove ${profile.id} from shortlist` : `Shortlist ${profile.id}`}
-            onClick={() => requireMember("shortlist profiles") && setSaved((v) => !v)}
+            onClick={() => requireMember("shortlist profiles") && save(favouriteProfile(profile))}
             className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-brand-border bg-surface-card text-brand transition-transform hover:scale-105 active:scale-95"
           >
             <Heart
