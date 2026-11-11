@@ -49,6 +49,10 @@ plan, KYC, usage, boost or identity. See `docs/SECURITY_GUIDELINES.md`.
 - Check the screen at **1440px and 390px**, light **and** dark, keyboard focus visible.
 - Re-test the flows you touched (guest, pending KYC, rejected, Free, Gold). `DashboardDemo` switches states.
 - Never mark a task completed in `docs/PROGRESS.md` until its acceptance criteria pass.
+- **Update the docs after every piece of development — no exceptions, even for small UI tweaks.** At minimum:
+  `docs/PROGRESS.md` (status + notes) and `docs/CHANGELOG.md` (what changed, files). Also update `BUG_TRACKER.md`,
+  `TECHNICAL_DEBT.md`, `API_GUIDELINES.md`, `DATABASE_GUIDELINES.md`, `COMPONENT_GUIDELINES.md` or `ARCHITECTURE.md`
+  when the change touches them. A task is not done until its docs are updated.
 
 ## 6. Sprint workflow
 1. Read `docs/SPRINT_PLAN.md` → work only on the **current sprint**; never start the next sprint without approval.
