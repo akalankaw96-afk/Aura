@@ -4,7 +4,7 @@ import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { takeReturnTo } from "@/lib/session";
-import { ArrowRight2, Messages2, Sms, Call } from "iconsax-react";
+import { ArrowRight2, Sms, Call } from "iconsax-react";
 import {
   Alert,
   Button,
@@ -253,17 +253,6 @@ export function LoginScreen() {
           <OrDivider />
 
           <GoogleSignInButton />
-
-          <Button
-            variant="outline"
-            fullWidth
-            leftIcon={<Messages2 size={20} color="currentColor" />}
-            onClick={() =>
-              toast.info("Log in with OTP", "Coming soon in this prototype — use your password for now.")
-            }
-          >
-            Log in with OTP instead
-          </Button>
 
           <p className="text-body-md text-ink-secondary">
             New here?{" "}
