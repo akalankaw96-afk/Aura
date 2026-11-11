@@ -20,6 +20,10 @@ Sections: Added · Changed · Fixed · Security · Removed · Breaking.
   `services/passwordReset.ts` (new), `lib/demo.ts` (`registeredEmail`).
 
 ### Changed
+- 2026-11-11 — **Sinhala font trial: Noto Sans Sinhala** (400/600/700/800) replaces Yaldevi for look-and-feel review;
+  nothing else changed. Figma `font/family/sinhala` is still Yaldevi — `@fontsource/yaldevi` stays installed to switch
+  back (2 lines: `app/layout.tsx` imports + `--font-family-sinhala` in `styles/tokens.css`). New dependency
+  `@fontsource/noto-sans-sinhala` → run `npm install`. Noto is wider: e.g. hero search "25 – 32" wraps to 2 lines.
 - 2026-11-11 — Dashboard "Your best matches today": every card opens the full profile page
   (`/search?id=…&from=dashboard`); the header shows "Dashboard / ID" and Back returns to the dashboard
   (`#matches`, or browser history when available). Free members' profile-view limit still applies.

@@ -163,7 +163,7 @@
 
   /* ── Typography ─────────────────────────────────────────────────────── */
   --font-family-base: "Nunito", system-ui, -apple-system, "Segoe UI", sans-serif;
-  --font-family-sinhala: "Yaldevi", "Nunito", sans-serif;
+  --font-family-sinhala: "Noto Sans Sinhala", "Nunito", sans-serif; /* trial — Figma: Yaldevi */
   --font-family-tamil: "Noto Sans Tamil", "Nunito", sans-serif;
 
   /* ── Effects (Figma effect styles) ──────────────────────────────────── */

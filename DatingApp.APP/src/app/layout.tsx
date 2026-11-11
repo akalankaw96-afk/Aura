@@ -5,9 +5,11 @@ import "@fontsource/nunito/400.css";
 import "@fontsource/nunito/600.css";
 import "@fontsource/nunito/700.css";
 import "@fontsource/nunito/800.css";
-import "@fontsource/yaldevi/400.css";
-import "@fontsource/yaldevi/600.css";
-import "@fontsource/yaldevi/700.css";
+// Sinhala: trying Noto Sans Sinhala (Figma uses Yaldevi — @fontsource/yaldevi is kept installed to switch back)
+import "@fontsource/noto-sans-sinhala/400.css";
+import "@fontsource/noto-sans-sinhala/600.css";
+import "@fontsource/noto-sans-sinhala/700.css";
+import "@fontsource/noto-sans-sinhala/800.css";
 import "@fontsource/noto-sans-tamil/400.css";
 import "@fontsource/noto-sans-tamil/600.css";
 import "@fontsource/noto-sans-tamil/700.css";
