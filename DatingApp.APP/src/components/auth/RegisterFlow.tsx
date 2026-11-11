@@ -47,6 +47,7 @@ import { DISTRICT_OPTIONS } from "@/content/search";
 import type { CountryCode } from "@/components/ui/Flag";
 import { apiService } from "@/services/api";
 import { PhotoSlot } from "@/components/ui/PhotoSlot";
+import { SegmentedSwitch } from "@/components/ui/SegmentedSwitch";
 
 /**
  * Registration journeys 3–6 (Figma 02 Account, 03 Verify, 04 Profile,
@@ -922,36 +923,16 @@ export function PhotosStep({
 
 /** Segmented switch for uploading photos or choosing an avatar. */
 function PhotoModeSwitch({ value, onChange }: { value: "upload" | "illustration"; onChange: (v: "upload" | "illustration") => void }) {
-  const opts = [
-    { id: "upload" as const, label: "Upload photos", Icon: Gallery },
-    { id: "illustration" as const, label: "Choose an avatar", Icon: EmojiHappy },
-  ];
   return (
-    <div role="radiogroup" aria-label="Profile picture type" className="relative grid grid-cols-2 rounded-full border border-line bg-surface-subtle p-1">
-      <span
-        aria-hidden
-        className={cn(
-          "absolute bottom-1 left-1 top-1 w-[calc(50%-4px)] rounded-full bg-brand-gradient shadow-sm transition-transform duration-300 [transition-timing-function:cubic-bezier(0.34,1.3,0.64,1)]",
-          value === "illustration" && "translate-x-full"
-        )}
-      />
-      {opts.map(({ id, label, Icon }) => (
-        <button
-          key={id}
-          type="button"
-          role="radio"
-          aria-checked={value === id}
-          onClick={() => onChange(id)}
-          className={cn(
-            "relative flex h-11 items-center justify-center gap-2 rounded-full px-3 text-label-md transition-colors",
-            value === id ? "text-ink-on-brand" : "text-ink-secondary hover:text-ink"
-          )}
-        >
-          <Icon size={18} color="currentColor" variant={value === id ? "Bold" : "Linear"} />
-          <span className="truncate">{label}</span>
-        </button>
-      ))}
-    </div>
+    <SegmentedSwitch
+      label="Profile picture type"
+      options={[
+        { id: "upload", label: "Upload photos", Icon: Gallery },
+        { id: "illustration", label: "Choose an avatar", Icon: EmojiHappy },
+      ]}
+      value={value}
+      onChange={onChange}
+    />
   );
 }
 

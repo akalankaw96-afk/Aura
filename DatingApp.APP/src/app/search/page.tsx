@@ -83,7 +83,10 @@ function SearchPageContent() {
   const initialFor = searchParams.get("for")?.toLowerCase() === "groom" ? "groom" : "bride";
   const initialId = searchParams.get("id") || "";
   // opened from the Home page (hero marquee / featured profiles) → Back returns Home
-  const fromHome = searchParams.get("from") === "home";
+  // Where the member opened a profile from: Home marquee or Dashboard "Best matches" → Back returns there
+  const openedFrom = searchParams.get("from");
+  const fromHome = openedFrom === "home";
+  const fromDashboard = openedFrom === "dashboard";
   const initialCategory = (searchParams.get("category") || "").toLowerCase();
 
   const [filters, setFilters] = useState<SearchFilters>(() => {
@@ -356,11 +359,11 @@ function SearchPageContent() {
     setViewId(p.id);
   };
   const closeDetail = () => {
-    if (fromHome) {
-      // came from Home: go back there (history keeps the scroll position); direct visit → push Home
+    if (fromHome || fromDashboard) {
+      // came from Home / Dashboard: go back there (history keeps the scroll position); direct visit → open it
       const cameFromSite = document.referrer.startsWith(window.location.origin);
       if (cameFromSite && window.history.length > 1) window.history.back();
-      else window.location.assign("/");
+      else window.location.assign(fromHome ? "/" : "/dashboard#matches");
       return;
     }
     if (pushedRef.current) {
@@ -433,7 +436,7 @@ function SearchPageContent() {
           extrasById={extrasById}
           onSelect={handleOpenDetail}
           onBack={closeDetail}
-          backTo={fromHome ? "home" : "results"}
+          backTo={fromHome ? "home" : fromDashboard ? "dashboard" : "results"}
           onInterest={(p) => sendInterest(p)}
         />
       ) : (

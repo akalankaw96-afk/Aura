@@ -83,7 +83,7 @@ export function ShareProfileDialog({ url, onClose }: { url: string; onClose: () 
             icon={<Link1 size={18} color="currentColor" />}
             onFocus={(event) => event.currentTarget.select()}
             trailing={
-              <Button size="sm" className="shrink-0" aria-label="Copy profile link" onClick={copyLink} leftIcon={<Copy size={16} color="currentColor" />}>
+              <Button size="sm" className="-mr-[11px] shrink-0 rounded-sm" aria-label="Copy profile link" onClick={copyLink} leftIcon={<Copy size={16} color="currentColor" />}>
                 Copy
               </Button>
             }

@@ -105,11 +105,11 @@ export function RequestsScreen({ initialTab, initialProfileId }: { initialTab: C
 
   return (
     <MemberShell
-      crumb="Requests"
-      title="Interest requests"
-      subtitle="View your friends, saved profiles and interest requests."
+      crumb="Friends"
+      title="Friends"
+      subtitle="Your friends, saved profiles and the interests you have received or sent."
       right={
-        <div role="tablist" aria-label="Requests" className="flex w-fit max-w-full gap-1 overflow-x-auto rounded-full border border-line bg-surface-card p-1">
+        <div role="tablist" aria-label="Friends" className="flex w-fit max-w-full gap-1 overflow-x-auto rounded-full border border-line bg-surface-card p-1">
           {REQUEST_TABS.map((t) => {
             const on = tab === t.id;
             return (

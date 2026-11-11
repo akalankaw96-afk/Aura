@@ -73,7 +73,7 @@ To open a node, add `?node-id=` plus the ID with `:` changed to `-` (e.g. `15:93
 | Frame | Code / route |
 |---|---|
 | Dashboard — Desktop 1441 `165:27877` | `app/dashboard/page.tsx` · `/dashboard` |
-| Requests — Desktop 1440 `171:15511` | `app/requests/page.tsx` · `/requests` |
+| Requests — Desktop 1440 `171:15511` | `app/friends/page.tsx` · `/friends` (page renamed "Friends"; `/requests` redirects) |
 | Messages — Desktop 1440 `172:15691` | `app/messages/page.tsx` · `/messages` |
 
 ## Not built yet

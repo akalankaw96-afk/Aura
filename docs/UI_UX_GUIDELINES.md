@@ -4,6 +4,9 @@ Figma file `jyoGCUqvQuZsoUp2uUi95W` is the source of truth. Detailed front-end r
 and `DatingApp.APP/CLAUDE.md`. This page is the short, project-wide version.
 
 ## 1. Brand and tone
+Naming: the member page for friends, favourites and interests is **Friends** (`/friends`) — chosen because Sri Lankan
+members understand it best. Keep the action wording "Send interest" for the button.
+
 Warm, trustworthy, family-friendly. Rose (primary), gold (premium/Gold plan), neutral grays. Copy is respectful and
 plain — "Send interest", not "Swipe". Bilingual English/Sinhala (Tamil planned). Never shame a member for limits or rejection.
 
@@ -19,7 +22,7 @@ plain — "Send interest", not "Swipe". Bilingual English/Sinhala (Tamil planned
 - Design at **1440 px** and **390 px**; check 768 px. Content max width per Figma; no horizontal scroll at 360 px.
 - Member pages use `MemberShell` + `Navbar variant="member"`; mobile gets `MobileTabBar`.
 - Page header pattern = Messages module: `BackButton` + title (+ actions right, e.g. Share). Don't invent new headers.
-- List + detail pattern (Requests, Messages, Profile view): list on the left, detail on the right on desktop; list → detail
+- List + detail pattern (Friends, Messages, Profile view): list on the left, detail on the right on desktop; list → detail
   navigation on mobile.
 - Back behaviour: return to where the user came from (`?from=home` → home). Home profile cards open the full profile page.
 
@@ -34,11 +37,15 @@ KYC pending / rejected · Free (with remaining counters) · paid (Gold/Platinum,
 | Action needed / page-level problem | `Alert` |
 | Success / undo-able confirmation | `useToast()` |
 | Guest presses a member action (incl. photo viewer) | `LoginRequiredModal`: Login (primary) · Create New (secondary) · Cancel |
-| Free limit reached | `UpgradePrompt` with what they get on Gold |
+| Free limit reached (searches, profile views) | `UpgradePrompt` — **cannot be dismissed**: Upgrade to Gold · Back to Dashboard |
+| Free member tries a Gold feature (message, send/accept interest) | `UpgradePrompt` "… is a Gold feature" — closable: X / Esc · Upgrade to Gold · Close |
 | Destructive action (block, delete photo, close account) | confirmation dialog with `danger` button |
 | Long action | button loading state + disabled; never double-submit |
 
 Guest CTAs in navigation: **Create New** (secondary) + **Login** (primary), everywhere the guest header appears.
+
+Buttons inside a field (e.g. Copy in the share link) are inset evenly and use the inner radius
+(field `rounded-md` 12 px − 4–5 px inset → `rounded-sm` 8 px), not a full pill.
 
 ## 6. Accessibility
 Semantic HTML; one `h1` per page; labels on every control; `focus-visible` ring; keyboard reachable dialogs with focus
@@ -48,6 +55,8 @@ reveal animations); contrast ≥ 4.5:1 for text.
 ## 7. Content and privacy in the UI
 - Don't show phone/e-mail before contact share is accepted; blur or hide full photos for guests as Figma specifies.
 - Posted time on landscape profile cards; "Promoted" label + shine on boosted profiles.
+- Contact details are shared only by **mutual consent** from chat: Gold member requests → other member accepts.
+  Only mobile/WhatsApp numbers, never e-mail or address. Component: `ContactShare.tsx`.
 - Report profile: simple modal with reason + optional details, then toast.
 - Numbers and money: `LKR 500`, dates `12 Nov 2026`, relative time for recent ("2 h ago").
 

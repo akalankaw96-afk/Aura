@@ -255,7 +255,7 @@ export function VerificationPanel() {
           {[
             { Icon: Heart, label: "Send interest" },
             { Icon: Messages2, label: "Messages" },
-            { Icon: Profile2User, label: "Requests" },
+            { Icon: Profile2User, label: "Friends" },
             { Icon: SearchNormal1, label: "Full search" },
             { Icon: Sms, label: "Contact sharing" },
           ].map(({ Icon, label }, i) => (

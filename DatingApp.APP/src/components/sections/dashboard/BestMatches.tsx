@@ -14,6 +14,7 @@ import { HERO, MARQUEE_PROFILES } from "@/content/home";
  * Figma: Dashboard → Best matches — full-width band on the hero photo (same layers as
  * the dashboard hero), padding 56/0/40, gap 32. Header: eyebrow + H2 + description,
  * All / Grooms / Brides chips + View all. Then the Profile Marquee (Profile Photo Card, Style = Card).
+ * Each card opens the full profile page (/search?id=…&from=dashboard); Back returns to the dashboard.
  */
 export function BestMatches() {
   const { t, lang } = useLanguage();
@@ -59,7 +60,7 @@ export function BestMatches() {
         <div className="reveal">
           <Marquee key={filter}>
             {list.map((p) => (
-              <ProfilePhotoCard key={p.id} profile={p} variant="card" />
+              <ProfilePhotoCard key={p.id} profile={p} variant="card" href={`/search?for=${p.gender}&id=${p.id}&from=dashboard`} />
             ))}
           </Marquee>
         </div>

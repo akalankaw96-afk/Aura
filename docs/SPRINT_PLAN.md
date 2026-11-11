@@ -36,6 +36,7 @@ Suggested length: 1–2 weeks each; adjust here when scope changes (and note why
 | S01-T13 | Password hashing upgrade with rehash-on-login | BUG-018 | Old hashes still log in and are upgraded |
 | S01-T14 | Tooling: ESLint config, test projects (xUnit, Vitest, Playwright), GitHub Actions CI; export `SegmentedTabs`/`PhotoSlot`/`ButtonLink` | BUG-020, TD-13, TD-09 | CI green on lint, typecheck, build, tests |
 | S01-T15 | Update root README to point at `CLAUDE.md` / `docs/` | BUG-022 | README status matches `PROGRESS.md` |
+| S01-T16 | Forgot password: Email or Mobile → 6-digit code → new password; 3 endpoints; revoke sessions + "password changed" alert | TD-18 | Same response for unknown accounts; code 5 min / 5 tries / 60 s resend / 3 resends; reset token single use 10 min; all refresh tokens revoked |
 
 ## Sprint 02 — Join & get approved (spec groups A rest, P/K, AD-KYC, N basic)
 Profile draft + submit API; photo upload/storage/moderation; KYC submission with ID documents (private storage);
@@ -44,6 +45,8 @@ registration, edit-profile and KYC dashboard states wired to the API; KYC from t
 notifications for KYC decisions; forgot/reset password.
 
 ## Sprint 03 — Match & talk (S, M/C, D, W)
+Includes **contact sharing API**: request (Gold only), accept, decline, cancel; phone numbers returned only to the two
+members after acceptance; hidden again on block (front end done 2026-11-11, `ContactShare.tsx`).
 Paged server search with filters/sort and indexes (BUG-016); metered profile views/searches/interests/chats via
 `UsageCounter` (BUG-011 part); shortlist, recently viewed, saved searches; interests lifecycle wired; conversations +
 messages on the secured hub; block/report persisted; dashboard summary endpoint; remove mock fallbacks (BUG-014); TD-17.

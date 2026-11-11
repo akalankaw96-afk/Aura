@@ -1,12 +1,11 @@
-import type { Metadata } from "next";
-import { RequestsScreen } from "@/components/sections/member/RequestsScreen";
-import { REQUEST_TABS } from "@/content/dashboard";
+import { redirect } from "next/navigation";
 
-export const metadata: Metadata = { title: "Interest requests | Vikasitha" };
-
-/** Figma: 📊 Member Dashboard → Requests — Desktop 1440 */
-export default async function RequestsPage({ searchParams }: { searchParams: Promise<{ tab?: string; id?: string }> }) {
-  const { tab, id } = await searchParams;
-  const initialTab = REQUEST_TABS.find((item) => item.id === tab)?.id ?? "friends";
-  return <RequestsScreen key={`${initialTab}:${id ?? ""}`} initialTab={initialTab} initialProfileId={id} />;
+/** Old address — the page is now "Friends" at /friends. Keeps saved links and bookmarks working. */
+export default async function RequestsRedirect({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(await searchParams)) {
+    if (typeof value === "string") params.set(key, value);
+  }
+  const query = params.toString();
+  redirect(query ? `/friends?${query}` : "/friends");
 }

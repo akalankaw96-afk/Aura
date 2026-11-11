@@ -4,7 +4,7 @@ import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { takeReturnTo } from "@/lib/session";
-import { ArrowRight2, Sms, Call } from "iconsax-react";
+import { ArrowRight2 } from "iconsax-react";
 import {
   Alert,
   Button,
@@ -24,8 +24,8 @@ import {
 import { AuthShell } from "./AuthShell";
 import { DemoTips } from "./DemoTips";
 import { GoogleSignInButton } from "./GoogleSignInButton";
+import { IdentifierTabs } from "./IdentifierTabs";
 import { apiService } from "@/services/api";
-import { cn } from "@/lib/cn";
 
 type LoginError = null | "wrong" | "locked" | "suspended";
 const LOCK_SECONDS = 15 * 60;
@@ -130,43 +130,14 @@ export function LoginScreen() {
             <CardTitle title="Welcome back" subtitle="Log in to see your matches and messages." />
           </div>
 
-          {/* Mode Tabs: Email vs Phone */}
-          <div className="grid grid-cols-2 p-1 bg-surface-subtle border border-line rounded-lg">
-            <button
-              type="button"
-              onClick={() => {
-                setMode("email");
-                setFieldErrors({});
-                setError(null);
-              }}
-              className={cn(
-                "flex items-center justify-center gap-2 py-2 text-sm font-semibold rounded-md transition-all",
-                mode === "email"
-                  ? "bg-surface-card text-brand shadow-xs"
-                  : "text-ink-secondary hover:text-ink"
-              )}
-            >
-              <Sms size={16} color="currentColor" />
-              <span>Email Address</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setMode("phone");
-                setFieldErrors({});
-                setError(null);
-              }}
-              className={cn(
-                "flex items-center justify-center gap-2 py-2 text-sm font-semibold rounded-md transition-all",
-                mode === "phone"
-                  ? "bg-surface-card text-brand shadow-xs"
-                  : "text-ink-secondary hover:text-ink"
-              )}
-            >
-              <Call size={16} color="currentColor" />
-              <span>Mobile Number</span>
-            </button>
-          </div>
+          <IdentifierTabs
+            value={mode}
+            onChange={(m) => {
+              setMode(m);
+              setFieldErrors({});
+              setError(null);
+            }}
+          />
 
           {error === "wrong" && (
             <Alert

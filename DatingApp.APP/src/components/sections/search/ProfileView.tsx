@@ -86,7 +86,7 @@ export function ProfileView({
   onSelect: (p: ViewProfile) => void;
   onBack: () => void;
   /** where Back leads: the search results, or Home when the profile was opened from the Home page */
-  backTo?: "results" | "home";
+  backTo?: "results" | "home" | "dashboard";
   /** false when the interest couldn’t be sent (free limit reached) */
   onInterest: (p: ViewProfile) => boolean;
 }) {
@@ -114,16 +114,16 @@ export function ProfileView({
           <div className="grid grid-cols-[44px_minmax(0,1fr)] items-center gap-x-4 gap-y-1">
             <nav aria-label="Breadcrumb" className="col-start-2 flex items-center gap-2 text-body-sm text-ink-tertiary">
               <button type="button" onClick={onBack} className="transition-colors hover:text-brand">
-                {backTo === "home" ? "Home" : "Search proposals"}
+                {backTo === "home" ? "Home" : backTo === "dashboard" ? "Dashboard" : "Search proposals"}
               </button>
               <span>/</span>
               <span aria-current="page" className="font-semibold text-brand-text">
                 {selected.id}
               </span>
             </nav>
-            <BackButton label={backTo === "home" ? "Back to home" : "Back to results"} onClick={onBack} />
+            <BackButton label={backTo === "home" ? "Back to home" : backTo === "dashboard" ? "Back to dashboard" : "Back to results"} onClick={onBack} />
             <h1 className="text-h3 text-ink md:text-h2">Profile details</h1>
-            <p className="col-start-2 text-body-md text-ink-secondary">{backTo === "home" ? "More profiles on the left" : "Browse your search results on the left"} — the full profile opens on the right.</p>
+            <p className="col-start-2 text-body-md text-ink-secondary">{backTo === "results" ? "Browse your search results on the left" : "More profiles on the left"} — the full profile opens on the right.</p>
           </div>
           <div className="flex items-center gap-2">
             <span className="text-body-sm text-ink-tertiary">

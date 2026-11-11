@@ -18,6 +18,7 @@ https://claude.ai/artifact/LP2mSaiPiJYZCij2bLU1p6 — this file holds the conven
 | Group | Scope | Sprint |
 |---|---|---|
 | **A** (A1–A18) | Auth: register, login, Google, OTP, refresh, logout, forgot/reset password, change password, sessions | 01 |
+| ↳ forgot password | `POST /auth/forgot-password {channel,value}` → 202 always · `POST /auth/forgot-password/verify {channel,value,code}` → `{resetToken}` or 400 `{code, attemptsLeft}` · `POST /auth/reset-password {resetToken,newPassword}` → 204. Web contract: `services/passwordReset.ts` | 01 |
 | **P / K** | Profile draft, submit, photos (upload, order, primary, delete), edit description; KYC submit, status, resubmit rejected fields | 02 |
 | **S** (S1–S16) | Search with filters/sort/paging, saved searches, profile view (metered), shortlist, recently viewed, promoted row | 03 |
 | **M / C** | Interests (send with note, accept, decline, withdraw), connections, conversations, messages, contact share, block, report | 03 |

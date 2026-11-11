@@ -18,7 +18,7 @@ import { ConnectionEmptyState } from "@/components/sections/member/ConnectionEmp
 /**
  * Figma: Dashboard — Version B (tabs) → Requests + Messages (two cards, gap 24).
  *  - Requests & friends card: Segmented Tabs [Friends · Favourites · New requests]
- *      Each row opens the corresponding profile in Requests.
+ *      Each row opens the corresponding profile on the Friends page (/friends).
  *      A just-accepted friend is first, green, with a "New friend" badge.
  *  - Messages card: Segmented Tabs [Messages · New messages] → Conversation Row.
  *  - Empty State in each tab when the list is empty (try /dashboard?empty=1).
@@ -163,7 +163,7 @@ function RequestsFriendsCard({ empty }: { empty: boolean }) {
           />
         }
         link={tab === "friends" ? t.dashboard.allFriends : tab === "favourites" ? t.dashboard.allFavourites : t.dashboard.viewAllRequests}
-        href={`/requests?tab=${tab === "requests" ? "received" : tab}`}
+        href={`/friends?tab=${tab === "requests" ? "received" : tab}`}
       />
 
       <div key={tab} className="animate-fade-up">
@@ -185,7 +185,7 @@ function RequestsFriendsCard({ empty }: { empty: boolean }) {
                   i={i}
                   last={i === members.length - 1}
                   highlight={f.isNew}
-                  href={`/requests?tab=${tab}&id=${encodeURIComponent(tab === "friends" ? friendProfileId(f) : f.id)}`}
+                  href={`/friends?tab=${tab}&id=${encodeURIComponent(tab === "friends" ? friendProfileId(f) : f.id)}`}
                   linkLabel={`View ${f.name}’s profile`}
                 >
                   <Avatar src={f.photo} hidden={f.photoHidden} online={f.online} />
@@ -237,7 +237,7 @@ function RequestsFriendsCard({ empty }: { empty: boolean }) {
                     i={i}
                     last={i === requests.length - 1}
                     highlight={accepted}
-                    href={`/requests?tab=${accepted ? "friends" : "received"}&id=${encodeURIComponent(r.id)}`}
+                    href={`/friends?tab=${accepted ? "friends" : "received"}&id=${encodeURIComponent(r.id)}`}
                     linkLabel={`View ${r.name}’s profile`}
                   >
                     <Avatar src={r.photo} hidden={r.photoHidden} />
@@ -320,7 +320,7 @@ function MessagesCard({ empty }: { empty: boolean }) {
             title={t.dashboard.noMessagesTitle}
             body={t.dashboard.noMessagesBody}
             action={
-              <Link href="/requests" className="flex h-10 items-center rounded-full bg-brand-gradient px-5 text-button-sm text-ink-on-brand">
+              <Link href="/friends" className="flex h-10 items-center rounded-full bg-brand-gradient px-5 text-button-sm text-ink-on-brand">
                 {t.dashboard.viewAllRequests}
               </Link>
             }

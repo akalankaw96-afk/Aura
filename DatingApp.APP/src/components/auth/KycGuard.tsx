@@ -6,7 +6,7 @@ import { flashToast } from "@/components/ui/Toast";
 import { readKyc } from "@/lib/verification";
 
 /**
- * Member pages that need an approved profile (Requests, Messages):
+ * Member pages that need an approved profile (Friends, Messages):
  * while the profile is under review (or changes were requested) the member is sent
  * back to the locked Dashboard, which explains what's pending.
  */

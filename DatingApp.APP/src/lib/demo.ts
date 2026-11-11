@@ -6,6 +6,8 @@
 export const DEMO = {
   /** Already has an account — log in works with DEMO.password */
   registeredMobile: "771234567",
+  /** Same demo account by e-mail (login + password reset) */
+  registeredEmail: "demo@auramatrimony.lk",
   password: "Vikasitha1",
   /** Logs in but the account is suspended */
   suspendedMobile: "770000000",

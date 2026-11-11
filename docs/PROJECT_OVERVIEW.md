@@ -18,7 +18,7 @@ safely, and contact details stay private until both sides accept.
 2. **KYC result:** approved → full dashboard · changes requested → "Fix your profile" with highlighted fields → resubmit.
 3. **Find:** Search with filters (age, religion, district…) → grid/list → full-page profile view (results list left,
    profile right) → photo viewer, share, report.
-4. **Connect:** Send interest (+ note) → Requests page accept/decline → chat (contact details unlock on mutual accept).
+4. **Connect:** Send interest (+ note) → Friends page (Received tab) accept/decline → chat (contact details unlock on mutual accept).
 5. **Pay:** Plans page (Gold/Platinum, 1/3/6 months) → membership card with expiry → boost profile → promoted row.
 
 ## Markets and constraints

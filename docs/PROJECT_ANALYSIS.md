@@ -51,7 +51,7 @@ Aura/
 API: ASP.NET Core 9, EF Core 9 (SqlServer + InMemory), JwtBearer, Swashbuckle. No test project, no migrations.
 
 ## 3. Front-end architecture
-- App Router, almost every screen is a client component (`"use client"`); pages are static (`○`) except `/requests`.
+- App Router, almost every screen is a client component (`"use client"`); pages are static (`○`) except `/friends` (and the `/requests` redirect).
 - Layering (`app → sections/auth → cards/layout → ui → tokens`) is respected in new code.
 - Global providers in `app/layout.tsx`: theme script, install script, `LanguageProvider`, `ToastProvider`,
   `MobileTabBar`, `UpgradePrompt`, `LoginRequiredModal`.
@@ -95,7 +95,7 @@ mock data or a fake session on failure** (BUG-003, BUG-014). `signalrService.ts`
 | `/register/status` | fix rejected fields / review status | members |
 | `/dashboard` | member dashboard (verification panel, hero, plan cards, boost, inbox, best matches) | **unguarded** |
 | `/search` (+ `?id=`) | filters, grid/list, full-page profile view, photo viewer | public, actions gated |
-| `/requests` `/messages` | interests, chat | KycGuard (weak) |
+| `/friends` (old `/requests` redirects) `/messages` | friends + interests, chat | KycGuard (weak) |
 | `/plans` | plans + mock payment | public |
 | `/support` `/contact` | support page (contact re-exports support) | public |
 | `/admin` | staff panel mock | **unguarded**, linked for every member |
@@ -145,7 +145,7 @@ localStorage — acceptable but should be one helper; some in `api.ts` hide real
 | Profile view | Full page list+detail, photo viewer, share, report, interest note | Partially (UI) |
 | Guest gating | Login-required popup, return-to-page after login | Completed (client) |
 | Free limits | 5 views · 3 searches · 3 interests · 2 chats, upgrade popup | Partially (client-only, bypassable) |
-| Interests | Send, requests page, accept/decline | Partially (API exists; UI mostly demo) |
+| Interests | Send, Friends page (friends · favourites · received · sent), accept/decline | Partially (API exists; UI mostly demo) |
 | Messaging | Chat UI, safety (block/report), contact-share | Partially (API + hub exist, insecure) |
 | Plans & payment | Plans page, mock card payment, membership expiry | Partially (no gateway/API) |
 | Boost | LKR 500 / 7 days, extend, results | Partially (client-only) |
@@ -162,7 +162,7 @@ localStorage — acceptable but should be one helper; some in `api.ts` hide real
 2. Payments, subscriptions, boosts and usage metering on the server.
 3. Photo upload/storage and moderation.
 4. Auth hardening: refresh/logout, password reset, real OTP SMS, verified Google sign-in.
-5. Wiring screens to the API (registration, search, requests, chat, dashboard).
+5. Wiring screens to the API (registration, search, friends/interests, chat, dashboard).
 6. Notifications, saved searches, shortlist, blocks/reports persistence.
 
 ## 16. Known bugs

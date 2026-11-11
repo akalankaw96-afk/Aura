@@ -122,7 +122,7 @@ export function Navbar({ variant = "light" }: { variant?: NavbarVariant }) {
         // Figma: Navbar (Style = Member) → Dashboard · Search · Requests · Messages · Plans
         { label: t.nav.dashboard, href: "/dashboard" },
         { label: t.nav.search, href: "/search" },
-        { label: t.nav.requests, href: "/requests", count: requestCount },
+        { label: t.nav.requests, href: "/friends", count: requestCount },
         { label: t.nav.messages, href: "/messages", count: messageCount },
         { label: t.nav.plans, href: "/plans" },
       ]

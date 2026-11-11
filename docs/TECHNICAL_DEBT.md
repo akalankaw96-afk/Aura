@@ -25,6 +25,9 @@ Bugs go to `BUG_TRACKER.md`; debt goes here. Add an item whenever you knowingly 
 | TD-15 | P3 | Web | Images use `<img>` instead of `next/image` | LCP/bandwidth on mobile | Open |
 | TD-16 | P3 | Web | Tamil not started; Sinhala partial | Copy debt grows with each screen | Open |
 | TD-17 | P2 | API | Hub loads the profile twice per message | Extra DB round trips under chat load | Planned (03) |
+| TD-18 | P1 | Web | `services/passwordReset.ts` is a demo adapter (fixed code, in-memory attempts) | Forgot password doesn't really work until the API exists | Planned (01, S01-T16) |
+| TD-20 | P1 | Web | Contact sharing runs on local state + demo phone numbers; decline/cancel not sent to the hub | Works only in the browser until the API exists | Planned (03) |
+| TD-19 | P3 | Web | `IdentifierTabs` active segment barely stands out in dark theme (`bg-surface-card` ≈ track) — same as Login before | Low contrast for the selected method in dark mode | Done (2026-11-11, brand-gradient `SegmentedSwitch`) |
 
 ## Rules
 - Paying down debt is a task in a sprint with acceptance criteria — not a side effect of a feature task.

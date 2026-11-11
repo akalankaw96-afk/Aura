@@ -23,11 +23,14 @@ styles/tokens.css             design tokens
 | Action | `Button` (`primary` · `secondary` · `outline` · `ghost` · `white` · `danger`; `sm` · `md` · `lg`), `ButtonLink`, `TextLink`, `buttonClasses()` | Never style a raw `<button>` as a button |
 | Form | `Field` + `Input` / `Select` / `Textarea` / `NumberField` / `PasswordField` / `PhoneField` / `OtpInput` / `Checkbox` / `Toggle` / `RangeSlider` | `Field` owns label, hint, error |
 | Tabs / segmented | `SegmentedTabs`, `ViewToggle` | Same tab look everywhere (Edit profile, Requests, Messages) |
+| Choose 1 of 2 | `SegmentedSwitch` (brand-gradient selected pill, optional `shortLabel` for phones) | Email/Mobile, Upload/Avatar — never hand-build a 2-option toggle |
 | Status | `Badge`, `Chip`, `StatusIcon`, `Alert` | `Alert` = action needed; `Badge` = state |
 | Feedback | `useToast()`, `flashToast()` (survives navigation) | Confirmations only |
 | Layout | `Card`, `CardTitle`, `OrDivider`, `SectionHeader`, `BackButton`, `Stepper`, `Pagination` | `BackButton` + title = page header style of Messages/Profile view |
 | Search | `FilterChip`, `RemovableFilterChip`, `FilterSection`, `SortDropdown` | |
 | Media | `PhotoSlot` (main / rejected / in-review states) | Edit profile + registration photos |
+| Email / Mobile switch (auth) | `components/auth/IdentifierTabs` (preset of `SegmentedSwitch`) | Login + Forgot password; don't rebuild per screen |
+| Share contact details | `sections/member/ContactShare` (`ContactShareHeaderAction`, `ContactShareCard`) | Messages page |
 | Brand | `Logo`, `CoupleAvatar`, `LanguageSwitch`, `ThemeToggle`, `Flag`, `HeartPattern`, `LoveScene`, `LoveSticker` | |
 
 `SegmentedTabs`, `PhotoSlot` and `ButtonLink` exist but are **not exported from `ui/index.ts`** — import by path

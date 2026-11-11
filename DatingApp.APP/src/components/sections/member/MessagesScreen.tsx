@@ -107,7 +107,7 @@ export function MessagesScreen() {
           <div className="flex items-center gap-2">
             <h2 className="text-label-lg text-ink">Friends</h2>
             <span className="rounded-full bg-brand-subtle px-2 py-0.5 text-label-sm text-brand-text">{FRIENDS.length}</span>
-            <Link href="/requests" className="ml-auto flex items-center gap-0.5 text-link-sm text-brand-link underline">
+            <Link href="/friends" className="ml-auto flex items-center gap-0.5 text-link-sm text-brand-link underline">
               See all <ArrowRight2 size={14} color="currentColor" />
             </Link>
           </div>
@@ -194,7 +194,7 @@ export function MessagesScreen() {
                 {typing === active.id ? "typing…" : active.online ? `Online now · ${active.location}` : `${active.lastSeen} · ${active.location}`}
               </p>
             </div>
-            <Link href="/requests" className="hidden h-10 items-center rounded-full px-4 text-button-sm text-ink ring-1 ring-inset ring-line-strong hover:bg-surface-subtle sm:flex">
+            <Link href="/friends" className="hidden h-10 items-center rounded-full px-4 text-button-sm text-ink ring-1 ring-inset ring-line-strong hover:bg-surface-subtle sm:flex">
               View profile
             </Link>
             <button type="button" aria-label="More options" onClick={() => toast.info("Coming soon", "Block, report and mute will be here.")} className="flex h-10 w-10 items-center justify-center rounded-full bg-surface-subtle text-ink hover:bg-surface-muted">

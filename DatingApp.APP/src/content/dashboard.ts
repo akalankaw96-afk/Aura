@@ -7,7 +7,7 @@
 export const MEMBER_LINKS = [
   { label: "Dashboard", href: "/dashboard" },
   { label: "Matches", href: "/dashboard#matches" },
-  { label: "Requests", href: "/requests" },
+  { label: "Friends", href: "/friends" },
   { label: "Messages", href: "/messages" },
   { label: "Plans", href: "/plans" },
 ] as const;

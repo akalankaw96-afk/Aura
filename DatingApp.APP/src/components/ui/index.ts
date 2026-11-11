@@ -42,4 +42,6 @@ export { RemovableFilterChip } from "./RemovableFilterChip";
 export { SortDropdown } from "./SortDropdown";
 export { Pagination } from "./Pagination";
 export { ViewToggle } from "./ViewToggle";
+export { SegmentedSwitch } from "./SegmentedSwitch";
+export type { SegmentedSwitchOption, SegmentedSwitchProps } from "./SegmentedSwitch";
 export type { ResultsView } from "./ViewToggle";

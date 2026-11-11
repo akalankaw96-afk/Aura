@@ -16,7 +16,7 @@ const HIDDEN_ON = [/^\/$/, /^\/login/, /^\/register/, /^\/forgot-password/, /^\/
 /**
  * Mobile Tab Bar — app-style navigation for signed-in members on phones/tablets (< lg).
  * Floats 12px above the bottom edge (respects the iPhone home indicator):
- * frosted white pill, radius 24, Shadow/XL. Four tabs — Dashboard · Search · Requests · Messages —
+ * frosted white pill, radius 24, Shadow/XL. Four tabs — Dashboard · Search · Friends · Messages —
  * icon + label. The active tab sits on a Gradient/Brand pad that slides between tabs;
  * its icon switches to the Bold style. Requests / Messages show unread count badges.
  */
@@ -32,7 +32,7 @@ export function MobileTabBar() {
   const tabs = [
     { href: "/dashboard", label: t.nav.dashboard, Icon: Element3, badge: 0 },
     { href: "/search", label: t.nav.search, Icon: SearchNormal1, badge: 0 },
-    { href: "/requests", label: t.nav.requests, Icon: Profile2User, badge: REQUESTS.length, needsApproval: true },
+    { href: "/friends", label: t.nav.requests, Icon: Profile2User, badge: REQUESTS.length, needsApproval: true },
     { href: "/messages", label: t.nav.messages, Icon: Messages2, badge: unreadMessages, needsApproval: true },
   ];
   const activeIndex = tabs.findIndex((tab) => pathname.startsWith(tab.href));

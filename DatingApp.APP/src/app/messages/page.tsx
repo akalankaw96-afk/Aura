@@ -13,10 +13,7 @@ import {
   Verify,
 } from "iconsax-react";
 import {
-  Phone,
   ShieldAlert,
-  Lock,
-  Unlock,
   CheckCheck,
   Check,
   MessageSquare,
@@ -41,6 +38,13 @@ import {
 } from "@/components/sections/member/ChatSafety";
 import { DEMO_BLOCKED_CONV, DEMO_CONVERSATIONS, demoHistory, type BlockInfo } from "@/content/demoChat";
 import {
+  ContactShareCard,
+  ContactShareHeaderAction,
+  contactShareMenuLabel,
+  type ContactShareStatus,
+} from "@/components/sections/member/ContactShare";
+import { DemoTips } from "@/components/auth/DemoTips";
+import {
   signalrService,
   getConversations,
   getChatHistory,
@@ -50,6 +54,14 @@ import {
   type ContactUnlockedDto,
   type ConnectionStatus,
 } from "@/services/signalrService";
+
+/** Demo-only phone numbers until the API returns the partner's verified number. */
+function demoPhone(convId: string) {
+  let h = 0;
+  for (const ch of convId) h = (h * 31 + ch.charCodeAt(0)) % 100_000_000;
+  const d = String(h).padStart(8, "0");
+  return `+94 7${d[0]} ${d.slice(1, 4)} ${d.slice(4, 8)}`; // 7X XXX XXXX
+}
 
 export default function MessagesPage() {
   const { t, lang } = useLanguage();
@@ -77,8 +89,12 @@ export default function MessagesPage() {
   const [mobileChatOpen, setMobileChatOpen] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>("disconnected");
   const [partnerTyping, setPartnerTyping] = useState<string | null>(null);
-  const [contactRequestPending, setContactRequestPending] = useState(false);
-  const [unlockedPhone, setUnlockedPhone] = useState<string | null>(null);
+  // Share contact details — per conversation (mutual consent). TODO(api): persist decline / cancel on the server.
+  const [shareByConv, setShareByConv] = useState<Record<string, ContactShareStatus>>({});
+  const [partnerPhones, setPartnerPhones] = useState<Record<string, string>>({});
+  const shareCardRef = useRef<HTMLDivElement>(null);
+  const setShare = useCallback((convId: string, status: ContactShareStatus) => setShareByConv((s) => ({ ...s, [convId]: status })), []);
+  const MY_PHONE = "+94 77 123 4567"; // TODO(api): from the member's verified profile
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -105,6 +121,9 @@ export default function MessagesPage() {
       if (!demoModeRef.current) {
         demoModeRef.current = true;
         setBlocked((b) => ({ ...DEMO_BLOCKED_CONV, ...b }));
+        // Demo: the 2nd conversation has an incoming "share contact details" request
+        const incoming = DEMO_CONVERSATIONS[1]?.conversationId;
+        if (incoming) setShareByConv((s) => ({ [incoming]: "received", ...s }));
       }
       list = DEMO_CONVERSATIONS;
     }
@@ -129,15 +148,11 @@ export default function MessagesPage() {
     if (history && history.length > 0) {
       setMessages(history);
 
+      // Contact-share state from history (server keeps the request / accept messages)
       const unlockedMsg = history.find((m) => m.isContactShareAccepted);
-      if (unlockedMsg) {
-        setUnlockedPhone("+94 77 123 4567");
-      }
-
       const shareReq = history.find((m) => m.isContactShareRequest && !m.isContactShareAccepted);
-      if (shareReq && !shareReq.isMe) {
-        setContactRequestPending(true);
-      }
+      if (unlockedMsg) setShareByConv((s) => ({ ...s, [convId]: "accepted" }));
+      else if (shareReq) setShareByConv((s) => (s[convId] ? s : { ...s, [convId]: shareReq.isMe ? "sent" : "received" }));
     } else {
       setMessages([]);
     }
@@ -193,11 +208,10 @@ export default function MessagesPage() {
 
       // Check if message is a contact request
       if (newMsg.isContactShareRequest && newMsg.senderProfileId !== currentProfileId) {
-        setContactRequestPending(true);
+        setShare(newMsg.conversationId, "received");
       }
       if (newMsg.isContactShareAccepted) {
-        setContactRequestPending(false);
-        setUnlockedPhone("+94 77 123 4567");
+        setShare(newMsg.conversationId, "accepted");
       }
     });
 
@@ -223,17 +237,15 @@ export default function MessagesPage() {
       );
     });
 
-    const unsubContactReq = signalrService.onContactShareRequested((_convId, requesterId) => {
+    const unsubContactReq = signalrService.onContactShareRequested((convId, requesterId) => {
       if (!mounted) return;
-      if (requesterId !== currentProfileId) {
-        setContactRequestPending(true);
-      }
+      if (requesterId !== currentProfileId) setShare(convId, "received");
     });
 
     const unsubContactUnlocked = signalrService.onContactUnlocked((payload: ContactUnlockedDto) => {
       if (!mounted) return;
-      setContactRequestPending(false);
-      setUnlockedPhone(payload.phoneNumber || "+94 77 123 4567");
+      setShare(payload.conversationId, "accepted");
+      if (payload.phoneNumber) setPartnerPhones((p) => ({ ...p, [payload.conversationId]: payload.phoneNumber as string }));
       setConversations((prev) =>
         prev.map((c) =>
           c.conversationId === payload.conversationId
@@ -336,68 +348,37 @@ export default function MessagesPage() {
     }
   };
 
-  // Flow 3: Request mutual contact exchange
+  // Share contact details — request (Gold), accept / decline (anyone in the chat), cancel
   const handleRequestContact = async () => {
     if (!activeConv) return;
-    const sent = await signalrService.requestContactShare(
-      activeConv.conversationId,
-      currentProfileId,
-      activeConv.partnerProfileId
-    );
-
-    // Optimistic insert
-    const requestMsg: ChatMessageDto = {
-      id: "req_" + Date.now(),
-      senderProfileId: currentProfileId,
-      senderName: currentUserName,
-      senderPhotoUrl: "https://images.unsplash.com/photo-1622253692010-333f2da6031d?q=80&w=800&auto=format&fit=crop",
-      receiverProfileId: activeConv.partnerProfileId,
-      receiverName: activeConv.partnerName,
-      conversationId: activeConv.conversationId,
-      messageText: "📱 I requested mutual contact exchange. Once accepted, verified phone numbers will unlock.",
-      sentAt: new Date().toISOString(),
-      isRead: true,
-      isMe: true,
-      isFlaggedBySafety: false,
-      isContactShareRequest: true,
-      isContactShareAccepted: false,
-    };
-    setMessages((prev) => [...prev, requestMsg]);
-    if (!sent) {
-      console.log("Contact share request sent optimistically");
-    }
+    if (!requirePaidAction("messages", "share contact details")) return;
+    setShare(activeConv.conversationId, "sent");
+    toast.success("Request sent", `We’ll let you know when ${activeConv.partnerName.split(" ")[0]} accepts.`);
+    await signalrService.requestContactShare(activeConv.conversationId, currentProfileId, activeConv.partnerProfileId);
   };
 
-  // Flow 3: Accept mutual contact exchange
   const handleAcceptContact = async () => {
     if (!activeConv) return;
-    await signalrService.acceptContactShare(
-      activeConv.conversationId,
-      currentProfileId,
-      activeConv.partnerProfileId
-    );
-
-    setContactRequestPending(false);
-    setUnlockedPhone("+94 77 123 4567");
-
-    const acceptMsg: ChatMessageDto = {
-      id: "acc_" + Date.now(),
-      senderProfileId: currentProfileId,
-      senderName: currentUserName,
-      senderPhotoUrl: "https://images.unsplash.com/photo-1622253692010-333f2da6031d?q=80&w=800&auto=format&fit=crop",
-      receiverProfileId: activeConv.partnerProfileId,
-      receiverName: activeConv.partnerName,
-      conversationId: activeConv.conversationId,
-      messageText: "🎉 Mutual contact details unlocked! Both parties can now speak directly on WhatsApp or phone.",
-      sentAt: new Date().toISOString(),
-      isRead: true,
-      isMe: true,
-      isFlaggedBySafety: false,
-      isContactShareRequest: false,
-      isContactShareAccepted: true,
-    };
-    setMessages((prev) => [...prev, acceptMsg]);
+    setShare(activeConv.conversationId, "accepted");
+    toast.success("Contact details shared", `You can now call or WhatsApp ${activeConv.partnerName.split(" ")[0]}.`);
+    await signalrService.acceptContactShare(activeConv.conversationId, currentProfileId, activeConv.partnerProfileId);
   };
+
+  const handleDeclineContact = () => {
+    if (!activeConv) return;
+    setShare(activeConv.conversationId, "declined-by-me");
+    toast.info("Not shared", "Your number stays private. You can share later.");
+    // TODO(api): POST decline so the requester sees "not ready yet"
+  };
+
+  const handleCancelContact = () => {
+    if (!activeConv) return;
+    setShare(activeConv.conversationId, "none");
+    toast.info("Request cancelled");
+    // TODO(api): DELETE the pending request
+  };
+
+  const scrollToShareCard = () => shareCardRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
 
   const handleSelectConv = (id: string) => {
     setActiveConvId(id);
@@ -430,6 +411,19 @@ export default function MessagesPage() {
     [conversations, blocked]
   );
   const activeBlocked = activeConv ? blocked[activeConv.conversationId] : undefined;
+  const shareStatus: ContactShareStatus = activeConv
+    ? shareByConv[activeConv.conversationId] ?? (activeConv.isContactShared ? "accepted" : "none")
+    : "none";
+  // bring the contact card into view whenever its state changes (request sent, accepted, declined…)
+  useEffect(() => {
+    if (shareStatus !== "none") {
+      const id = window.setTimeout(() => shareCardRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" }), 80);
+      return () => window.clearTimeout(id);
+    }
+  }, [shareStatus, activeConvId]);
+  const partnerPhone = activeConv
+    ? partnerPhones[activeConv.conversationId] || activeConv.partnerPhoneNumber || demoPhone(activeConv.conversationId)
+    : "";
   // Bring the Blocked Notice into view when a chat is blocked
   useEffect(() => {
     if (activeBlocked) window.setTimeout(scrollToBottom, 60);
@@ -696,33 +690,10 @@ export default function MessagesPage() {
                     </Button>
                   ) : (
                   <>
-                  {/* Flow 3 Mutual Contact Unlock Action */}
-                  {unlockedPhone || activeConv.isContactShared ? (
-                    <div className="hidden md:flex items-center gap-2 px-3 py-1.5 bg-emerald-50 text-emerald-800 rounded-lg border border-emerald-200 text-caption font-medium">
-                      <Unlock className="w-3.5 h-3.5 text-emerald-600" />
-                      <span>{unlockedPhone || activeConv.partnerPhoneNumber || "+94 77 123 4567"}</span>
-                      <a
-                        href={`https://wa.me/${(unlockedPhone || activeConv.partnerPhoneNumber || "94771234567").replace(/\D/g, "")}`}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="ml-1 px-2 py-0.5 rounded bg-emerald-600 text-white text-caption font-semibold hover:bg-emerald-700 transition-colors"
-                      >
-                        WhatsApp
-                      </a>
-                    </div>
-                  ) : (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={handleRequestContact}
-                      className="hidden md:inline-flex text-caption items-center gap-1.5 border-brand/30 text-brand hover:bg-brand/5"
-                    >
-                      <Lock className="w-3.5 h-3.5" />
-                      <span>Request Contact Exchange</span>
-                    </Button>
-                  )}
+                  {/* Share contact details (mutual consent) */}
+                  <ContactShareHeaderAction status={shareStatus} phone={partnerPhone} onRequest={handleRequestContact} onRespond={scrollToShareCard} />
 
-                  <Link href="/requests" className="hidden md:block">
+                  <Link href="/friends" className="hidden md:block">
                     <Button variant="outline" size="sm">
                       {t.messages.viewProfile}
                     </Button>
@@ -740,10 +711,19 @@ export default function MessagesPage() {
                       activeBlocked
                         ? []
                         : [
-                            { key: "profile", label: t.messages.viewProfile, onClick: () => router.push("/requests") },
-                            unlockedPhone || activeConv.isContactShared
-                              ? { key: "whatsapp", label: `WhatsApp ${unlockedPhone || activeConv.partnerPhoneNumber || ""}`.trim(), onClick: () => window.open(`https://wa.me/${(unlockedPhone || activeConv.partnerPhoneNumber || "94771234567").replace(/\D/g, "")}`, "_blank") }
-                              : { key: "contact", label: "Request contact exchange", onClick: handleRequestContact },
+                            { key: "profile", label: t.messages.viewProfile, onClick: () => router.push("/friends") },
+                            {
+                              key: "contact",
+                              label: contactShareMenuLabel(shareStatus, partnerPhone),
+                              onClick:
+                                shareStatus === "accepted"
+                                  ? () => window.open(`https://wa.me/${partnerPhone.replace(/\D/g, "")}`, "_blank")
+                                  : shareStatus === "received"
+                                    ? scrollToShareCard
+                                    : shareStatus === "sent"
+                                      ? () => undefined
+                                      : handleRequestContact,
+                            },
                           ]
                     }
                     trigger={({ open, toggle }) => (
@@ -773,26 +753,6 @@ export default function MessagesPage() {
                   <ShieldTick size={16} color="currentColor" className="shrink-0" /> {t.messages.safetyNote}
                 </p>
 
-                {/* Contact Request Pending Banner if partner requested contact */}
-                {contactRequestPending && (
-                  <div className="mx-auto flex max-w-xl items-center justify-between rounded-xl border border-brand/30 bg-brand-subtle p-3.5 text-body-sm shadow-xs animate-in fade-in">
-                    <div className="flex items-center gap-2.5">
-                      <div className="p-2 rounded-full bg-brand/10 text-brand">
-                        <Phone className="w-4 h-4" />
-                      </div>
-                      <div>
-                        <span className="font-semibold text-ink block">Contact Exchange Requested</span>
-                        <span className="text-ink-secondary text-caption">
-                          {activeConv.partnerName} requested to unlock direct WhatsApp and phone numbers.
-                        </span>
-                      </div>
-                    </div>
-                    <Button size="sm" variant="primary" onClick={handleAcceptContact}>
-                      Accept & Share
-                    </Button>
-                  </div>
-                )}
-
                 {/* Day Divider */}
                 <div className="flex items-center justify-center">
                   <span className="rounded-full bg-surface-subtle px-3 py-1 text-caption text-ink-tertiary">
@@ -801,7 +761,7 @@ export default function MessagesPage() {
                 </div>
 
                 {/* Message Bubbles */}
-                {messages.map((m) => {
+                {messages.filter((m) => !m.isContactShareRequest && !m.isContactShareAccepted).map((m) => {
                   const isMe = m.isMe;
                   const timeFormatted = m.sentAt
                     ? new Date(m.sentAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
@@ -848,6 +808,19 @@ export default function MessagesPage() {
                     </div>
                   );
                 })}
+
+                {/* Share contact details — request / response / result card */}
+                <ContactShareCard
+                  ref={shareCardRef}
+                  status={shareStatus}
+                  name={activeConv.partnerName}
+                  partnerPhone={partnerPhone}
+                  myPhone={MY_PHONE}
+                  onAccept={handleAcceptContact}
+                  onDecline={handleDeclineContact}
+                  onCancel={handleCancelContact}
+                  onRequest={handleRequestContact}
+                />
 
                 {/* Typing Indicator Bubble */}
                 {partnerTyping && (
@@ -926,6 +899,21 @@ export default function MessagesPage() {
         onCancel={() => setBlockTargetId(null)}
         onConfirm={confirmBlock}
       />
+
+      {activeConv && demoModeRef.current && (
+        <DemoTips
+          tips={[
+            { label: "Share contact: request → accept / decline" },
+            { label: `2nd chat (${DEMO_CONVERSATIONS[1]?.partnerName ?? "—"}) has an incoming request` },
+          ]}
+          actions={[
+            { label: `Simulate ${activeConv.partnerName.split(" ")[0]} accepts`, onClick: () => setShare(activeConv.conversationId, "accepted"), active: shareStatus === "accepted" },
+            { label: `Simulate ${activeConv.partnerName.split(" ")[0]} declines`, onClick: () => setShare(activeConv.conversationId, "declined-by-them"), active: shareStatus === "declined-by-them" },
+            { label: "Simulate incoming request", onClick: () => setShare(activeConv.conversationId, "received"), active: shareStatus === "received" },
+            { label: "Reset", onClick: () => setShare(activeConv.conversationId, "none"), active: shareStatus === "none" },
+          ]}
+        />
+      )}
 
       <Footer />
     </div>
