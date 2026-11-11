@@ -20,7 +20,8 @@ plain — "Send interest", not "Swipe". Bilingual English/Sinhala (Tamil planned
 - Light and dark themes both required; check contrast in both.
 
 ## 3. Layout and responsive
-- Design at **1440 px** and **390 px**; check 768 px. Content max width per Figma; no horizontal scroll at 360 px.
+- Design at **1440 px** and **390 px**; check 768 px **and in-between widths (480, 640, 700, 900, 1024)** — below 768 px the
+  container is fluid; never hard-code a phone width. Buttons in a row must be allowed to wrap. Content max width per Figma; no horizontal scroll at 360 px.
 - Member pages use `MemberShell` + `Navbar variant="member"`; mobile gets `MobileTabBar`.
 - Page header pattern = Messages module: `BackButton` + title (+ actions right, e.g. Share). Don't invent new headers.
 - List + detail pattern (Friends, Messages, Profile view): list on the left, detail on the right on desktop; list → detail

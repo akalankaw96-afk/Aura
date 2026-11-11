@@ -74,7 +74,7 @@ export function PlansScreen() {
       </div>
 
       {/* billing period */}
-      <div role="radiogroup" aria-label="Billing period" className="flex gap-1 rounded-full border border-line bg-surface-card p-1.5 shadow-sm">
+      <div role="radiogroup" aria-label="Billing period" className="flex w-full max-w-md gap-1 rounded-[28px] border border-line bg-surface-card p-1.5 shadow-sm sm:w-auto sm:max-w-none sm:rounded-full">
         {([1, 3, 6] as Period[]).map((p) => (
           <button
             key={p}
@@ -82,7 +82,7 @@ export function PlansScreen() {
             role="radio"
             aria-checked={period === p}
             onClick={() => setPeriod(p)}
-            className={cn("flex h-11 items-center gap-1.5 whitespace-nowrap rounded-full px-3 text-body-sm transition-all sm:gap-2 sm:px-5 sm:text-body-md", period === p ? "bg-brand-gradient text-white" : "text-ink hover:bg-surface-subtle")}
+            className={cn("flex min-h-11 flex-1 flex-col items-center justify-center gap-0.5 whitespace-nowrap rounded-[22px] px-2 py-1.5 text-body-sm transition-all sm:h-11 sm:flex-none sm:flex-row sm:gap-2 sm:rounded-full sm:px-5 sm:py-0 sm:text-body-md", period === p ? "bg-brand-gradient text-white" : "text-ink hover:bg-surface-subtle")}
           >
             {p} month{p > 1 ? "s" : ""}
             {SAVE[p] && (
@@ -96,7 +96,7 @@ export function PlansScreen() {
       </div>
 
       {/* plan cards — same Pricing Card spec as Home (padding 32, gap 24, radius xl) */}
-      <div className="grid w-full gap-6 md:grid-cols-3">
+      <div className="mx-auto grid w-full max-w-xl gap-6 lg:max-w-none lg:grid-cols-3">
         {PLANS.map((plan) => {
           const featured = plan.id === "gold";
           const isCurrent = current === plan.id;
@@ -104,9 +104,9 @@ export function PlansScreen() {
           return (
             <article
               key={plan.id}
-              className={cn("flex flex-col gap-6 rounded-xl p-8", featured ? "bg-brand-strong text-ink-on-brand shadow-xl" : "border border-line bg-surface-card shadow-sm")}
+              className={cn("flex min-w-0 flex-col gap-6 rounded-xl p-6 sm:p-8", featured ? "bg-brand-strong text-ink-on-brand shadow-xl" : "border border-line bg-surface-card shadow-sm")}
             >
-              <div className="flex items-center justify-between">
+              <div className="flex flex-wrap items-center justify-between gap-2">
                 <h2 className="text-h5">{plan.name}</h2>
                 {featured && (
                   <span className="inline-flex h-[22px] items-center gap-1 rounded-full bg-premium-bg px-2 text-label-sm text-premium-fg">
@@ -124,8 +124,8 @@ export function PlansScreen() {
                 ))}
               </ul>
               <div className={cn("h-px", featured ? "bg-brand" : "bg-line")} />
-              <p className="flex items-baseline gap-1 whitespace-nowrap">
-                <span className="text-h1">{lkr(price)}</span>
+              <p className="flex flex-wrap items-baseline gap-x-1">
+                <span className="whitespace-nowrap text-h1">{lkr(price)}</span>
                 <span className={cn("text-body-md", featured ? "text-ink-on-brand" : "text-ink-secondary")}>/ {plan.id === "free" ? "forever" : `${period} month${period > 1 ? "s" : ""}`}</span>
               </p>
               {isCurrent ? (

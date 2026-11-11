@@ -115,7 +115,8 @@ export function ProfileCard({
           </p>
         </div>
 
-        <dl className="grid grid-cols-2 gap-x-2 gap-y-2">
+        {/* 2 columns; drops to 1 when the card is narrow so values aren’t cut to “28…” */}
+        <dl className="grid grid-cols-[repeat(auto-fit,minmax(104px,1fr))] gap-x-2 gap-y-2">
           <Detail icon={<Cake size={18} color="currentColor" />} label="Age" value={`${profile.age} years`} />
           <Detail icon={<Ruler size={18} color="currentColor" />} label="Height" value={profile.height} />
           <Detail icon={<Briefcase size={18} color="currentColor" />} label="Profession" value={profile.profession} />
@@ -125,7 +126,8 @@ export function ProfileCard({
         <div className="h-px bg-line" />
 
         {onInterest ? (
-          <div className="flex gap-2">
+          // wraps: when the card is narrow "View" moves to its own full-width row instead of spilling out
+          <div className="flex flex-wrap gap-2">
             <button
               type="button"
               onClick={() => {
@@ -133,7 +135,7 @@ export function ProfileCard({
                 if (onInterest(profile) !== false) setSent(true);
               }}
               disabled={sent}
-              className="flex h-[42px] flex-1 items-center justify-center gap-2 rounded-full bg-brand-subtle px-4 text-button-sm text-brand-text transition-shadow hover:ring-1 hover:ring-inset hover:ring-brand disabled:cursor-default disabled:ring-0"
+              className="flex h-[42px] min-w-0 flex-[1_1_auto] items-center justify-center gap-2 whitespace-nowrap rounded-full bg-brand-subtle px-4 text-button-sm text-brand-text transition-shadow hover:ring-1 hover:ring-inset hover:ring-brand disabled:cursor-default disabled:ring-0"
             >
               <Heart size={18} color="currentColor" variant={sent ? "Bold" : "Linear"} />
               {sent ? "Interest sent" : "Send interest"}
@@ -142,14 +144,14 @@ export function ProfileCard({
               <button
                 type="button"
                 onClick={() => onView(profile)}
-                className="flex h-[42px] items-center justify-center gap-2 rounded-full bg-brand-gradient px-4 text-button-sm text-ink-on-brand transition-shadow hover:shadow-glow"
+                className="flex h-[42px] flex-[1_1_auto] items-center justify-center gap-2 whitespace-nowrap rounded-full bg-brand-gradient px-4 text-button-sm text-ink-on-brand transition-shadow hover:shadow-glow"
               >
                 View <ArrowRight2 size={18} color="currentColor" />
               </button>
             ) : (
               <Link
                 href={`/search?id=${profile.id}`}
-                className="flex h-[42px] items-center justify-center gap-2 rounded-full bg-brand-gradient px-4 text-button-sm text-ink-on-brand transition-shadow hover:shadow-glow"
+                className="flex h-[42px] flex-[1_1_auto] items-center justify-center gap-2 whitespace-nowrap rounded-full bg-brand-gradient px-4 text-button-sm text-ink-on-brand transition-shadow hover:shadow-glow"
               >
                 View <ArrowRight2 size={18} color="currentColor" />
               </Link>

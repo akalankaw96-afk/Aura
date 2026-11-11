@@ -19,6 +19,18 @@ Sections: Added · Changed · Fixed · Security · Removed · Breaking.
   Files: `components/auth/ForgotPasswordScreen.tsx` (rewritten), `components/auth/IdentifierTabs.tsx` (new),
   `services/passwordReset.ts` (new), `lib/demo.ts` (`registeredEmail`).
 
+### Fixed
+- 2026-11-11 — **Responsive layout.** Scanned home, search, dashboard, friends, messages, plans, login, register and
+  forgot password at 360–1280 px (EN + SI); fixed every cut-off:
+  - Mobile container was fixed at 358 px, so large phones / landscape / small tablets (391–767 px) showed a narrow
+    centre column → now fluid (`--layout-container-max: 100%` below 768 px; phones ≤ 390 px unchanged). `styles/tokens.css`
+  - Profile card: "View" spilled out of the card and details were cut to "28…" → buttons wrap to a second row,
+    details drop to one column when the card is narrow. `cards/ProfileCard.tsx`
+  - Search at 360 px: Filters / view / sort toolbar wider than the screen → wraps. `app/search/page.tsx`
+  - Plans: period switch and plan cards wider than a phone; price "/ 3 months" overflowed at 768–1023 px → switch
+    stacks the saving badge under the label on phones, cards p-6 on phones, one column (max 576 px) until 1024 px,
+    price wraps. `auth/PlansScreen.tsx`
+
 ### Changed
 - 2026-11-11 — **Sinhala font trial: Noto Sans Sinhala** (400/600/700/800) replaces Yaldevi for look-and-feel review;
   nothing else changed. Figma `font/family/sinhala` is still Yaldevi — `@fontsource/yaldevi` stays installed to switch

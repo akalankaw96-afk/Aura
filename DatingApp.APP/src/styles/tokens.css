@@ -201,7 +201,9 @@
 @media (max-width: 767px) {
   :root {
     --layout-screen-width: 390px;
-    --layout-container-max: 358px;
+    /* fluid: Figma frame is 390 (content 358), but large phones / landscape / small tablets (391–767)
+       must use their full width instead of a 358px column. Phones ≤ 390 render exactly as before. */
+    --layout-container-max: 100%;
     --layout-page-margin: 16px;
     --layout-grid-gutter: 16px;
     --layout-grid-columns: 4;
