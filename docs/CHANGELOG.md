@@ -32,6 +32,8 @@ Sections: Added · Changed · Fixed · Security · Removed · Breaking.
     price wraps. `auth/PlansScreen.tsx`
 
 ### Changed
+- 2026-11-11 — Home hero title in Sinhala is 8 px smaller than English at every breakpoint (28 / 40 / 52 px vs
+  36 / 48 / 60), line height 1.2. `home/Hero.tsx`.
 - 2026-11-11 — **Sinhala font trial: Noto Sans Sinhala** (400/600/700/800) replaces Yaldevi for look-and-feel review;
   nothing else changed. Figma `font/family/sinhala` is still Yaldevi — `@fontsource/yaldevi` stays installed to switch
   back (2 lines: `app/layout.tsx` imports + `--font-family-sinhala` in `styles/tokens.css`). New dependency

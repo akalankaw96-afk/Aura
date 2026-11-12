@@ -21,7 +21,7 @@ import { BumpTitle } from "@/components/motion/BumpTitle";
  *  - All / Brides / Grooms chips + auto-scrolling Profile Marquee
  */
 export function Hero() {
-  const { t } = useLanguage();
+  const { t, lang } = useLanguage();
   const [filter, setFilter] = useState<"all" | "bride" | "groom">("all");
   const list = useMemo(() => MARQUEE_PROFILES.filter((p) => filter === "all" || p.gender === filter), [filter]);
 
@@ -36,7 +36,16 @@ export function Hero() {
 
       <div className="container-page flex flex-col items-center gap-8 pb-10 pt-12 text-center lg:pb-[42px] lg:pt-[112px]">
         <div className="flex flex-col items-center gap-4">
-          <BumpTitle as="h1" trigger="load" stagger={90} className="max-w-[960px] text-[36px] font-extrabold leading-[1.2] tracking-[-0.02em] md:text-display-lg lg:text-display-xl">
+          <BumpTitle
+            as="h1"
+            trigger="load"
+            stagger={90}
+            className={cn(
+              "max-w-[960px] font-extrabold leading-[1.2] tracking-[-0.02em]",
+              // Sinhala letters are visually larger — 8px smaller than English at every breakpoint (28 / 40 / 52)
+              lang === "si" ? "text-[28px]/[1.2] md:text-[40px]/[1.2] lg:text-[52px]/[1.2]" : "text-[36px] md:text-display-lg lg:text-display-xl",
+            )}
+          >
             {t.hero.title}
           </BumpTitle>
           <p style={{ "--enter-delay": "120ms" } as React.CSSProperties} className="enter max-w-[720px] text-body-md text-ink-on-brand-muted md:text-body-xl">{t.hero.description}</p>
