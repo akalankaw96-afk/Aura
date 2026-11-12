@@ -62,6 +62,10 @@ reveal animations); contrast ≥ 4.5:1 for text.
 - Report profile: simple modal with reason + optional details, then toast.
 - Numbers and money: `LKR 500`, dates `12 Nov 2026`, relative time for recent ("2 h ago").
 
+## 7b. How-to-use screenshots
+`public/how-to-use/*.webp` are real 390 px captures. When a screen in the guide changes visibly (login, register,
+dashboard, search, profile, friends, messages, contact sharing, plans), re-capture it so the guide stays truthful.
+
 ## 8. Before handing over a UI change
 Compare with Figma at 1440 and 390 · light + dark · keyboard pass · all states from §4 · copy in `src/content` · no
 console errors · screenshot in the PR.

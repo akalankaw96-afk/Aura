@@ -8,6 +8,7 @@ import {
   CloseCircle,
   Crown,
   Heart,
+  InfoCircle,
   Lock1,
   Logout,
   LogoutCurve,
@@ -130,7 +131,7 @@ export function Navbar({ variant = "light" }: { variant?: NavbarVariant }) {
         { label: t.nav.home, href: "/" },
         { label: t.nav.brides, href: "/search?for=bride" },
         { label: t.nav.grooms, href: "/search?for=groom" },
-        { label: t.nav.howItWorks, href: "/#how-it-works" },
+        { label: t.nav.howItWorks, href: "/how-to-use" },
         { label: t.nav.pricing, href: "/#pricing" },
       ];
 
@@ -161,7 +162,7 @@ export function Navbar({ variant = "light" }: { variant?: NavbarVariant }) {
                 href={l.href}
                 aria-current={active ? "page" : undefined}
                 className={cn(
-                  "group inline-flex items-center gap-1.5 text-label-lg transition-colors",
+                  "group inline-flex items-center gap-1.5 whitespace-nowrap text-label-lg transition-colors",
                   glass
                     ? active
                       ? "bg-brand-gradient bg-clip-text text-transparent font-bold"
@@ -240,6 +241,14 @@ export function Navbar({ variant = "light" }: { variant?: NavbarVariant }) {
 
             {isMember ? (
               <div className="mt-4 grid gap-2">
+                <Link
+                  href="/how-to-use"
+                  onClick={() => setOpen(false)}
+                  className="flex items-center gap-2 rounded-md px-3 py-3 text-label-lg text-ink hover:bg-brand-subtle"
+                >
+                  <InfoCircle size={20} color="currentColor" className="text-icon-brand" />
+                  {t.nav.howItWorks}
+                </Link>
                 <Link
                   href="/admin"
                   onClick={() => setOpen(false)}
@@ -375,6 +384,12 @@ function AccountMenu({ session, onLogout }: { session: AuthSession | null; onLog
             <Link role="menuitem" href="/plans" onClick={() => setOpen(false)} className="flex items-center gap-2.5 px-3 py-2 text-body-sm text-ink hover:bg-brand-subtle">
               <Crown size={18} color="currentColor" className="text-icon-brand" />
               <span>{lang === "si" ? "මිල සැලසුම්" : "Plans & Billing"}</span>
+            </Link>
+          </li>
+          <li role="none">
+            <Link role="menuitem" href="/how-to-use" onClick={() => setOpen(false)} className="flex items-center gap-2.5 px-3 py-2 text-body-sm text-ink hover:bg-brand-subtle focus-visible:shadow-ring-brand">
+              <InfoCircle size={18} color="currentColor" className="text-icon-brand" />
+              <span>{lang === "si" ? "භාවිතා කරන ආකාරය" : "How to use"}</span>
             </Link>
           </li>
           <li role="none">

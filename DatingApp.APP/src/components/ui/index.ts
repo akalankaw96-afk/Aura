@@ -43,5 +43,7 @@ export { SortDropdown } from "./SortDropdown";
 export { Pagination } from "./Pagination";
 export { ViewToggle } from "./ViewToggle";
 export { SegmentedSwitch } from "./SegmentedSwitch";
+export { PinNote } from "./PinNote";
+export type { PinNoteTone } from "./PinNote";
 export type { SegmentedSwitchOption, SegmentedSwitchProps } from "./SegmentedSwitch";
 export type { ResultsView } from "./ViewToggle";

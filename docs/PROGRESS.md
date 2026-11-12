@@ -46,6 +46,8 @@ _Last updated: 2026-11-11 — forgot password journey (front end)._
 | Sinhala font trial — Noto Sans Sinhala | Testing | Owner reviewing look & feel vs Yaldevi (Figma). Build passes. Decide, then align Figma or switch back |
 | Responsive fixes (container 391–767, profile card, search toolbar, plans) | Completed | Automated overflow scan 9 pages × 8 widths × EN/SI: 0 cut-offs; screenshots checked; build passes |
 | Sinhala home title −8 px | Completed | Checked 1440/390 SI + EN unchanged; build passes |
+| How to use page `/how-to-use` + menu links (journey 50/50 list + phone, pinned-note tour, 2 screens per feature, 31 screens) | Completed | Tested 1440/390, EN/SI, light/dark, no overflow, member menu → page; build passes. SI tour details + screenshots in SI pending |
+| Contact-share card buttons on phones | Completed | Fixed squashed buttons; checked 390 |
 | Forgot password back button (all 3 steps) | Completed | Tested 1440/390: each step goes back one step, step 1 → /login; build passes |
 
 ## Documentation

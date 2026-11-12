@@ -98,6 +98,7 @@ mock data or a fake session on failure** (BUG-003, BUG-014). `signalrService.ts`
 | `/friends` (old `/requests` redirects) `/messages` | friends + interests, chat | KycGuard (weak) |
 | `/plans` | plans + mock payment | public |
 | `/support` `/contact` | support page (contact re-exports support) | public |
+| `/how-to-use` | step-by-step guide with real screens (added 2026-11-12) | public |
 | `/admin` | staff panel mock | **unguarded**, linked for every member |
 | `/components` | live UI kit | public (should be dev-only) |
 | `/terms` `/privacy` | placeholders | public |

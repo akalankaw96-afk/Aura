@@ -25,7 +25,24 @@ const HEARTS: [number, number, number, number, number][] = [
 ];
 const DOTS: [number, number][] = [[300, 170], [520, 300], [1000, 90], [880, 560], [200, 450], [650, 600], [1240, 480], [420, 40]];
 
-export function SignUp() {
+/** The band's background decor (glows, hearts, dots) — shared so other CTA bands match the home page exactly. */
+export function BrandBandDecor() {
+  return (
+    <div aria-hidden className="pointer-events-none absolute inset-0 -z-10">
+      <span className="absolute -left-40 -top-[200px] h-[620px] w-[620px] rounded-full bg-[radial-gradient(circle,rgba(255,255,255,0.22),rgba(255,255,255,0)_70%)]" />
+      <span className="absolute left-[64%] top-[51%] h-[620px] w-[620px] rounded-full bg-[radial-gradient(circle,rgba(255,255,255,0.14),rgba(255,255,255,0)_70%)]" />
+      {HEARTS.map(([x, y, s, o, r], i) => (
+        <Heart key={i} size={s} color="currentColor" className="absolute text-white" style={{ left: `${(x / 1280) * 100}%`, top: `${(y / 749) * 100}%`, opacity: o, transform: `rotate(${r}deg)` }} />
+      ))}
+      {DOTS.map(([x, y], i) => (
+        <span key={i} className="absolute h-1.5 w-1.5 rounded-full bg-white opacity-25" style={{ left: `${(x / 1280) * 100}%`, top: `${(y / 749) * 100}%` }} />
+      ))}
+    </div>
+  );
+}
+
+/** `embedded`: inside a page that already has the page container (e.g. How to use) — no extra container / section padding. */
+export function SignUp({ embedded = false }: { embedded?: boolean }) {
   const router = useRouter();
   const { t, lang } = useLanguage();
   const [f, setF] = useState({ first: "", last: "", email: "", mobile: "" });
@@ -56,20 +73,11 @@ export function SignUp() {
   };
 
   return (
-    <section id="sign-up" className="scroll-mt-28 py-16 lg:py-24">
-      <div className="container-page">
+    <section id="sign-up" className={embedded ? "scroll-mt-28 pt-6 lg:pt-10" : "scroll-mt-28 py-16 lg:py-24"}>
+      <div className={embedded ? undefined : "container-page"}>
         <div className="reveal-zoom relative isolate grid items-center gap-10 overflow-hidden rounded-2xl bg-brand-gradient p-6 sm:p-10 lg:grid-cols-[1fr_560px] lg:gap-0 lg:p-20">
           {/* decor */}
-          <div aria-hidden className="pointer-events-none absolute inset-0 -z-10">
-            <span className="absolute -left-40 -top-[200px] h-[620px] w-[620px] rounded-full bg-[radial-gradient(circle,rgba(255,255,255,0.22),rgba(255,255,255,0)_70%)]" />
-            <span className="absolute left-[64%] top-[51%] h-[620px] w-[620px] rounded-full bg-[radial-gradient(circle,rgba(255,255,255,0.14),rgba(255,255,255,0)_70%)]" />
-            {HEARTS.map(([x, y, s, o, r], i) => (
-              <Heart key={i} size={s} color="currentColor" className="absolute text-white" style={{ left: `${(x / 1280) * 100}%`, top: `${(y / 749) * 100}%`, opacity: o, transform: `rotate(${r}deg)` }} />
-            ))}
-            {DOTS.map(([x, y], i) => (
-              <span key={i} className="absolute h-1.5 w-1.5 rounded-full bg-white opacity-25" style={{ left: `${(x / 1280) * 100}%`, top: `${(y / 749) * 100}%` }} />
-            ))}
-          </div>
+          <BrandBandDecor />
 
           <div className="flex max-w-[520px] flex-col gap-5 text-ink-on-brand">
             <p className="text-overline uppercase">{t.signUp.eyebrow}</p>

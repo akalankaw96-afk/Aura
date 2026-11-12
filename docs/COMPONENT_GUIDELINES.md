@@ -31,6 +31,8 @@ styles/tokens.css             design tokens
 | Media | `PhotoSlot` (main / rejected / in-review states) | Edit profile + registration photos |
 | Email / Mobile switch (auth) | `components/auth/IdentifierTabs` (preset of `SegmentedSwitch`) | Login + Forgot password; don't rebuild per screen |
 | Share contact details | `sections/member/ContactShare` (`ContactShareHeaderAction`, `ContactShareCard`) | Messages page |
+| Guide / help page | `sections/howto/HowToUseScreen` (`PhoneFrame`, `StatusFlow`); copy in `content/howToUse.ts` | Screens in `public/how-to-use/` |
+| Pinned note (paper card + push-pin, rose / gold) | `PinNote` | Home How it works, How-to-use tour — content inside uses light-paper colours (gray-900 / gray-600) |
 | Brand | `Logo`, `CoupleAvatar`, `LanguageSwitch`, `ThemeToggle`, `Flag`, `HeartPattern`, `LoveScene`, `LoveSticker` | |
 
 `SegmentedTabs`, `PhotoSlot` and `ButtonLink` exist but are **not exported from `ui/index.ts`** — import by path

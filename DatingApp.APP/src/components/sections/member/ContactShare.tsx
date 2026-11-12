@@ -177,10 +177,11 @@ export const ContactShareCard = React.forwardRef<
         {/* actions */}
         {status === "received" && (
           <div className="flex flex-col-reverse gap-2 sm:flex-row">
-            <Button variant="outline" size="sm" className="flex-1" onClick={onDecline}>
+            {/* stacked on phones (full width), side by side from sm — flex-1 only in the row layout */}
+            <Button variant="outline" size="sm" className="w-full sm:w-auto sm:flex-1" onClick={onDecline}>
               Not now
             </Button>
-            <Button size="sm" className="flex-1" onClick={onAccept} leftIcon={<TickCircle size={16} color="currentColor" />}>
+            <Button size="sm" className="w-full sm:w-auto sm:flex-1" onClick={onAccept} leftIcon={<TickCircle size={16} color="currentColor" />}>
               Accept &amp; share
             </Button>
           </div>

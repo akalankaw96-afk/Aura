@@ -6,6 +6,15 @@ Sections: Added · Changed · Fixed · Security · Removed · Breaking.
 ## [Unreleased]
 
 ### Added
+- 2026-11-12 — **"How to use" page (`/how-to-use`)**, concept inspired by invitation.lk's guide, built with our design
+  system: hero with Create New / Login (member: Go to dashboard) + trust chips; **6-step journey** (create account →
+  log in → get verified → find a match → send interest → chat & share contacts) — tap a step to see its real phone
+  screen and the statuses you'll meet (e.g. Pending review → Changes needed → Approved); **full tour** of every feature
+  in 4 groups (account · finding a match · connecting · plans) with screens, bullets and "Find it in"; closing CTA.
+  EN + SI (tour group details in English for now). 17 real 390 px screenshots in `public/how-to-use/*.webp` (568 KB).
+  Linked from: guest top menu "How it works", member profile menu "How to use" (desktop + mobile), home "How it
+  works" section → "See the full guide". Files: `app/how-to-use/page.tsx`, `sections/howto/HowToUseScreen.tsx`,
+  `content/howToUse.ts`, `layout/Navbar.tsx`, `home/HowItWorks.tsx`.
 - 2026-11-11 — **Share contact details (front end, mutual consent).** Chat header "Share contact" (Gold) → request card
   in the thread; the other member sees "{name} wants to share contact details" with **Accept & share · Not now**.
   Accepted → both see mobile + WhatsApp (Call / WhatsApp buttons, header chip); declined → gentle note, can ask again;
@@ -20,6 +29,8 @@ Sections: Added · Changed · Fixed · Security · Removed · Breaking.
   `services/passwordReset.ts` (new), `lib/demo.ts` (`registeredEmail`).
 
 ### Fixed
+- 2026-11-12 — Share-contact card on phones: "Accept & share" / "Not now" were squashed flat (flex-1 in a column) →
+  full width when stacked, flex-1 only side by side. `member/ContactShare.tsx`
 - 2026-11-11 — **Responsive layout.** Scanned home, search, dashboard, friends, messages, plans, login, register and
   forgot password at 360–1280 px (EN + SI); fixed every cut-off:
   - Mobile container was fixed at 358 px, so large phones / landscape / small tablets (391–767 px) showed a narrow
@@ -32,6 +43,33 @@ Sections: Added · Changed · Fixed · Security · Removed · Breaking.
     price wraps. `auth/PlansScreen.tsx`
 
 ### Changed
+- 2026-11-12 — How to use: removed Create New / Login from the page header, removed the divider lines between tour
+  groups and the extra love stickers around the phones — the page now uses only the home page's heart pattern background.
+- 2026-11-12 — How to use tour: **every feature now shows two screens** (before/after or list/detail), e.g. register →
+  verify mobile, edit description → edit photos, sent list → waiting for reply, conversations → chat, report → block
+  menu, plans → Gold plan. 9 new real screenshots (31 total, ~1 MB WebP, lazy-loaded).
+- 2026-11-12 — How to use tour redesigned with the brand's **pinned-note style**: each feature is a large pinned note
+  (big number 01–17, icon, title, bullets, statuses, "Find it in") next to floating, slightly tilted phone mock-ups
+  with love stickers; sides alternate (note left / phone right, then phone left / note right) and note colours
+  alternate rose / gold. New shared `ui/PinNote` (extracted from Home "How it works" — home notes render identically).
+- 2026-11-12 — How to use journey: **reverted the 6-column strip** (owner preferred the original). Back to the step list
+  on the left + phone on the right (tap a step), now as **two equal halves** (`lg:grid-cols-2`); the phone sits on a
+  soft brand panel and is larger (250–270 px). Original six steps restored (incl. "Log in"). The tour additions from
+  the previous change are kept (edit profile, sent interests, favourites, safety & privacy, promote).
+- 2026-11-12 — How to use, layout clean-up: no background behind text — only screens sit on a white panel; tour rows
+  are **text 4 / screens 8 columns** (12-col grid), text always left and top-aligned, bigger titles (H4→H3); group
+  names as overline with a divider; journey section without the outer card.
+- 2026-11-12 — How to use closing CTA now **reuses the home page "Ready to meet your life partner?" band** (same
+  gradient, heart pattern and sign-up form) for guests; members get the same band with Dashboard / Search buttons.
+  Fixed the blank "Login" button (white text on white). `home/SignUp.tsx` now exports `BrandBandDecor` and takes
+  `embedded` (no extra container) — home page unchanged.
+- 2026-11-12 — Top menu links don't wrap any more at 1024 px ("How it works" was on two lines). `layout/Navbar.tsx`
+- 2026-11-12 — How to use page, journey redesigned: **6-column strip** (3 × 2 on tablets, swipe row on phones) where
+  every step shows its screen at once — no clicking: Create account → Get verified → Find your match → **Send
+  interest** → **Accept a request** → Chat & share contacts; numbered circles joined by a dashed line, statuses
+  listed under each step. Tour gained: Edit your profile, Track sent interests (Waiting / Accepted / Declined),
+  Favourites, **Safety & privacy** group (Report or block: Report sent → Under review → Action taken) and Promote your
+  profile. 5 new screenshots (`interest-sent`, `favourites`, `edit-profile`, `report`, `promote`).
 - 2026-11-11 — Home hero title in Sinhala is 8 px smaller than English at every breakpoint (28 / 40 / 52 px vs
   36 / 48 / 60), line height 1.2. `home/Hero.tsx`.
 - 2026-11-11 — **Sinhala font trial: Noto Sans Sinhala** (400/600/700/800) replaces Yaldevi for look-and-feel review;
