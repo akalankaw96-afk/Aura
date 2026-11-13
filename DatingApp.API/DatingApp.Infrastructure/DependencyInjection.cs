@@ -12,7 +12,8 @@ public static class DependencyInjection
 {
     public static IServiceCollection AddInfrastructureServices(this IServiceCollection services, IConfiguration configuration)
     {
-        var useInMemory = !string.Equals(configuration["UseInMemoryDatabase"], "false", StringComparison.OrdinalIgnoreCase);
+        // SQL Server by default; InMemory only when explicitly switched on (tests) — BUG-013
+        var useInMemory = string.Equals(configuration["UseInMemoryDatabase"], "true", StringComparison.OrdinalIgnoreCase);
 
         if (useInMemory)
         {
@@ -21,8 +22,8 @@ public static class DependencyInjection
         }
         else
         {
-            var connectionString = configuration.GetConnectionString("DefaultConnection") 
-                ?? "Server=(localdb)\\mssqllocaldb;Database=AuraMatrimonyDb;Trusted_Connection=True;MultipleActiveResultSets=true;TrustServerCertificate=True;";
+            var connectionString = configuration.GetConnectionString("DefaultConnection")
+                ?? throw new InvalidOperationException("ConnectionStrings:DefaultConnection is not configured.");
 
             services.AddDbContext<ApplicationDbContext>(options =>
                 options.UseSqlServer(connectionString, b => b.MigrationsAssembly(typeof(ApplicationDbContext).Assembly.FullName)));
@@ -31,13 +32,21 @@ public static class DependencyInjection
         services.AddScoped<IApplicationDbContext>(provider => provider.GetRequiredService<ApplicationDbContext>());
         services.AddScoped<ApplicationDbContextInitialiser>();
 
-        // Security Services
+        // Security services
         services.AddSingleton<IPasswordHasher, PasswordHasher>();
-        services.AddScoped<IJwtTokenGenerator, JwtTokenGenerator>();
+        services.AddSingleton<IJwtTokenGenerator, JwtTokenGenerator>();
+        services.AddHttpClient<IGoogleTokenValidator, GoogleTokenValidator>();
 
-        // Application Services
+        // Message senders — log-only until the SMS / e-mail providers are chosen (S01-T03)
+        services.AddSingleton<ISmsSender, LoggingSmsSender>();
+        services.AddSingleton<IEmailSender, LoggingEmailSender>();
+
+        // Application services
         services.AddScoped<IProfileService, ProfileService>();
         services.AddScoped<IAuthService, AuthService>();
+        services.AddScoped<IOtpService, OtpService>();
+        services.AddScoped<ISessionService, SessionService>();
+        services.AddScoped<IPasswordService, PasswordService>();
         services.AddScoped<IMatchRequestService, MatchRequestService>();
         services.AddScoped<IContentService, ContentService>();
 

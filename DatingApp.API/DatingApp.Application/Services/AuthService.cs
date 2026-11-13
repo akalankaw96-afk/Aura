@@ -1,278 +1,226 @@
+using DatingApp.Application.Common.Exceptions;
 using DatingApp.Application.Common.Interfaces;
+using DatingApp.Application.Common.Security;
 using DatingApp.Application.DTOs;
 using DatingApp.Domain.Entities;
 using DatingApp.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
-using System.Collections.Concurrent;
 
 namespace DatingApp.Application.Services;
 
 public interface IAuthService
 {
-    Task<AuthResponseDto> RegisterAsync(RegisterDto dto, CancellationToken ct = default);
-    Task<AuthResponseDto> LoginAsync(LoginDto dto, CancellationToken ct = default);
-    Task<AuthResponseDto> GoogleLoginAsync(GoogleLoginDto dto, CancellationToken ct = default);
+    Task<AuthResult> RegisterAsync(RegisterDto dto, ClientInfo client, CancellationToken ct = default);
+    Task<AuthResult> LoginAsync(LoginDto dto, ClientInfo client, CancellationToken ct = default);
+    Task<AuthResult> GoogleLoginAsync(GoogleLoginDto dto, ClientInfo client, CancellationToken ct = default);
     Task<OtpResponseDto> SendOtpAsync(SendOtpDto dto, CancellationToken ct = default);
-    Task<AuthResponseDto> VerifyOtpAsync(VerifyOtpDto dto, CancellationToken ct = default);
+    Task<AuthResult> VerifyOtpAsync(VerifyOtpDto dto, ClientInfo client, CancellationToken ct = default);
     Task<AuthResponseDto?> GetCurrentUserAsync(Guid userId, CancellationToken ct = default);
 }
 
 public class AuthService : IAuthService
 {
     private readonly IApplicationDbContext _context;
-    private readonly IJwtTokenGenerator _jwtTokenGenerator;
     private readonly IPasswordHasher _passwordHasher;
+    private readonly IGoogleTokenValidator _google;
+    private readonly IOtpService _otp;
+    private readonly ISessionService _sessions;
 
-    // Temporary in-memory OTP cache for demo/testing (Phone -> OTP Code)
-    private static readonly ConcurrentDictionary<string, string> OtpStore = new();
+    /// <summary>Verified against when no account matches, so "unknown user" and "wrong password" take the same time.</summary>
+    private static string? _dummyHash;
 
     public AuthService(
         IApplicationDbContext context,
-        IJwtTokenGenerator jwtTokenGenerator,
-        IPasswordHasher passwordHasher)
+        IPasswordHasher passwordHasher,
+        IGoogleTokenValidator google,
+        IOtpService otp,
+        ISessionService sessions)
     {
         _context = context;
-        _jwtTokenGenerator = jwtTokenGenerator;
         _passwordHasher = passwordHasher;
+        _google = google;
+        _otp = otp;
+        _sessions = sessions;
     }
 
-    public async Task<AuthResponseDto> RegisterAsync(RegisterDto dto, CancellationToken ct = default)
+    public async Task<AuthResult> RegisterAsync(RegisterDto dto, ClientInfo client, CancellationToken ct = default)
     {
-        var existing = await _context.Users.AnyAsync(u => u.Email.ToLower() == dto.Email.ToLower(), ct);
-        if (existing)
+        var email = Identifiers.RequireEmail(dto.Email);
+        var phone = string.IsNullOrWhiteSpace(dto.PhoneNumber) ? string.Empty : Identifiers.RequirePhone(dto.PhoneNumber);
+        Identifiers.EnsureStrongPassword(dto.Password);
+
+        if (await _context.Users.AnyAsync(u => u.Email == email, ct))
         {
-            throw new InvalidOperationException("An account with this email address already exists. Please sign in instead.");
+            throw new AppException(409, ErrorCodes.AlreadyExists,
+                "An account with this email address already exists. Please log in instead.");
+        }
+        if (phone.Length > 0 && await _context.Users.AnyAsync(u => u.PhoneNumber == phone, ct))
+        {
+            throw new AppException(409, ErrorCodes.AlreadyExists,
+                "An account with this mobile number already exists. Please log in instead.");
         }
 
         var user = new User
         {
-            Email = dto.Email.ToLower().Trim(),
+            Email = email,
             PasswordHash = _passwordHasher.HashPassword(dto.Password),
             FullName = dto.FullName.Trim(),
-            PhoneNumber = dto.PhoneNumber.Trim(),
-            Role = "Member"
+            PhoneNumber = phone,
+            Role = Roles.Member
         };
 
         _context.Users.Add(user);
         await _context.SaveChangesAsync(ct);
 
-        var token = _jwtTokenGenerator.GenerateToken(user);
-
-        return new AuthResponseDto
-        {
-            Token = token,
-            UserId = user.Id,
-            FullName = user.FullName,
-            Email = user.Email,
-            PhoneNumber = user.PhoneNumber,
-            Role = user.Role,
-            ProfileId = null,
-            HasCompletedProfile = false // Needs to enter profile details!
-        };
+        return await _sessions.StartAsync(user, client, ct);
     }
 
-    public async Task<AuthResponseDto> LoginAsync(LoginDto dto, CancellationToken ct = default)
+    public async Task<AuthResult> LoginAsync(LoginDto dto, ClientInfo client, CancellationToken ct = default)
     {
-        var identifier = (dto.Email ?? string.Empty).Trim().ToLower();
-        var digitsOnly = new string(identifier.Where(char.IsDigit).ToArray());
-
-        var user = await _context.Users
-            .Include(u => u.Profile)
-            .FirstOrDefaultAsync(u =>
-                u.Email.ToLower() == identifier ||
-                (!string.IsNullOrEmpty(digitsOnly) && digitsOnly.Length >= 7 &&
-                 (u.PhoneNumber.Contains(digitsOnly) ||
-                  (digitsOnly.Length >= 9 && u.PhoneNumber.Replace(" ", "").Replace("+", "").EndsWith(digitsOnly.Substring(digitsOnly.Length - 9))))),
-                ct);
-
-        if (user == null || !_passwordHasher.VerifyPassword(dto.Password, user.PasswordHash))
-        {
-            throw new UnauthorizedAccessException("Invalid email, mobile number or password.");
-        }
-
-        var token = _jwtTokenGenerator.GenerateToken(user);
-        var hasProfile = user.Profile != null;
-
-        return new AuthResponseDto
-        {
-            Token = token,
-            UserId = user.Id,
-            FullName = user.FullName,
-            Email = user.Email,
-            PhoneNumber = user.PhoneNumber,
-            Role = user.Role,
-            ProfileId = user.Profile?.Id,
-            HasCompletedProfile = hasProfile,
-            IsVerified = user.Profile?.Verified ?? false,
-            IsUnderReview = hasProfile && !user.Profile!.Verified,
-            IsPremium = user.Profile?.Premium ?? false,
-            PlanId = (user.Profile?.Premium ?? false) ? "premium" : "free",
-            PhotoUrl = user.Profile?.PhotoUrl
-        };
-    }
-
-    public async Task<AuthResponseDto> GoogleLoginAsync(GoogleLoginDto dto, CancellationToken ct = default)
-    {
-        var email = dto.Email.ToLower().Trim();
-        if (string.IsNullOrWhiteSpace(email))
-        {
-            throw new ArgumentException("Email is required for Google authentication.");
-        }
-
-        var user = await _context.Users
-            .Include(u => u.Profile)
-            .FirstOrDefaultAsync(u => u.Email.ToLower() == email, ct);
+        var user = await FindByIdentifierAsync(dto.Email, ct);
+        var now = DateTime.UtcNow;
 
         if (user == null)
         {
-            // First time Google sign-in: create new user account
+            _passwordHasher.VerifyPassword(dto.Password, _dummyHash ??= _passwordHasher.HashPassword(Guid.NewGuid().ToString("N")));
+            throw InvalidCredentials();
+        }
+
+        if (user.LockoutEndsAt > now)
+        {
+            var seconds = (int)Math.Ceiling((user.LockoutEndsAt.Value - now).TotalSeconds);
+            throw new AppException(429, ErrorCodes.AccountLocked,
+                "Too many incorrect tries. Please wait before trying again or reset your password.",
+                new Dictionary<string, object?> { ["retryAfterSeconds"] = seconds });
+        }
+
+        if (!_passwordHasher.VerifyPassword(dto.Password, user.PasswordHash))
+        {
+            user.FailedLoginCount += 1;
+            if (user.FailedLoginCount >= AuthRules.MaxFailedLogins)
+            {
+                user.LockoutEndsAt = now.Add(AuthRules.LockoutDuration);
+                user.FailedLoginCount = 0;
+            }
+            await _context.SaveChangesAsync(ct);
+            throw InvalidCredentials(); // same response as an unknown account
+        }
+
+        // Only reveal suspension to someone who knows the password.
+        if (!user.IsActive) throw Suspended();
+
+        user.FailedLoginCount = 0;
+        user.LockoutEndsAt = null;
+        if (_passwordHasher.NeedsRehash(user.PasswordHash))
+        {
+            user.PasswordHash = _passwordHasher.HashPassword(dto.Password); // BUG-018: upgrade old hashes
+        }
+        await _context.SaveChangesAsync(ct);
+
+        return await _sessions.StartAsync(user, client, ct);
+    }
+
+    public async Task<AuthResult> GoogleLoginAsync(GoogleLoginDto dto, ClientInfo client, CancellationToken ct = default)
+    {
+        // BUG-002: identity comes only from a token Google signed for our client id.
+        var identity = await _google.ValidateAsync(dto.IdToken, ct)
+            ?? throw new AppException(401, ErrorCodes.GoogleTokenInvalid, "Google sign-in failed. Please try again.");
+
+        var email = Identifiers.NormalizeEmail(identity.Email);
+        var user = await _context.Users.Include(u => u.Profile)
+                       .FirstOrDefaultAsync(u => u.GoogleSubject == identity.Subject, ct)
+                   ?? await _context.Users.Include(u => u.Profile)
+                       .FirstOrDefaultAsync(u => u.Email == email, ct);
+
+        if (user == null)
+        {
             user = new User
             {
                 Email = email,
-                PasswordHash = _passwordHasher.HashPassword(Guid.NewGuid().ToString("N")),
-                FullName = string.IsNullOrWhiteSpace(dto.FullName) ? email.Split('@')[0] : dto.FullName.Trim(),
-                PhoneNumber = "",
-                Role = "Member",
-                IsActive = true
+                // Random password: the member can set one later with "Forgot password".
+                PasswordHash = _passwordHasher.HashPassword(SecureTokens.NewToken()),
+                FullName = string.IsNullOrWhiteSpace(identity.Name) ? email.Split('@')[0] : identity.Name.Trim(),
+                Role = Roles.Member,
+                GoogleSubject = identity.Subject
             };
-
             _context.Users.Add(user);
-            await _context.SaveChangesAsync(ct);
         }
-        else if (user.Profile != null && string.IsNullOrWhiteSpace(user.Profile.PhotoUrl) && !string.IsNullOrWhiteSpace(dto.PhotoUrl))
+        else
         {
-            user.Profile.PhotoUrl = dto.PhotoUrl;
-            await _context.SaveChangesAsync(ct);
+            if (!user.IsActive) throw Suspended();
+            user.GoogleSubject ??= identity.Subject; // link an existing e-mail account (Google verified the address)
+            if (user.Profile != null && string.IsNullOrWhiteSpace(user.Profile.PhotoUrl) && !string.IsNullOrWhiteSpace(identity.PictureUrl))
+            {
+                user.Profile.PhotoUrl = identity.PictureUrl;
+            }
         }
 
-        var token = _jwtTokenGenerator.GenerateToken(user);
-        var hasProfile = user.Profile != null;
-
-        return new AuthResponseDto
-        {
-            Token = token,
-            UserId = user.Id,
-            FullName = user.FullName,
-            Email = user.Email,
-            PhoneNumber = user.PhoneNumber,
-            Role = user.Role,
-            ProfileId = user.Profile?.Id,
-            HasCompletedProfile = hasProfile,
-            IsVerified = user.Profile?.Verified ?? false,
-            IsUnderReview = hasProfile && !user.Profile!.Verified,
-            IsPremium = user.Profile?.Premium ?? false,
-            PlanId = (user.Profile?.Premium ?? false) ? "premium" : "free",
-            PhotoUrl = user.Profile?.PhotoUrl ?? dto.PhotoUrl
-        };
+        await _context.SaveChangesAsync(ct);
+        return await _sessions.StartAsync(user, client, ct);
     }
 
     public Task<OtpResponseDto> SendOtpAsync(SendOtpDto dto, CancellationToken ct = default)
     {
-        var phone = dto.PhoneNumber.Trim();
-        if (string.IsNullOrWhiteSpace(phone))
-        {
-            return Task.FromResult(new OtpResponseDto
-            {
-                Success = false,
-                Message = "Please provide a valid phone number."
-            });
-        }
-
-        // Generate 6-digit OTP code (e.g. 582914)
-        var otp = new Random().Next(100000, 999999).ToString();
-        OtpStore[phone] = otp;
-
-        return Task.FromResult(new OtpResponseDto
-        {
-            Success = true,
-            Message = $"Verification code sent via SMS to {phone}.",
-            DemoOtp = otp
-        });
+        var phone = Identifiers.RequirePhone(dto.PhoneNumber);
+        return _otp.IssueAsync(OtpPurpose.VerifyPhone, OtpChannel.Phone, phone, userId: null, deliver: true, ct);
     }
 
-    public async Task<AuthResponseDto> VerifyOtpAsync(VerifyOtpDto dto, CancellationToken ct = default)
+    public async Task<AuthResult> VerifyOtpAsync(VerifyOtpDto dto, ClientInfo client, CancellationToken ct = default)
     {
-        var phone = dto.PhoneNumber.Trim();
-        var code = dto.OtpCode.Trim();
+        var phone = Identifiers.RequirePhone(dto.PhoneNumber);
+        await _otp.VerifyAsync(OtpPurpose.VerifyPhone, phone, dto.OtpCode, ct); // throws on a wrong / expired code
 
-        // Check if OTP matches or default dev OTP "123456"
-        if (code != "123456" && (!OtpStore.TryGetValue(phone, out var expectedOtp) || expectedOtp != code))
-        {
-            throw new UnauthorizedAccessException("The verification code you entered is invalid or expired.");
-        }
-
-        // Remove used OTP
-        OtpStore.TryRemove(phone, out _);
-
-        // Find or create user by phone number
-        var user = await _context.Users
-            .Include(u => u.Profile)
+        var user = await _context.Users.Include(u => u.Profile)
             .FirstOrDefaultAsync(u => u.PhoneNumber == phone, ct);
 
         if (user == null)
         {
-            var syntheticEmail = $"phone_{phone.Replace("+", "").Replace(" ", "")}@auramatrimony.lk";
             user = new User
             {
                 PhoneNumber = phone,
-                Email = syntheticEmail,
-                FullName = !string.IsNullOrWhiteSpace(dto.FullName) ? dto.FullName : "Phone Member",
-                PasswordHash = _passwordHasher.HashPassword(Guid.NewGuid().ToString("N")),
-                Role = "Member",
-                IsActive = true
+                Email = $"phone_{phone.TrimStart('+')}@auramatrimony.lk",
+                FullName = string.IsNullOrWhiteSpace(dto.FullName) ? "Phone Member" : dto.FullName.Trim(),
+                PasswordHash = _passwordHasher.HashPassword(SecureTokens.NewToken()),
+                Role = Roles.Member
             };
-
             _context.Users.Add(user);
-            await _context.SaveChangesAsync(ct);
+        }
+        else if (!user.IsActive)
+        {
+            throw Suspended();
         }
 
-        var token = _jwtTokenGenerator.GenerateToken(user);
-        var hasProfile = user.Profile != null;
-
-        return new AuthResponseDto
-        {
-            Token = token,
-            UserId = user.Id,
-            FullName = user.FullName,
-            Email = user.Email,
-            PhoneNumber = user.PhoneNumber,
-            Role = user.Role,
-            ProfileId = user.Profile?.Id,
-            HasCompletedProfile = hasProfile,
-            IsVerified = user.Profile?.Verified ?? false,
-            IsUnderReview = hasProfile && !user.Profile!.Verified,
-            IsPremium = user.Profile?.Premium ?? false,
-            PlanId = (user.Profile?.Premium ?? false) ? "premium" : "free",
-            PhotoUrl = user.Profile?.PhotoUrl
-        };
+        user.PhoneVerified = true;
+        await _context.SaveChangesAsync(ct);
+        return await _sessions.StartAsync(user, client, ct);
     }
 
     public async Task<AuthResponseDto?> GetCurrentUserAsync(Guid userId, CancellationToken ct = default)
     {
-        var user = await _context.Users
-            .Include(u => u.Profile)
+        var user = await _context.Users.AsNoTracking().Include(u => u.Profile)
             .FirstOrDefaultAsync(u => u.Id == userId, ct);
-
-        if (user == null) return null;
-
-        var token = _jwtTokenGenerator.GenerateToken(user);
-        var hasProfile = user.Profile != null;
-
-        return new AuthResponseDto
-        {
-            Token = token,
-            UserId = user.Id,
-            FullName = user.FullName,
-            Email = user.Email,
-            PhoneNumber = user.PhoneNumber,
-            Role = user.Role,
-            ProfileId = user.Profile?.Id,
-            HasCompletedProfile = hasProfile,
-            IsVerified = user.Profile?.Verified ?? false,
-            IsUnderReview = hasProfile && !user.Profile!.Verified,
-            IsPremium = user.Profile?.Premium ?? false,
-            PlanId = (user.Profile?.Premium ?? false) ? "premium" : "free",
-            PhotoUrl = user.Profile?.PhotoUrl
-        };
+        return user == null ? null : _sessions.ToResponse(user, accessToken: null);
     }
+
+    private async Task<User?> FindByIdentifierAsync(string identifier, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(identifier)) return null;
+
+        if (Identifiers.LooksLikeEmail(identifier))
+        {
+            var email = Identifiers.NormalizeEmail(identifier);
+            return await _context.Users.Include(u => u.Profile).FirstOrDefaultAsync(u => u.Email == email, ct);
+        }
+
+        var phone = Identifiers.NormalizePhone(identifier);
+        return phone == null
+            ? null
+            : await _context.Users.Include(u => u.Profile).FirstOrDefaultAsync(u => u.PhoneNumber == phone, ct);
+    }
+
+    private static AppException InvalidCredentials() =>
+        new(401, ErrorCodes.InvalidCredentials, "Invalid email, mobile number or password.");
+
+    private static AppException Suspended() =>
+        new(403, ErrorCodes.AccountSuspended, "This account is suspended. Please contact support.");
 }

@@ -17,10 +17,16 @@ public class ApplicationDbContext : DbContext, IApplicationDbContext
     public DbSet<PricingPlan> PricingPlans => Set<PricingPlan>();
     public DbSet<FaqItem> FaqItems => Set<FaqItem>();
     public DbSet<ChatMessage> ChatMessages => Set<ChatMessage>();
+    public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
+    public DbSet<OtpCode> OtpCodes => Set<OtpCode>();
+    public DbSet<PasswordResetToken> PasswordResetTokens => Set<PasswordResetToken>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
+
+        // Entity configurations in Persistence/Configurations (auth tables, S01)
+        modelBuilder.ApplyConfigurationsFromAssembly(typeof(ApplicationDbContext).Assembly);
 
         // User - CandidateProfile (1:1)
         modelBuilder.Entity<User>()

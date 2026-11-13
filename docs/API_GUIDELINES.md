@@ -4,10 +4,10 @@ Back end: `DatingApp.API` (.NET 9, ASP.NET Core). Base URL `/api`. Swagger at `/
 The **full target endpoint list (102 endpoints, grouped A, P/K, S, M/C, B/U/X, D/N/W/AD)** is the API spec:
 https://claude.ai/artifact/LP2mSaiPiJYZCij2bLU1p6 — this file holds the conventions plus what exists today.
 
-## 1. What exists today (19 endpoints + hub)
+## 1. What exists today (27 endpoints + hub)
 | Controller | Endpoints | Auth today | Problems |
 |---|---|---|---|
-| `AuthController` `/api/auth` | `POST register`, `POST login`, `POST google-login`, `POST send-otp`, `POST verify-otp`, `GET me` | `me` only | BUG-001, BUG-002, BUG-008 |
+| `AuthController` `/api/auth` (+ `AuthController.Passwords.cs`) | #1–14: `POST register`, `POST login`, `POST google-login`, `POST send-otp`, `POST verify-otp`, `GET me`, `POST refresh`, `POST logout`, `POST forgot-password`, `POST forgot-password/verify`, `POST reset-password`, `POST change-password`, `GET sessions`, `DELETE sessions/{id}` | `me`, `change-password`, `sessions` (refresh/logout use the `vk_refresh` httpOnly cookie) | Built 2026-11-13 on `S01-api-auth` — awaiting build + test |
 | `ProfilesController` `/api/profiles` | `GET` (search), `GET me`, `GET {id}`, `POST` (create/update) | `me`, `POST` | BUG-009, BUG-014, BUG-016 |
 | `MatchRequestsController` `/api/match-requests` | `POST`, `GET my`, `PUT {id}/respond` | all | — |
 | `ChatController` `/api/chat` | `GET conversations`, `GET history/{conversationId}` | **none** | BUG-004, TD-03 |

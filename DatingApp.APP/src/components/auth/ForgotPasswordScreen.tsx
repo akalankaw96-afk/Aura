@@ -47,6 +47,9 @@ const GENERIC_ERROR = ["Something went wrong", "Check your connection and try ag
 export function ForgotPasswordScreen() {
   const router = useRouter();
   const toast = useToast();
+  /** API errors carry a member-facing message (e.g. "Please wait before requesting another code."). */
+  const showError = (err: unknown) =>
+    err instanceof Error && err.message ? toast.error("Something went wrong", err.message) : toast.error(...GENERIC_ERROR);
 
   const [step, setStep] = useState<Step>("identify");
   const [channel, setChannel] = useState<ResetChannel>("phone");
@@ -115,8 +118,8 @@ export function ForgotPasswordScreen() {
         setStep("code");
         toast.success("Code sent", `If this ${channelWord} is registered, a 6-digit code is on its way.`);
       }
-    } catch {
-      toast.error(...GENERIC_ERROR);
+    } catch (err: unknown) {
+      showError(err);
     } finally {
       setLoading(false);
     }
@@ -157,8 +160,8 @@ export function ForgotPasswordScreen() {
           `Incorrect code — ${res.attemptsLeft} ${res.attemptsLeft === 1 ? "try" : "tries"} left`,
         );
       }
-    } catch {
-      toast.error(...GENERIC_ERROR);
+    } catch (err: unknown) {
+      showError(err);
     } finally {
       setLoading(false);
     }
@@ -196,7 +199,7 @@ export function ForgotPasswordScreen() {
   const submitPassword = async (e: React.FormEvent) => {
     e.preventDefault();
     const er: typeof pwErrors = {};
-    if (!isPasswordAcceptable(pw)) er.pw = pw.length < 6 ? "Password must be at least 6 characters" : "Add at least one number";
+    if (!isPasswordAcceptable(pw)) er.pw = pw.length < 8 ? "Password must be at least 8 characters" : "Use at least one letter and one number";
     if (!pw2) er.pw2 = "Confirm your new password";
     else if (pw !== pw2) er.pw2 = "Passwords don’t match";
     setPwErrors(er);
@@ -206,8 +209,8 @@ export function ForgotPasswordScreen() {
       await resetPassword(resetToken, pw);
       flashToast("success", "Password updated", "Log in with your new password. You’ve been signed out on other devices.");
       router.push("/login");
-    } catch {
-      toast.error(...GENERIC_ERROR);
+    } catch (err: unknown) {
+      showError(err);
       setLoading(false);
     }
   };
@@ -383,7 +386,7 @@ export function ForgotPasswordScreen() {
                 setPwErrors((e) => ({ ...e, pw: undefined }));
               }}
               showStrength
-              helper="At least 6 characters, with a number"
+              helper="At least 8 characters, with a letter and a number"
               error={pwErrors.pw}
               autoComplete="new-password"
               autoFocus

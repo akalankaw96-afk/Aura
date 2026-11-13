@@ -3,6 +3,21 @@ import { mockProfiles, successStories, pricingPlans, faqs } from '../data/mockDa
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
 
+/** Reads the message from an RFC 7807 ProblemDetails error (`title`), falling back to older `{ message }` bodies. */
+async function problemMessage(res: Response, fallback: string): Promise<string> {
+  const body: { title?: string; message?: string } = await res.json().catch(() => ({}));
+  return body.title || body.message || fallback;
+}
+
+/** Keeps the signed-in session in localStorage (TODO S01-T05 web part: access token in memory only, BUG-017). */
+function storeSession(session: AuthSession): void {
+  if (typeof window === 'undefined' || !session.token) return;
+  localStorage.setItem('aura_token', session.token);
+  localStorage.setItem('aura_session', JSON.stringify(session));
+  localStorage.setItem('aura_auth_user', JSON.stringify(session));
+  window.dispatchEvent(new Event('aura_auth_change'));
+}
+
 export interface HomeContentResponse {
   featuredProfiles: Profile[];
   successStories: SuccessStory[];
@@ -194,7 +209,7 @@ export const apiService = {
     return null;
   },
 
-  // Authentication: Register with Email
+  // Authentication: Register with Email. No fake session if the API fails (BUG-003).
   async register(data: {
     fullName: string;
     email: string;
@@ -203,37 +218,21 @@ export const apiService = {
     profileFor?: string;
     gender?: string;
   }): Promise<AuthSession> {
+    let res: Response;
     try {
-      const res = await fetch(`${API_BASE_URL}/auth/register`, {
+      res = await fetch(`${API_BASE_URL}/auth/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include', // receives the httpOnly refresh cookie
         body: JSON.stringify(data),
       });
-      if (res.ok) {
-        const json: AuthSession = await res.json();
-        if (typeof window !== 'undefined' && json.token) {
-          localStorage.setItem('aura_token', json.token);
-          localStorage.setItem('aura_session', JSON.stringify(json));
-        }
-        return json;
-      }
-    } catch (err) {
-      console.warn('API register error:', err);
+    } catch {
+      throw new Error('We couldn’t reach Vikasitha. Check your connection and try again.');
     }
-    const session: AuthSession = {
-      token: 'demo-token-' + Date.now(),
-      userId: 'usr-' + Date.now(),
-      fullName: data.fullName,
-      email: data.email,
-      phoneNumber: data.phoneNumber,
-      role: 'Member',
-      hasCompletedProfile: false,
-    };
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('aura_token', session.token);
-      localStorage.setItem('aura_session', JSON.stringify(session));
-    }
-    return session;
+    if (!res.ok) throw new Error(await problemMessage(res, 'Registration failed. Please try again.'));
+    const json: AuthSession = await res.json();
+    storeSession(json);
+    return json;
   },
 
   // Authentication: Login with Email or Mobile
@@ -243,6 +242,7 @@ export const apiService = {
       res = await fetch(`${API_BASE_URL}/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include', // receives the httpOnly refresh cookie
         body: JSON.stringify(credentials),
       });
     } catch (networkErr: unknown) {
@@ -270,206 +270,117 @@ export const apiService = {
       return json;
     }
 
-    const errData = await res.json().catch(() => ({}));
-    throw new Error(errData.message || (res.status === 401 ? 'Invalid email, mobile number or password.' : 'Login failed. Please try again.'));
+    throw new Error(await problemMessage(res, res.status === 401 ? 'Invalid email, mobile number or password.' : 'Login failed. Please try again.'));
   },
 
-  // Authentication: Google Sign-In
-  async googleLogin(data: { email: string; fullName: string; photoUrl?: string; idToken?: string }): Promise<AuthSession> {
+  // Authentication: Google Sign-In. Only the Google token is sent; the server verifies it (BUG-002).
+  // No fake session when the API fails (BUG-003).
+  async googleLogin(data: { email?: string; fullName?: string; photoUrl?: string; idToken?: string }): Promise<AuthSession> {
+    if (!data.idToken) throw new Error('Google sign-in failed. Please try again.');
+    let res: Response;
     try {
-      const res = await fetch(`${API_BASE_URL}/auth/google-login`, {
+      res = await fetch(`${API_BASE_URL}/auth/google-login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
+        credentials: 'include',
+        body: JSON.stringify({ idToken: data.idToken }),
       });
-      if (res.ok) {
-        const json = await res.json();
-        const session: AuthSession = {
-          token: json.token,
-          userId: json.userId,
-          fullName: json.fullName,
-          email: json.email,
-          phoneNumber: json.phoneNumber,
-          role: json.role,
-          profileId: json.profileId,
-          hasCompletedProfile: json.hasCompletedProfile,
-          isVerified: json.isVerified,
-          isUnderReview: json.isUnderReview,
-          isPremium: json.isPremium,
-          planId: json.planId || 'free',
-          photoUrl: json.photoUrl || data.photoUrl,
-        };
-        if (typeof window !== 'undefined' && session.token) {
-          localStorage.setItem('aura_token', session.token);
-          localStorage.setItem('aura_session', JSON.stringify(session));
-          localStorage.setItem('aura_auth_user', JSON.stringify(session));
-          if (session.isUnderReview || session.isVerified === false || !session.hasCompletedProfile) {
-            localStorage.setItem('aura_review_status', 'submitted');
-            localStorage.setItem('vk-kyc', 'pending');
-          } else {
-            localStorage.setItem('vk-kyc', 'live');
-          }
-          localStorage.setItem('vk-plan', session.isPremium ? (session.planId || 'gold') : 'free');
-          window.dispatchEvent(new Event('aura_auth_change'));
-          window.dispatchEvent(new Event('vk-kyc-change'));
-          window.dispatchEvent(new Event('vk-plan-change'));
-        }
-        return session;
-      }
-    } catch (err) {
-      console.warn('API Google sign-in error:', err);
+    } catch {
+      throw new Error('We couldn’t reach Vikasitha. Check your connection and try again.');
     }
-    const session: AuthSession = {
-      token: 'google-token-' + Date.now(),
-      userId: 'usr-google-' + Date.now(),
-      fullName: data.fullName,
-      email: data.email,
-      role: 'Member',
-      hasCompletedProfile: false,
-      isVerified: false,
-      isUnderReview: true,
-      isPremium: false,
-      planId: 'free',
-      photoUrl: data.photoUrl,
-    };
+    if (!res.ok) throw new Error(await problemMessage(res, 'Google sign-in failed. Please try again.'));
+
+    const json: AuthSession = await res.json();
+    const session: AuthSession = { ...json, planId: json.planId || 'free', photoUrl: json.photoUrl || data.photoUrl };
+    storeSession(session);
     if (typeof window !== 'undefined') {
-      localStorage.setItem('aura_token', session.token);
-      localStorage.setItem('aura_session', JSON.stringify(session));
-      localStorage.setItem('aura_auth_user', JSON.stringify(session));
-      localStorage.setItem('aura_review_status', 'submitted');
-      localStorage.setItem('vk-kyc', 'pending');
-      localStorage.setItem('vk-plan', 'free');
-      window.dispatchEvent(new Event('aura_auth_change'));
+      if (session.isUnderReview || session.isVerified === false || !session.hasCompletedProfile) {
+        localStorage.setItem('aura_review_status', 'submitted');
+        localStorage.setItem('vk-kyc', 'pending');
+      } else {
+        localStorage.setItem('vk-kyc', 'live');
+      }
+      localStorage.setItem('vk-plan', session.isPremium ? (session.planId || 'gold') : 'free');
       window.dispatchEvent(new Event('vk-kyc-change'));
       window.dispatchEvent(new Event('vk-plan-change'));
     }
     return session;
   },
 
-  // Authentication: Send OTP to Phone
-  async sendOtp(phoneNumber: string): Promise<{ success: boolean; message: string; demoOtp?: string }> {
+  // Authentication: Send a 6-digit code by SMS. The code is never in the response (BUG-001).
+  async sendOtp(phoneNumber: string): Promise<{ success: boolean; message: string; resendAvailableInSeconds?: number; resendsLeft?: number }> {
+    let res: Response;
     try {
-      const res = await fetch(`${API_BASE_URL}/auth/send-otp`, {
+      res = await fetch(`${API_BASE_URL}/auth/send-otp`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ phoneNumber }),
       });
-      if (res.ok) {
-        return await res.json();
-      }
-    } catch (err) {
-      console.warn('API Send OTP error:', err);
+    } catch {
+      throw new Error('We couldn’t reach Vikasitha. Check your connection and try again.');
     }
-    const demoCode = '123456';
-    return {
-      success: true,
-      message: `SMS code dispatched to ${phoneNumber}`,
-      demoOtp: demoCode,
-    };
+    if (!res.ok) throw new Error(await problemMessage(res, 'We couldn’t send the code. Please try again.'));
+    return res.json();
   },
 
-  // Authentication: Verify OTP
+  // Authentication: Verify the SMS code (signs the member in).
   async verifyOtp(phoneNumber: string, otpCode: string, fullName?: string): Promise<AuthSession> {
+    let res: Response;
     try {
-      const res = await fetch(`${API_BASE_URL}/auth/verify-otp`, {
+      res = await fetch(`${API_BASE_URL}/auth/verify-otp`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({ phoneNumber, otpCode, fullName }),
       });
-      if (res.ok) {
-        const json: AuthSession = await res.json();
-        if (typeof window !== 'undefined' && json.token) {
-          localStorage.setItem('aura_token', json.token);
-          localStorage.setItem('aura_session', JSON.stringify(json));
-        }
-        return json;
-      }
-    } catch (err) {
-      console.warn('API Verify OTP error:', err);
+    } catch {
+      throw new Error('We couldn’t reach Vikasitha. Check your connection and try again.');
     }
-    const session: AuthSession = {
-      token: 'otp-token-' + Date.now(),
-      userId: 'usr-otp-' + Date.now(),
-      fullName: fullName || 'Verified Phone Member',
-      email: `phone_${phoneNumber.replace(/\D/g, '')}@auramatrimony.lk`,
-      phoneNumber,
-      role: 'Member',
-      hasCompletedProfile: false,
-    };
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('aura_token', session.token);
-      localStorage.setItem('aura_session', JSON.stringify(session));
-    }
-    return session;
+    if (!res.ok) throw new Error(await problemMessage(res, 'That code isn’t right.'));
+    const json: AuthSession = await res.json();
+    storeSession(json);
+    return json;
   },
 
   // Create or Update Candidate Profile Details (Step 2/3)
   async createOrUpdateProfile(profileData: CreateProfilePayload): Promise<Profile> {
-    let token = typeof window !== 'undefined' ? localStorage.getItem('aura_token') : null;
+    const token = typeof window !== 'undefined' ? localStorage.getItem('aura_token') : null;
 
-    // If token is missing or dummy, auto-create a verified user session with the backend first
-    if (!token || token.startsWith('demo-') || token.startsWith('otp-') || token.startsWith('google-')) {
+    // No real session → keep the profile locally (demo) instead of inventing an account (BUG-002/003).
+    const hasRealToken = !!token && !/^(demo|otp|google)-/.test(token);
+
+    if (hasRealToken) {
       try {
-        const rawSess = typeof window !== 'undefined' ? localStorage.getItem('aura_session') : null;
-        const parsed = rawSess ? JSON.parse(rawSess) : null;
-        const userEmail = parsed?.email || `${profileData.fullName.toLowerCase().replace(/[^a-z0-9]/g, '') || 'member'}_${Date.now()}@auramatrimony.lk`;
-        const authRes = await this.googleLogin({
-          email: userEmail,
-          fullName: profileData.fullName,
-        });
-        token = authRes.token;
-      } catch (e) {
-        console.warn('Auto-session initialization notice:', e);
-      }
-    }
-
-    try {
-      let res = await fetch(`${API_BASE_URL}/profiles`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-        body: JSON.stringify(profileData),
-      });
-
-      // If unauthorized, retry once by generating a fresh valid JWT
-      if (res.status === 401) {
-        const freshUser = await this.googleLogin({
-          email: `candidate_${Date.now()}@auramatrimony.lk`,
-          fullName: profileData.fullName,
-        });
-        token = freshUser.token;
-        res = await fetch(`${API_BASE_URL}/profiles`, {
+        const res = await fetch(`${API_BASE_URL}/profiles`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`,
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
           },
           body: JSON.stringify(profileData),
         });
-      }
 
-      if (res.ok) {
-        const savedProfile: Profile = await res.json();
-        console.log('✅ Profile successfully persisted to SQL Server database (LocalDB\\MSSQLLocalDB):', savedProfile);
-        if (typeof window !== 'undefined') {
-          const raw = localStorage.getItem('aura_session');
-          if (raw) {
-            const sess = JSON.parse(raw);
-            sess.hasCompletedProfile = true;
-            sess.profileId = savedProfile.id;
-            sess.fullName = savedProfile.name;
-            localStorage.setItem('aura_session', JSON.stringify(sess));
+        if (res.ok) {
+          const savedProfile: Profile = await res.json();
+          console.log('✅ Profile successfully persisted to SQL Server database (LocalDB\\MSSQLLocalDB):', savedProfile);
+          if (typeof window !== 'undefined') {
+            const raw = localStorage.getItem('aura_session');
+            if (raw) {
+              const sess = JSON.parse(raw);
+              sess.hasCompletedProfile = true;
+              sess.profileId = savedProfile.id;
+              sess.fullName = savedProfile.name;
+              localStorage.setItem('aura_session', JSON.stringify(sess));
+            }
           }
+          return savedProfile;
+        } else {
+          const errorText = await res.text();
+          console.error('API create profile returned error status:', res.status, errorText);
         }
-        return savedProfile;
-      } else {
-        const errorText = await res.text();
-        console.error('API create profile returned error status:', res.status, errorText);
+      } catch (err) {
+        console.warn('API create profile error:', err);
       }
-    } catch (err) {
-      console.warn('API create profile error:', err);
     }
 
     // Local fallback
@@ -745,6 +656,8 @@ export const apiService = {
 
   logoutAllDevices(): void {
     if (typeof window !== 'undefined') {
+      // End the session on the server and clear the httpOnly refresh cookie (fire-and-forget).
+      fetch(`${API_BASE_URL}/auth/logout`, { method: 'POST', credentials: 'include', keepalive: true }).catch(() => undefined);
       localStorage.removeItem('aura_token');
       localStorage.removeItem('aura_session');
       localStorage.removeItem('aura_auth_user');

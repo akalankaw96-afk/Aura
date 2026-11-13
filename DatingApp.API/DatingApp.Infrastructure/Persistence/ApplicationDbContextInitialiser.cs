@@ -2,6 +2,7 @@ using DatingApp.Application.Common.Interfaces;
 using DatingApp.Domain.Entities;
 using DatingApp.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using System.Text.Json;
 
 namespace DatingApp.Infrastructure.Persistence;
@@ -10,87 +11,72 @@ public class ApplicationDbContextInitialiser
 {
     private readonly ApplicationDbContext _context;
     private readonly IPasswordHasher _passwordHasher;
+    private readonly ILogger<ApplicationDbContextInitialiser> _logger;
 
-    public ApplicationDbContextInitialiser(ApplicationDbContext context, IPasswordHasher passwordHasher)
+    public ApplicationDbContextInitialiser(
+        ApplicationDbContext context,
+        IPasswordHasher passwordHasher,
+        ILogger<ApplicationDbContextInitialiser> logger)
     {
         _context = context;
         _passwordHasher = passwordHasher;
+        _logger = logger;
     }
 
+    /// <summary>
+    /// SQL Server: applies EF migrations (create them with `dotnet ef migrations add`, see DATABASE_GUIDELINES.md).
+    /// InMemory (tests / explicit opt-in only): creates the schema directly.
+    /// </summary>
     public async Task InitialiseAsync()
     {
-        try
+        if (_context.Database.IsRelational())
+        {
+            await _context.Database.MigrateAsync();
+        }
+        else
         {
             await _context.Database.EnsureCreatedAsync();
-
-            if (_context.Database.IsSqlServer())
-            {
-                await _context.Database.ExecuteSqlRawAsync(@"
-                IF COL_LENGTH('dbo.CandidateProfiles', 'SubmittedDetailsJson') IS NULL
-                    ALTER TABLE [dbo].[CandidateProfiles] ADD [SubmittedDetailsJson] NVARCHAR(MAX) NULL;
-
-                IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'ChatMessages')
-                BEGIN
-                    CREATE TABLE [dbo].[ChatMessages] (
-                        [Id] UNIQUEIDENTIFIER NOT NULL PRIMARY KEY,
-                        [SenderProfileId] UNIQUEIDENTIFIER NOT NULL,
-                        [ReceiverProfileId] UNIQUEIDENTIFIER NOT NULL,
-                        [ConversationId] NVARCHAR(450) NOT NULL,
-                        [MessageText] NVARCHAR(MAX) NOT NULL,
-                        [IsRead] BIT NOT NULL DEFAULT 0,
-                        [ReadAt] DATETIME2 NULL,
-                        [IsFlaggedBySafety] BIT NOT NULL DEFAULT 0,
-                        [SafetyFlagReason] NVARCHAR(MAX) NULL,
-                        [IsContactShareRequest] BIT NOT NULL DEFAULT 0,
-                        [IsContactShareAccepted] BIT NOT NULL DEFAULT 0,
-                        [CreatedAt] DATETIME2 NOT NULL DEFAULT GETUTCDATE(),
-                        [UpdatedAt] DATETIME2 NULL,
-                        CONSTRAINT [FK_ChatMessages_CandidateProfiles_SenderProfileId] FOREIGN KEY ([SenderProfileId]) REFERENCES [dbo].[CandidateProfiles] ([Id]),
-                        CONSTRAINT [FK_ChatMessages_CandidateProfiles_ReceiverProfileId] FOREIGN KEY ([ReceiverProfileId]) REFERENCES [dbo].[CandidateProfiles] ([Id])
-                    );
-                    CREATE INDEX [IX_ChatMessages_ConversationId] ON [dbo].[ChatMessages] ([ConversationId]);
-                END
-            ");
-            }
-        }
-        catch (Exception ex)
-        {
-            // Log or fallback
-            Console.WriteLine($"Database initialization notice: {ex.Message}");
         }
     }
 
-    public async Task SeedAsync()
+    /// <param name="seedDemoMember">True only in Development (BUG-015).</param>
+    /// <param name="demoMemberPassword">From user-secrets `Seed:DemoMemberPassword`; no demo member is created without it.</param>
+    public async Task SeedAsync(bool seedDemoMember, string? demoMemberPassword)
     {
         try
         {
+            if (seedDemoMember && !string.IsNullOrWhiteSpace(demoMemberPassword))
+            {
+                await SeedDemoMemberAsync(demoMemberPassword);
+            }
             await TrySeedAsync();
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error occurred while seeding database: {ex.Message}");
+            _logger.LogError(ex, "Error occurred while seeding the database");
         }
     }
 
-    public async Task TrySeedAsync()
+    private async Task SeedDemoMemberAsync(string password)
     {
-        // 1. Seed Demo User
-        var demoUser = await _context.Users.FirstOrDefaultAsync(u => u.Email == "demo@auramatrimony.lk");
-        if (demoUser == null)
-        {
-            demoUser = new User
-            {
-                Email = "demo@auramatrimony.lk",
-                PasswordHash = _passwordHasher.HashPassword("AuraDemo123!"),
-                FullName = "Aura Demo Member",
-                PhoneNumber = "+94 77 123 4567",
-                Role = "Member",
-                IsActive = true
-            };
-            _context.Users.Add(demoUser);
-            await _context.SaveChangesAsync();
-        }
+        if (await _context.Users.AnyAsync(u => u.Email == "demo@auramatrimony.lk")) return;
 
+        _context.Users.Add(new User
+        {
+            Email = "demo@auramatrimony.lk",
+            PasswordHash = _passwordHasher.HashPassword(password),
+            FullName = "Aura Demo Member",
+            PhoneNumber = "+94771234567",
+            PhoneVerified = true,
+            Role = Roles.Member,
+            IsActive = true
+        });
+        await _context.SaveChangesAsync();
+    }
+
+    /// <summary>Content seed (stories, plans, FAQs) — safe in every environment.</summary>
+    private async Task TrySeedAsync()
+    {
         // 2. Static Platform Data: Seed Success Stories
         var stories = new List<SuccessStory>
         {

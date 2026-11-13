@@ -1,16 +1,12 @@
 /**
- * Forgot-password journey: send code → verify code → set new password.
- *
- * DEMO ADAPTER — there is no reset API yet (planned: S01-T03/T05, see docs/API_GUIDELINES.md).
- * Each function below maps 1:1 to the planned endpoint, so connecting the API means
- * replacing the body of these three functions only — the screen does not change.
+ * Forgot-password journey: send code → verify code → set new password (S01-T16).
  *
  *   POST /api/auth/forgot-password         { channel, value }        → 202 (always, even if unknown)
  *   POST /api/auth/forgot-password/verify  { channel, value, code }  → { resetToken } | 400 { code, attemptsLeft }
  *   POST /api/auth/reset-password          { resetToken, newPassword } → 204
+ *
+ * Errors are RFC 7807 ProblemDetails: `title` is the member-facing message, `code` the machine-readable reason.
  */
-import { DEMO } from "@/lib/demo";
-
 export type ResetChannel = "email" | "phone";
 
 export const RESET_RULES = {
@@ -24,40 +20,65 @@ export type VerifyResult =
   | { ok: true; resetToken: string }
   | { ok: false; reason: "incorrect" | "expired" | "too-many"; attemptsLeft: number };
 
-const wait = (ms: number) => new Promise((r) => window.setTimeout(r, ms));
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
 
-/** Demo-only memory of failed attempts for the current code. */
-let failedAttempts = 0;
+interface Problem {
+  title?: string;
+  code?: string;
+  attemptsLeft?: number;
+}
 
-const isKnownAccount = (channel: ResetChannel, value: string) =>
-  channel === "phone"
-    ? value === DEMO.registeredMobile || value === DEMO.suspendedMobile
-    : value.trim().toLowerCase() === DEMO.registeredEmail;
+async function post(path: string, body: unknown): Promise<Response> {
+  try {
+    return await fetch(`${API_BASE_URL}${path}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+  } catch {
+    throw new Error("We couldn’t reach Vikasitha. Check your connection and try again.");
+  }
+}
+
+async function fail(res: Response, fallback: string): Promise<never> {
+  const problem: Problem = await res.json().catch(() => ({}));
+  throw new Error(problem.title || fallback);
+}
 
 /**
  * Sends a reset code. Resolves the same way whether or not the account exists,
  * so the screen never reveals who is registered (member privacy).
  */
-export async function requestResetCode(_channel: ResetChannel, _value: string): Promise<void> {
-  await wait(600);
-  failedAttempts = 0;
+export async function requestResetCode(channel: ResetChannel, value: string): Promise<void> {
+  const res = await post("/auth/forgot-password", { channel, value: value.trim() });
+  if (!res.ok) await fail(res, "We couldn’t send a code. Please try again.");
 }
 
 export async function verifyResetCode(channel: ResetChannel, value: string, code: string): Promise<VerifyResult> {
-  await wait(500);
-  if (failedAttempts >= RESET_RULES.maxAttempts) return { ok: false, reason: "too-many", attemptsLeft: 0 };
-  if (code === DEMO.expiredOtp) return { ok: false, reason: "expired", attemptsLeft: RESET_RULES.maxAttempts - failedAttempts };
-  if (isKnownAccount(channel, value) && code === DEMO.otp) {
-    failedAttempts = 0;
-    return { ok: true, resetToken: "demo-reset-token" };
+  const res = await post("/auth/forgot-password/verify", { channel, value: value.trim(), code });
+  if (res.ok) {
+    const data: { resetToken: string } = await res.json();
+    return { ok: true, resetToken: data.resetToken };
   }
-  failedAttempts += 1;
-  const attemptsLeft = Math.max(0, RESET_RULES.maxAttempts - failedAttempts);
-  return { ok: false, reason: attemptsLeft === 0 ? "too-many" : "incorrect", attemptsLeft };
+  if (res.status !== 400) await fail(res, "We couldn’t check the code. Please try again.");
+
+  const problem: Problem = await res.json().catch(() => ({}));
+  const attemptsLeft = problem.attemptsLeft ?? 0;
+  switch (problem.code) {
+    case "CODE_EXPIRED":
+      return { ok: false, reason: "expired", attemptsLeft };
+    case "TOO_MANY_ATTEMPTS":
+      return { ok: false, reason: "too-many", attemptsLeft: 0 };
+    case "CODE_INVALID":
+      return { ok: false, reason: attemptsLeft === 0 ? "too-many" : "incorrect", attemptsLeft };
+    default:
+      throw new Error(problem.title || "Check the code and try again.");
+  }
 }
 
-export async function resetPassword(_resetToken: string, _newPassword: string): Promise<void> {
-  await wait(600);
+export async function resetPassword(resetToken: string, newPassword: string): Promise<void> {
+  const res = await post("/auth/reset-password", { resetToken, newPassword });
+  if (!res.ok) await fail(res, "We couldn’t update your password. Please start again.");
 }
 
 /** "+94 77 ••• ••67" / "de•••@auramatrimony.lk" — shown on the code step. */

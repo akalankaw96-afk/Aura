@@ -50,3 +50,4 @@ dotnet ef database update -p DatingApp.Infrastructure -s DatingApp.WebApi
 | Date | Change | Impact | Migration |
 |---|---|---|---|
 | — | (first entry: InitialCreate baseline from current model, Sprint 01) | none — captures the existing schema | `InitialCreate` |
+| 2026-11-13 | S01 auth: `User` + PhoneVerified, GoogleSubject (unique, filtered), SecurityStamp, FailedLoginCount, LockoutEndsAt, PasswordChangedAt; new `RefreshTokens`, `OtpCodes`, `PasswordResetTokens` (hashes only); config classes in `Persistence/Configurations`. Startup now runs `Migrate()` (SQL) instead of `EnsureCreated`; SQL Server is the default | Dev DBs made by `EnsureCreated` must be dropped once; phone numbers now stored as E.164 (`+94771234567`) — older formatted numbers won't match login | `InitialCreate` (to generate — includes the auth tables) |

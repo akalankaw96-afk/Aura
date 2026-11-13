@@ -6,6 +6,23 @@ Sections: Added · Changed · Fixed · Security · Removed · Breaking.
 ## [Unreleased]
 
 ### Added
+- 2026-11-13 — **Auth API, endpoints #1–14 (branch `S01-api-auth`, S01-T01/02/03/04/05/10/11/13/16).** New:
+  `POST /api/auth/refresh`, `logout`, `forgot-password`, `forgot-password/verify`, `reset-password`,
+  `change-password`, `GET sessions`, `DELETE sessions/{id}`; reworked `register`, `login`, `google-login`,
+  `send-otp`, `verify-otp`, `me`. Errors are ProblemDetails with `code` (+ `attemptsLeft`, `retryAfterSeconds`).
+  Files (API): `Domain/Entities/{User,RefreshToken,OtpCode,PasswordResetToken}.cs`, `Domain/Enums/AuthEnums.cs`,
+  `Application/Common/{Exceptions/AppException,Security/AuthRules,Security/SecureTokens,Security/Identifiers}.cs`,
+  `Application/Common/Interfaces/{IApplicationDbContext,ISecurityServices}.cs`, `Application/DTOs/AuthDtos.cs`,
+  `Application/Services/{AuthService,SessionService,OtpService,PasswordService}.cs`,
+  `Infrastructure/{DependencyInjection.cs,DatingApp.Infrastructure.csproj}`,
+  `Infrastructure/Persistence/{ApplicationDbContext,ApplicationDbContextInitialiser,Configurations/AuthConfigurations}.cs`,
+  `Infrastructure/Services/{JwtTokenGenerator,PasswordHasher,GoogleTokenValidator,LoggingMessageSenders}.cs`,
+  `WebApi/{Program.cs,DatingApp.WebApi.csproj,appsettings.json,appsettings.Development.json}`,
+  `WebApi/Controllers/{AuthController,AuthController.Passwords,BaseApiController}.cs`,
+  `WebApi/Auth/{RefreshCookie,AuthCookieSettings,RateLimits}.cs`, `WebApi/Errors/AppExceptionHandler.cs`.
+  Files (web): `services/api.ts`, `services/passwordReset.ts`, `components/ui/PasswordField.tsx`,
+  `components/auth/{RegisterFlow,ForgotPasswordScreen}.tsx`. **Not yet compiled or tested** — see PROGRESS handover.
+
 - 2026-11-12 — **"How to use" page (`/how-to-use`)**, concept inspired by invitation.lk's guide, built with our design
   system: hero with Create New / Login (member: Go to dashboard) + trust chips; **6-step journey** (create account →
   log in → get verified → find a match → send interest → chat & share contacts) — tap a step to see its real phone
@@ -27,6 +44,18 @@ Sections: Added · Changed · Fixed · Security · Removed · Breaking.
   (privacy). Runs on a demo adapter until the API exists (TD-18).
   Files: `components/auth/ForgotPasswordScreen.tsx` (rewritten), `components/auth/IdentifierTabs.tsx` (new),
   `services/passwordReset.ts` (new), `lib/demo.ts` (`registeredEmail`).
+
+### Security
+- 2026-11-13 — BUG-001: no master OTP; codes hashed, limited, never returned. BUG-002: Google tokens verified with
+  Google. BUG-003: no fake sessions in the web client. BUG-006: CORS allow-list. BUG-007: no secrets in appsettings,
+  no fallback JWT key (rotate the old key + Google client secret). BUG-008: 15-min access token + rotating refresh
+  token with reuse detection, logout, session revoke. BUG-013/015: SQL + migrations by default, demo member only in
+  Development. BUG-018: PBKDF2 600k with upgrade on login. Per-IP rate limits on auth endpoints.
+
+### Breaking
+- 2026-11-13 — `google-login` now takes only `{ idToken }`. `send-otp` no longer returns `demoOtp`. Passwords need
+  8+ characters with a letter and a number (web + API). Startup needs `JwtSettings:Secret` (user-secrets) and an
+  `InitialCreate` migration; Swagger only in Development. Phone numbers are stored as E.164.
 
 ### Fixed
 - 2026-11-12 — Share-contact card on phones: "Accept & share" / "Not now" were squashed flat (flex-1 in a column) →

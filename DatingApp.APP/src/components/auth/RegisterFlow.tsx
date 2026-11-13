@@ -190,8 +190,8 @@ function AccountStep({
     if (!mobile) er.mobile = "Enter your mobile number";
     else if (!isValidSriLankanMobile(mobile)) er.mobile = "Enter a valid Sri Lankan mobile number";
     if (!pw) er.pw = "Create a password";
-    else if (pw.length < 6) er.pw = "Password must be at least 6 characters";
-    else if (!isPasswordAcceptable(pw)) er.pw = "Too weak — add at least one number";
+    else if (pw.length < 8) er.pw = "Password must be at least 8 characters";
+    else if (!isPasswordAcceptable(pw)) er.pw = "Too weak — use at least one letter and one number";
     if (!pw2) er.pw2 = "Confirm your password";
     else if (pw && pw !== pw2) er.pw2 = "Passwords don’t match";
     if (!terms) er.terms = "Please accept the Terms of Service and Privacy Policy to continue";
@@ -256,7 +256,7 @@ function AccountStep({
         helper="We’ll send a 6-digit code to verify this number"
         error={errors.mobile}
       />
-      <PasswordField value={pw} onChange={(v) => { setPw(v); clear("pw"); }} showStrength helper="At least 6 characters, with a number" error={errors.pw} autoComplete="new-password" />
+      <PasswordField value={pw} onChange={(v) => { setPw(v); clear("pw"); }} showStrength helper="At least 8 characters, with a letter and a number" error={errors.pw} autoComplete="new-password" />
       <PasswordField
         label="Confirm password"
         value={pw2}
