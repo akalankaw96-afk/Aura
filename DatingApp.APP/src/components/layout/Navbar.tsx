@@ -14,7 +14,6 @@ import {
   LogoutCurve,
   Messages2,
   Setting2,
-  ShieldTick,
   TextalignJustifycenter,
   User,
 } from "iconsax-react";
@@ -24,7 +23,7 @@ import { LanguageSwitch, Logo, ThemeToggle } from "@/components/ui/Brand";
 import { Toggle } from "@/components/ui/Toggle";
 import { useBackgroundAnimation } from "@/lib/backgroundAnimation";
 import { useLanguage } from "@/context/LanguageContext";
-import { MEMBER, MESSAGES, REQUESTS } from "@/content/dashboard";
+import { MESSAGES, REQUESTS } from "@/content/dashboard";
 import { useKyc } from "@/lib/verification";
 import { apiService, type AuthSession } from "@/services/api";
 
@@ -249,13 +248,6 @@ export function Navbar({ variant = "light" }: { variant?: NavbarVariant }) {
                   <InfoCircle size={20} color="currentColor" className="text-icon-brand" />
                   {t.nav.howItWorks}
                 </Link>
-                <Link
-                  href="/admin"
-                  onClick={() => setOpen(false)}
-                  className="flex h-12 items-center justify-center rounded-full border border-purple-300 bg-purple-50 text-button-md text-purple-900"
-                >
-                  Staff Admin Panel
-                </Link>
                 <button
                   type="button"
                   onClick={() => {
@@ -396,12 +388,6 @@ function AccountMenu({ session, onLogout }: { session: AuthSession | null; onLog
             <Link role="menuitem" href="/support" onClick={() => setOpen(false)} className="flex items-center gap-2.5 px-3 py-2 text-body-sm text-ink hover:bg-brand-subtle focus-visible:shadow-ring-brand">
               <Messages2 size={18} color="currentColor" className="text-icon-brand" />
               <span>{t.footer.contact}</span>
-            </Link>
-          </li>
-          <li role="none">
-            <Link role="menuitem" href="/admin" onClick={() => setOpen(false)} className="flex items-center gap-2.5 px-3 py-2 text-body-sm text-purple-700 hover:bg-purple-50">
-              <ShieldTick size={18} color="currentColor" className="text-purple-600" />
-              <span>Staff Admin Portal</span>
             </Link>
           </li>
 

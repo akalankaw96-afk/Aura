@@ -20,10 +20,9 @@ import {
 import { cn } from "@/lib/cn";
 import { Button } from "@/components/ui/Button";
 import { useToast } from "@/components/ui/Toast";
-import { MEMBER } from "@/content/dashboard";
 import { useAuthSession } from "@/lib/session";
 import { useAccess } from "@/lib/verification";
-import { BOOST, OPEN_PROMOTE_EVENT, openPromote, startBoost, useBoost } from "@/lib/promotion";
+import { BOOST, OPEN_PROMOTE_EVENT, openPromote, useBoost } from "@/lib/promotion";
 
 const fmt = (d: Date) => d.toLocaleDateString("en-GB", { day: "numeric", month: "short" });
 const lkr = (n: number) => `LKR ${n.toLocaleString("en-LK")}`;
@@ -145,7 +144,7 @@ export function PromoteModal() {
   const [paid, setPaid] = useState<{ extending: boolean; start: Date; end: Date } | null>(null);
   const { profileCode, photoUrl } = useAuthSession();
   const memberId = profileCode || "Your Profile";
-  const memberPhoto = photoUrl || MEMBER.photo;
+  const memberPhoto = photoUrl || "/brand/couple.png";
 
   // open from the card, from ?promote=1 (Search → "Promote your profile"), or the event
   useEffect(() => {
@@ -189,14 +188,9 @@ export function PromoteModal() {
   const startDate = extending && boost.ends ? boost.ends : new Date();
   const endDate = new Date(startDate.getTime() + BOOST.days * 86_400_000);
 
+  // No payment gateway yet (Sprint 04): never activate a boost without a real payment.
   const pay = () => {
-    setPaid({ extending, start: startDate, end: endDate });
-    setStep("paying");
-    window.setTimeout(() => {
-      startBoost(BOOST.days);
-      setStep("done");
-      toast.success(extending ? "Promotion extended" : "Your profile is promoted", `Live in Promoted profiles until ${fmt(endDate)}.`);
-    }, 1400);
+    toast.info("Online payment is coming soon", "Contact our support team and we’ll promote your profile for you.");
   };
 
   return createPortal(
@@ -328,7 +322,7 @@ export function PromoteModal() {
                   </>
                 )}
               </Button>
-              <p className="-mt-2 text-center text-caption text-ink-tertiary">One-time payment · no auto-renew · secure checkout</p>
+              <p className="-mt-2 text-center text-caption text-ink-tertiary">Online payment is coming soon — our support team can promote your profile meanwhile.</p>
             </div>
           </>
         )}

@@ -9,7 +9,6 @@ import { PlanUsageCard } from "@/components/sections/dashboard/PlanUsageCard";
 import { ProPlanCard } from "@/components/sections/dashboard/ProPlanCard";
 import { PromoteCard, PromoteModal } from "@/components/sections/promote/PromoteFlow";
 import { EditProfileModal } from "@/components/sections/dashboard/EditProfileModal";
-import { DashboardDemo } from "@/components/sections/dashboard/DashboardDemo";
 
 export const metadata: Metadata = { title: "Dashboard | Aura Matrimony" };
 
@@ -17,8 +16,7 @@ export const metadata: Metadata = { title: "Dashboard | Aura Matrimony" };
  * Member Dashboard — Figma "📊 Member Dashboard" → "Dashboard — Desktop 1440".
  * Figma: "Dashboard — Version B (tabs)". Top (padding 32/80/48, gap 24): Hero, Stats,
  * Requests & friends + Messages (tabbed cards), Search card. Then the full-width
- * Best matches band and Footer. /dashboard?empty=1 shows the new-member empty states.
- * Data is mock (src/content/dashboard.ts).
+ * Best matches band and Footer. Lists show empty states until their APIs exist.
  */
 /** Dashboard → "Find your match" quick-search card. Hidden for now; flip to true to show it again. */
 const SHOW_QUICK_SEARCH = false;
@@ -59,8 +57,6 @@ export default function DashboardPage() {
         </FeatureGate>
       </main>
       <Footer />
-      {/* demo only: switch KYC pending / rejected / approved Free / approved Pro */}
-      <DashboardDemo />
       <PromoteModal />
       <EditProfileModal />
     </div>

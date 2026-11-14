@@ -125,14 +125,12 @@ builder.Services.AddSwaggerGen(c =>
 
 var app = builder.Build();
 
-// 6. Database: migrations on start; demo member only in Development (BUG-013, BUG-015)
+// 6. Database: migrations on start, content seed only — no demo members (BUG-013, BUG-015)
 using (var scope = app.Services.CreateScope())
 {
     var initialiser = scope.ServiceProvider.GetRequiredService<ApplicationDbContextInitialiser>();
     await initialiser.InitialiseAsync();
-    await initialiser.SeedAsync(
-        seedDemoMember: app.Environment.IsDevelopment(),
-        demoMemberPassword: app.Configuration["Seed:DemoMemberPassword"]);
+    await initialiser.SeedAsync();
 }
 
 // 7. Middleware pipeline

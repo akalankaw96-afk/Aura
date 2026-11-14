@@ -1,5 +1,4 @@
-import { Profile, ProfileKycDetails, SuccessStory, PricingPlan, FaqItem } from '../types';
-import { mockProfiles, successStories, pricingPlans, faqs } from '../data/mockData';
+import { MatchRequest, Profile, ProfileKycDetails, SuccessStory, PricingPlan, FaqItem } from '../types';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
 
@@ -18,6 +17,64 @@ function storeSession(session: AuthSession): void {
   window.dispatchEvent(new Event('aura_auth_change'));
 }
 
+/** An API failure with the ProblemDetails `code` (e.g. CODE_INVALID) and extras such as `attemptsLeft`. */
+export class ApiError extends Error {
+  constructor(
+    message: string,
+    public readonly status: number,
+    public readonly code?: string,
+    public readonly extras: { attemptsLeft?: number; retryAfterSeconds?: number } = {},
+  ) {
+    super(message);
+    this.name = 'ApiError';
+  }
+}
+
+const NETWORK_ERROR = 'We couldn’t reach Vikasitha. Check your connection and try again.';
+
+async function toApiError(res: Response, fallback: string): Promise<ApiError> {
+  const body: { title?: string; message?: string; code?: string; attemptsLeft?: number; retryAfterSeconds?: number } =
+    await res.json().catch(() => ({}));
+  return new ApiError(body.title || body.message || fallback, res.status, body.code, {
+    attemptsLeft: body.attemptsLeft,
+    retryAfterSeconds: body.retryAfterSeconds,
+  });
+}
+
+/** Gets a new access token from the httpOnly refresh cookie. Returns null when the session has ended. */
+async function refreshAccessToken(): Promise<string | null> {
+  try {
+    const res = await fetch(`${API_BASE_URL}/auth/refresh`, { method: 'POST', credentials: 'include' });
+    if (!res.ok) return null;
+    const session: AuthSession = await res.json();
+    if (typeof window !== 'undefined') {
+      // keep the profile fields the app already stored; replace only the token
+      const raw = localStorage.getItem('aura_session');
+      const current = raw ? (JSON.parse(raw) as AuthSession) : session;
+      storeSession({ ...current, token: session.token });
+    }
+    return session.token;
+  } catch {
+    return null;
+  }
+}
+
+/** fetch with the access token; on 401 refreshes once and retries (access tokens last 15 minutes). */
+async function authFetch(path: string, init: RequestInit = {}): Promise<Response> {
+  const send = (token: string | null) =>
+    fetch(`${API_BASE_URL}${path}`, {
+      ...init,
+      headers: { ...(init.headers || {}), ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+    });
+  const token = typeof window !== 'undefined' ? localStorage.getItem('aura_token') : null;
+  let res = await send(token);
+  if (res.status === 401) {
+    const fresh = await refreshAccessToken();
+    if (fresh) res = await send(fresh);
+  }
+  return res;
+}
+
 export interface HomeContentResponse {
   featuredProfiles: Profile[];
   successStories: SuccessStory[];
@@ -27,46 +84,8 @@ export interface HomeContentResponse {
   totalWeddingsCount: number;
 }
 
-export interface SubscriptionInfo {
-  planId: 'free' | 'premium' | 'vip';
-  planName: string;
-  durationMonths: number;
-  startDate: string;
-  expiresAt: string;
-  status: 'active' | 'pending_verification' | 'cancelled' | 'expired';
-  autoRenew: boolean;
-  amountLkr: number;
-  paymentMethod: string;
-  transactionId: string;
-  bankSlipUrl?: string;
-  bankSlipRef?: string;
-  retentionDiscountApplied?: boolean;
-}
 
-export interface SuccessStorySubmission {
-  id: string;
-  partnerProfileId: string;
-  partnerName: string;
-  partnerConfirmed: boolean;
-  engagementStatus: 'Engaged' | 'Married' | 'Wedding Planned';
-  rating: number; // 1 - 5
-  title: string;
-  story: string;
-  weddingDate: string;
-  location: string;
-  photoUrl: string;
-  consentToPublish: boolean;
-  status: 'PendingAdminApproval' | 'Published' | 'Private';
-  submittedAt: string;
-  hideProfilesOnSuccess: boolean;
-}
 
-export interface AccountClosureStatus {
-  status: 'active' | 'paused' | 'deactivated' | 'scheduled_for_deletion';
-  gracePeriodEndsAt?: string;
-  deletionReason?: string;
-  scheduledAt?: string;
-}
 
 export interface AuthSession {
   token: string;
@@ -77,8 +96,6 @@ export interface AuthSession {
   role: string;
   profileId?: string | null;
   hasCompletedProfile: boolean;
-  subscription?: SubscriptionInfo;
-  closureStatus?: AccountClosureStatus;
   isVerified?: boolean;
   isUnderReview?: boolean;
   isPremium?: boolean;
@@ -108,113 +125,103 @@ export interface CreateProfilePayload {
 }
 
 export const apiService = {
-  // Fetch home feed (featured profiles, stories, pricing, faqs)
-  async getHomeContent(): Promise<HomeContentResponse> {
+  // Home feed (featured profiles, stories, plans, FAQs) — from the database only. Null when the API can't be reached.
+  async getHomeContent(): Promise<HomeContentResponse | null> {
     try {
-      const res = await fetch(`${API_BASE_URL}/content/home`, {
-        cache: 'no-store',
-      });
-      if (res.ok) {
-        return await res.json();
-      }
-    } catch (err) {
-      console.warn('Backend API not reachable at', API_BASE_URL, '- falling back to embedded verified data.');
+      const res = await fetch(`${API_BASE_URL}/content/home`, { cache: 'no-store' });
+      return res.ok ? await res.json() : null;
+    } catch {
+      return null;
     }
-
-    // Resilient fallback to mock store
-    return {
-      featuredProfiles: mockProfiles,
-      successStories,
-      pricingPlans,
-      faqs,
-      totalVerifiedCount: 50000,
-      totalWeddingsCount: 12000,
-    };
   },
 
-  // Query profiles with filter criteria
+  // Success stories shared by real couples (GET /api/content/stories).
+  async getStories(): Promise<SuccessStory[]> {
+    try {
+      const res = await fetch(`${API_BASE_URL}/content/stories`, { cache: 'no-store' });
+      return res.ok ? await res.json() : [];
+    } catch {
+      return [];
+    }
+  },
+
+  // Members in the database matching the filters (GET /api/profiles). Throws ApiError when the API fails.
   async getProfiles(filters?: {
     gender?: string;
     ageFrom?: number;
     ageTo?: number;
     profession?: string;
     location?: string;
+    verifiedOnly?: boolean;
   }): Promise<Profile[]> {
+    const params = new URLSearchParams();
+    if (filters?.gender) params.append('gender', filters.gender);
+    if (filters?.ageFrom) params.append('ageFrom', filters.ageFrom.toString());
+    if (filters?.ageTo) params.append('ageTo', filters.ageTo.toString());
+    if (filters?.profession && filters.profession !== 'All') params.append('profession', filters.profession);
+    if (filters?.location && filters.location !== 'All') params.append('location', filters.location);
+    if (filters?.verifiedOnly) params.append('verifiedOnly', 'true');
+
+    let res: Response;
     try {
-      const params = new URLSearchParams();
-      if (filters?.gender) params.append('gender', filters.gender);
-      if (filters?.ageFrom) params.append('ageFrom', filters.ageFrom.toString());
-      if (filters?.ageTo) params.append('ageTo', filters.ageTo.toString());
-      if (filters?.profession && filters.profession !== 'All') params.append('profession', filters.profession);
-      if (filters?.location && filters.location !== 'All') params.append('location', filters.location);
-
-      const token = typeof window !== 'undefined' ? localStorage.getItem('aura_token') : null;
-      const res = await fetch(`${API_BASE_URL}/profiles?${params.toString()}`, {
-        cache: 'no-store',
-        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-      });
-      if (res.ok) {
-        return await res.json();
-      }
-    } catch (err) {
-      console.warn('API error fetching profiles, using local dataset.');
-    }
-
-    // Local filter fallback
-    return mockProfiles.filter((p) => {
-      if (filters?.gender && p.gender !== filters.gender) return false;
-      if (filters?.ageFrom && p.age < filters.ageFrom) return false;
-      if (filters?.ageTo && p.age > filters.ageTo) return false;
-      if (filters?.profession && filters.profession !== 'All' && p.professionCategory !== filters.profession) {
-        return false;
-      }
-      if (filters?.location && filters.location !== 'All' && !p.location.includes(filters.location) && !p.country.includes(filters.location)) {
-        return false;
-      }
-      return true;
-    });
-  },
-
-  // Profile details
-  async getProfileById(id: string): Promise<Profile | null> {
-    try {
-      const res = await fetch(`${API_BASE_URL}/profiles/${id}`);
-      if (res.ok) {
-        return await res.json();
-      }
+      res = await authFetch(`/profiles?${params.toString()}`, { cache: 'no-store' });
     } catch {
-      // Fallback
+      throw new ApiError(NETWORK_ERROR, 0);
     }
-    return mockProfiles.find((p) => p.id === id) || null;
+    if (!res.ok) throw await toApiError(res, 'We couldn’t load profiles. Please try again.');
+    return res.json();
   },
 
-  // Get current logged-in candidate profile
-  async getMyProfile(): Promise<Profile | null> {
-    const token = typeof window !== 'undefined' ? localStorage.getItem('aura_token') : null;
-    if (!token) return null;
+  // One member's profile. Null when it doesn't exist; throws ApiError when the API fails.
+  async getProfileById(id: string): Promise<Profile | null> {
+    let res: Response;
     try {
-      const res = await fetch(`${API_BASE_URL}/profiles/me`, {
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-      });
-      if (res.ok) {
-        const json: Profile = await res.json();
-        return json;
-      }
-    } catch (e) {
-      console.warn('API getMyProfile error:', e);
+      res = await authFetch(`/profiles/${encodeURIComponent(id)}`, { cache: 'no-store' });
+    } catch {
+      throw new ApiError(NETWORK_ERROR, 0);
     }
-    return null;
+    if (res.status === 404 || res.status === 400) return null;
+    if (!res.ok) throw await toApiError(res, 'We couldn’t load this profile. Please try again.');
+    return res.json();
+  },
+
+  // The signed-in member's own profile (null when not created yet or not signed in).
+  async getMyProfile(): Promise<Profile | null> {
+    if (typeof window === 'undefined' || !localStorage.getItem('aura_token')) return null;
+    try {
+      const res = await authFetch('/profiles/me');
+      return res.ok ? await res.json() : null;
+    } catch {
+      return null;
+    }
+  },
+
+  /**
+   * Re-reads the member from the server (GET /auth/me) so verification status and plan are current
+   * (e.g. after the safety team approves the profile). Keeps the cached token.
+   */
+  async refreshSession(): Promise<void> {
+    if (typeof window === 'undefined' || !localStorage.getItem('aura_token')) return;
+    try {
+      const res = await authFetch('/auth/me');
+      if (!res.ok) return;
+      const me: AuthSession = await res.json();
+      const raw = localStorage.getItem('aura_session');
+      const current = raw ? (JSON.parse(raw) as AuthSession) : me;
+      storeSession({ ...current, ...me, token: localStorage.getItem('aura_token') || current.token });
+      window.dispatchEvent(new Event('vk-kyc-change'));
+      window.dispatchEvent(new Event('vk-plan-change'));
+    } catch {
+      /* offline: keep the cached session */
+    }
   },
 
   // Authentication: Register with Email. No fake session if the API fails (BUG-003).
   async register(data: {
-    fullName: string;
-    email: string;
+    fullName?: string;
+    email?: string;
     password: string;
-    phoneNumber: string;
+    phoneNumber?: string;
     profileFor?: string;
     gender?: string;
   }): Promise<AuthSession> {
@@ -227,9 +234,9 @@ export const apiService = {
         body: JSON.stringify(data),
       });
     } catch {
-      throw new Error('We couldn’t reach Vikasitha. Check your connection and try again.');
+      throw new ApiError(NETWORK_ERROR, 0);
     }
-    if (!res.ok) throw new Error(await problemMessage(res, 'Registration failed. Please try again.'));
+    if (!res.ok) throw await toApiError(res, 'Registration failed. Please try again.');
     const json: AuthSession = await res.json();
     storeSession(json);
     return json;
@@ -256,13 +263,6 @@ export const apiService = {
         localStorage.setItem('aura_token', json.token);
         localStorage.setItem('aura_session', JSON.stringify(json));
         localStorage.setItem('aura_auth_user', JSON.stringify(json));
-        if (json.isUnderReview || json.isVerified === false || !json.hasCompletedProfile) {
-          localStorage.setItem('aura_review_status', 'submitted');
-          localStorage.setItem('vk-kyc', 'pending');
-        } else {
-          localStorage.setItem('vk-kyc', 'live');
-        }
-        localStorage.setItem('vk-plan', json.isPremium ? (json.planId || 'gold') : 'free');
         window.dispatchEvent(new Event('aura_auth_change'));
         window.dispatchEvent(new Event('vk-kyc-change'));
         window.dispatchEvent(new Event('vk-plan-change'));
@@ -294,13 +294,6 @@ export const apiService = {
     const session: AuthSession = { ...json, planId: json.planId || 'free', photoUrl: json.photoUrl || data.photoUrl };
     storeSession(session);
     if (typeof window !== 'undefined') {
-      if (session.isUnderReview || session.isVerified === false || !session.hasCompletedProfile) {
-        localStorage.setItem('aura_review_status', 'submitted');
-        localStorage.setItem('vk-kyc', 'pending');
-      } else {
-        localStorage.setItem('vk-kyc', 'live');
-      }
-      localStorage.setItem('vk-plan', session.isPremium ? (session.planId || 'gold') : 'free');
       window.dispatchEvent(new Event('vk-kyc-change'));
       window.dispatchEvent(new Event('vk-plan-change'));
     }
@@ -317,9 +310,9 @@ export const apiService = {
         body: JSON.stringify({ phoneNumber }),
       });
     } catch {
-      throw new Error('We couldn’t reach Vikasitha. Check your connection and try again.');
+      throw new ApiError(NETWORK_ERROR, 0);
     }
-    if (!res.ok) throw new Error(await problemMessage(res, 'We couldn’t send the code. Please try again.'));
+    if (!res.ok) throw await toApiError(res, 'We couldn’t send the code. Please try again.');
     return res.json();
   },
 
@@ -334,9 +327,9 @@ export const apiService = {
         body: JSON.stringify({ phoneNumber, otpCode, fullName }),
       });
     } catch {
-      throw new Error('We couldn’t reach Vikasitha. Check your connection and try again.');
+      throw new ApiError(NETWORK_ERROR, 0);
     }
-    if (!res.ok) throw new Error(await problemMessage(res, 'That code isn’t right.'));
+    if (!res.ok) throw await toApiError(res, 'That code isn’t right.');
     const json: AuthSession = await res.json();
     storeSession(json);
     return json;
@@ -346,314 +339,87 @@ export const apiService = {
   async createOrUpdateProfile(profileData: CreateProfilePayload): Promise<Profile> {
     const token = typeof window !== 'undefined' ? localStorage.getItem('aura_token') : null;
 
-    // No real session → keep the profile locally (demo) instead of inventing an account (BUG-002/003).
+    // Only a real session can save a profile (old builds stored placeholder tokens like "demo-…").
     const hasRealToken = !!token && !/^(demo|otp|google)-/.test(token);
 
     if (hasRealToken) {
+      let res: Response;
       try {
-        const res = await fetch(`${API_BASE_URL}/profiles`, {
+        res = await authFetch('/profiles', {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            ...(token ? { Authorization: `Bearer ${token}` } : {}),
-          },
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(profileData),
         });
+      } catch {
+        throw new ApiError(NETWORK_ERROR, 0);
+      }
+      // Signed in: a failed save is a real error — never pretend it worked (BUG-014).
+      if (!res.ok) throw await toApiError(res, 'We couldn’t save your profile. Please try again.');
 
-        if (res.ok) {
-          const savedProfile: Profile = await res.json();
-          console.log('✅ Profile successfully persisted to SQL Server database (LocalDB\\MSSQLLocalDB):', savedProfile);
-          if (typeof window !== 'undefined') {
-            const raw = localStorage.getItem('aura_session');
-            if (raw) {
-              const sess = JSON.parse(raw);
-              sess.hasCompletedProfile = true;
-              sess.profileId = savedProfile.id;
-              sess.fullName = savedProfile.name;
-              localStorage.setItem('aura_session', JSON.stringify(sess));
-            }
-          }
-          return savedProfile;
-        } else {
-          const errorText = await res.text();
-          console.error('API create profile returned error status:', res.status, errorText);
+      const savedProfile: Profile = await res.json();
+      if (typeof window !== 'undefined') {
+        const raw = localStorage.getItem('aura_session');
+        if (raw) {
+          const sess = JSON.parse(raw);
+          sess.hasCompletedProfile = true;
+          sess.profileId = savedProfile.id;
+          sess.fullName = savedProfile.name;
+          localStorage.setItem('aura_session', JSON.stringify(sess));
         }
-      } catch (err) {
-        console.warn('API create profile error:', err);
       }
+      return savedProfile;
     }
 
-    // Local fallback
-    const newProfile: Profile = {
-      id: 'p-custom-' + Date.now(),
-      code: `LK-${Math.floor(1000 + Math.random() * 9000)}`,
-      name: profileData.fullName,
-      gender: profileData.gender,
-      age: profileData.age,
-      height: profileData.height,
-      profession: profileData.profession,
-      professionCategory: profileData.professionCategory,
-      education: profileData.education,
-      location: profileData.location,
-      country: profileData.country,
-      religion: profileData.religion,
-      community: profileData.community,
-      verified: true,
-      premium: false,
-      photoUrl: profileData.photoUrl,
-      bio: profileData.bio,
-      aboutFamily: profileData.aboutFamily,
-      horoscopeAvailable: profileData.horoscopeAvailable,
-      interests: profileData.interests,
-      details: profileData.details,
-    };
-
-    if (typeof window !== 'undefined') {
-      const raw = localStorage.getItem('aura_session');
-      if (raw) {
-        const sess = JSON.parse(raw);
-        sess.hasCompletedProfile = true;
-        sess.profileId = newProfile.id;
-        sess.fullName = newProfile.name;
-        localStorage.setItem('aura_session', JSON.stringify(sess));
-      }
-    }
-
-    return newProfile;
+    // Not signed in: never invent a local profile (BUG-014) — the member must log in first.
+    throw new ApiError('Please log in again to submit your profile.', 401, 'UNAUTHENTICATED');
   },
 
   // Match Interest Request
-  async sendMatchRequest(receiverProfileId: string, note?: string) {
+  // Send an interest (POST /api/match-requests). Throws ApiError on failure — never pretends it was sent.
+  async sendMatchRequest(receiverProfileId: string, note?: string): Promise<MatchRequest> {
+    let res: Response;
     try {
-      const token = typeof window !== 'undefined' ? localStorage.getItem('aura_token') : null;
-      const res = await fetch(`${API_BASE_URL}/match-requests`, {
+      res = await authFetch('/match-requests', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ receiverProfileId, note }),
       });
-      if (res.ok) {
-        return await res.json();
-      }
-    } catch (err) {
-      console.warn('API match request error:', err);
+    } catch {
+      throw new ApiError(NETWORK_ERROR, 0);
     }
-    return { success: true, message: 'Request sent' };
+    if (!res.ok) throw await toApiError(res, 'We couldn’t send your interest. Please try again.');
+    return res.json();
   },
 
-  // Get My Requests (Incoming & Sent)
-  async getMyRequests(): Promise<any[]> {
+  // Interests I sent and received (GET /api/match-requests/my).
+  async getMyRequests(): Promise<MatchRequest[]> {
+    let res: Response;
     try {
-      const token = typeof window !== 'undefined' ? localStorage.getItem('aura_token') : null;
-      const res = await fetch(`${API_BASE_URL}/match-requests/my`, {
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-      });
-      if (res.ok) {
-        return await res.json();
-      }
-    } catch (err) {
-      console.warn('API get requests error:', err);
+      res = await authFetch('/match-requests/my');
+    } catch {
+      throw new ApiError(NETWORK_ERROR, 0);
     }
-    return [];
+    if (!res.ok) throw await toApiError(res, 'We couldn’t load your interests. Please try again.');
+    return res.json();
   },
 
-  // Respond to Request (Accept or Decline)
-  async respondMatchRequest(requestId: string, accept: boolean) {
+  // Accept or decline a received interest (PUT /api/match-requests/{id}/respond).
+  async respondMatchRequest(requestId: string, accept: boolean): Promise<MatchRequest> {
+    let res: Response;
     try {
-      const token = typeof window !== 'undefined' ? localStorage.getItem('aura_token') : null;
-      const res = await fetch(`${API_BASE_URL}/match-requests/${requestId}/respond`, {
+      res = await authFetch(`/match-requests/${encodeURIComponent(requestId)}/respond`, {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ accept }),
       });
-      if (res.ok) {
-        return await res.json();
-      }
-    } catch (err) {
-      console.warn('API respond match request error:', err);
+    } catch {
+      throw new ApiError(NETWORK_ERROR, 0);
     }
-    return { success: true };
+    if (!res.ok) throw await toApiError(res, 'We couldn’t update this interest. Please try again.');
+    return res.json();
   },
 
   // Flow 4: Subscriptions & Billing
-  getSubscription(): SubscriptionInfo {
-    if (typeof window !== 'undefined') {
-      const stored = localStorage.getItem('aura_subscription');
-      if (stored) {
-        try {
-          return JSON.parse(stored);
-        } catch {}
-      }
-    }
-    // Default free plan
-    return {
-      planId: 'free',
-      planName: 'Basic Explorer',
-      durationMonths: 0,
-      startDate: new Date().toISOString(),
-      expiresAt: '2099-12-31T23:59:59Z',
-      status: 'active',
-      autoRenew: false,
-      amountLkr: 0,
-      paymentMethod: 'None',
-      transactionId: 'TXN-FREE',
-    };
-  },
-
-  activateSubscription(sub: SubscriptionInfo): SubscriptionInfo {
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('aura_subscription', JSON.stringify(sub));
-      const rawSess = localStorage.getItem('aura_session');
-      if (rawSess) {
-        try {
-          const sess = JSON.parse(rawSess);
-          sess.subscription = sub;
-          localStorage.setItem('aura_session', JSON.stringify(sess));
-        } catch {}
-      }
-    }
-    return sub;
-  },
-
-  updateAutoRenew(enabled: boolean): SubscriptionInfo {
-    const current = this.getSubscription();
-    current.autoRenew = enabled;
-    return this.activateSubscription(current);
-  },
-
-  cancelSubscription(reason: string, acceptRetention: boolean, refundRequested?: boolean): SubscriptionInfo {
-    const current = this.getSubscription();
-    if (acceptRetention) {
-      current.retentionDiscountApplied = true;
-      current.autoRenew = true;
-      return this.activateSubscription(current);
-    }
-    current.autoRenew = false;
-    current.status = 'cancelled';
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('aura_cancel_survey', JSON.stringify({
-        reason,
-        cancelledAt: new Date().toISOString(),
-        refundRequested: !!refundRequested,
-      }));
-    }
-    return this.activateSubscription(current);
-  },
-
-  verifyPromoCode(code: string): { valid: boolean; discountPercent: number; message: string } {
-    const clean = code.trim().toUpperCase();
-    if (clean === 'AURA30' || clean === 'WELCOME30') {
-      return { valid: true, discountPercent: 30, message: '30% Special Introductory Discount Applied!' };
-    }
-    if (clean === 'PROMO50' || clean === 'MATCH50') {
-      return { valid: true, discountPercent: 50, message: '50% Half-Price Festival Discount Applied!' };
-    }
-    if (clean === 'VIP2025' || clean === 'VIP2026') {
-      return { valid: true, discountPercent: 25, message: '25% Elite VIP Matchmaker Discount Applied!' };
-    }
-    return { valid: false, discountPercent: 0, message: 'Invalid or expired promo code.' };
-  },
-
-  // Flow 5: "Found My Match" & Success Story Submission
-  submitSuccessStory(submission: SuccessStorySubmission): SuccessStorySubmission {
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('aura_my_success_story', JSON.stringify(submission));
-      // If user chose to hide both profiles on success
-      if (submission.hideProfilesOnSuccess) {
-        this.pauseProfile(true);
-      }
-    }
-    return submission;
-  },
-
-  getMySuccessStory(): SuccessStorySubmission | null {
-    if (typeof window !== 'undefined') {
-      const stored = localStorage.getItem('aura_my_success_story');
-      if (stored) {
-        try {
-          return JSON.parse(stored);
-        } catch {}
-      }
-    }
-    return null;
-  },
-
-  // Flow 5: Account Closure, Pause, Deactivate & Deletion
-  pauseProfile(paused: boolean): AccountClosureStatus {
-    const status: AccountClosureStatus = {
-      status: paused ? 'paused' : 'active',
-    };
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('aura_closure_status', JSON.stringify(status));
-      const rawSess = localStorage.getItem('aura_session');
-      if (rawSess) {
-        try {
-          const sess = JSON.parse(rawSess);
-          sess.closureStatus = status;
-          localStorage.setItem('aura_session', JSON.stringify(sess));
-        } catch {}
-      }
-    }
-    return status;
-  },
-
-  deactivateAccount(): AccountClosureStatus {
-    const status: AccountClosureStatus = {
-      status: 'deactivated',
-    };
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('aura_closure_status', JSON.stringify(status));
-    }
-    return status;
-  },
-
-  scheduleAccountDeletion(reason: string, otpOrPassword: string, graceDays = 30): AccountClosureStatus {
-    const graceEnds = new Date();
-    graceEnds.setDate(graceEnds.getDate() + graceDays);
-
-    const status: AccountClosureStatus = {
-      status: 'scheduled_for_deletion',
-      gracePeriodEndsAt: graceEnds.toISOString(),
-      deletionReason: reason,
-      scheduledAt: new Date().toISOString(),
-    };
-
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('aura_closure_status', JSON.stringify(status));
-    }
-    return status;
-  },
-
-  restoreAccount(): AccountClosureStatus {
-    const status: AccountClosureStatus = {
-      status: 'active',
-    };
-    if (typeof window !== 'undefined') {
-      localStorage.removeItem('aura_closure_status');
-    }
-    return status;
-  },
-
-  getClosureStatus(): AccountClosureStatus {
-    if (typeof window !== 'undefined') {
-      const stored = localStorage.getItem('aura_closure_status');
-      if (stored) {
-        try {
-          return JSON.parse(stored);
-        } catch {}
-      }
-    }
-    return { status: 'active' };
-  },
-
   logoutAllDevices(): void {
     if (typeof window !== 'undefined') {
       // End the session on the server and clear the httpOnly refresh cookie (fire-and-forget).

@@ -63,7 +63,7 @@ export function DashboardHero() {
                 ? "Please complete your candidate profile to activate personalized match recommendations."
                 : "Your profile is being reviewed — take a look around while we get your matches ready."
               : lang === "si"
-              ? `අද දිනයේ නව ගැළපීම් 12ක් සහ යෝජනා 3ක් ඔබ වෙනුවෙන් සූදානම්ව ඇත.`
+              ? "ශ්‍රී ලංකාවෙන් සහ විදේශයන්හි සත්‍යාපිත සාමාජිකයින් අතරින් ඔබේ සහකරු සොයාගන්න."
               : DASH_HERO.subtitle}
           </p>
           <div className="enter flex flex-wrap gap-3 pt-2" style={{ "--enter-delay": "240ms" } as React.CSSProperties}>
@@ -119,7 +119,7 @@ function ProfileStrength() {
     "Family & partner preferences": lang === "si" ? "පවුලේ තොරතුරු සහ කැමැත්ත" : "Family & partner preferences",
     "Upload photo (verified)": lang === "si" ? "සත්‍යාපිත ඡායාරූපය" : "Upload photo (verified)",
     "Add horoscope for better matches": lang === "si" ? "කේන්දර සටහන එක් කරන්න" : "Add horoscope for better matches",
-    "Google account connected": lang === "si" ? "Google ගිණුම සම්බන්ධයි" : "Google account connected",
+    "Account created": lang === "si" ? "ගිණුම සාදන ලදී" : "Account created",
     "Profile submitted": lang === "si" ? "පැතිකඩ යොමු කරන ලදී" : "Profile submitted",
     "Safety review in progress": lang === "si" ? "ආරක්ෂක සමාලෝචනය සිදුවෙමින් පවතී" : "Safety review in progress",
     "Account verified": lang === "si" ? "ගිණුම සත්‍යාපිතයි" : "Account verified",
@@ -134,12 +134,12 @@ function ProfileStrength() {
       ]
     : hasCompletedProfile
     ? [
-        { done: true, label: "Google account connected" },
+        { done: true, label: "Account created" },
         { done: true, label: "Profile submitted" },
         { done: false, label: "Safety review in progress" },
       ]
     : [
-        { done: true, label: "Google account connected" },
+        { done: true, label: "Account created" },
         { done: false, label: "Personal details" },
         { done: false, label: "Upload photo (verified)" },
       ];

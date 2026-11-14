@@ -5,7 +5,8 @@ import { ArrowLeft, ArrowRight2, Location, Verify } from "iconsax-react";
 import { cn } from "@/lib/cn";
 import { SectionHeader } from "@/components/ui/SectionHeader";
 import { useLanguage } from "@/context/LanguageContext";
-import { STORIES } from "@/content/home";
+import { apiService } from "@/services/api";
+import type { SuccessStory } from "@/types";
 import { BumpTitle } from "@/components/motion/BumpTitle";
 
 /**
@@ -30,13 +31,34 @@ const PHOTO_W = 360;
 
 export function SuccessStories() {
   const { t } = useLanguage();
-  const items = useMemo(() => {
-    return t.stories.items.map((item, idx) => ({
-      ...item,
-      initials: STORIES.items[idx]?.initials || "VK",
-      photo: STORIES.items[idx]?.photo || "/images/stories/story-main.jpg",
-    }));
-  }, [t.stories.items]);
+  // Stories shared by real couples (GET /api/content/stories). The section hides when there are none.
+  const [stories, setStories] = useState<SuccessStory[]>([]);
+  useEffect(() => {
+    let alive = true;
+    void apiService.getStories().then((list) => alive && setStories(list));
+    return () => {
+      alive = false;
+    };
+  }, []);
+  const items = useMemo(
+    () =>
+      stories.map((st) => ({
+        badge: st.weddingDate ? `Married ${st.weddingDate}` : "",
+        headline: st.title,
+        quote: st.quote,
+        names: st.coupleNames,
+        meta: st.location,
+        caption: t.stories.watchStory,
+        captionMeta: [st.professionInfo, st.weddingDate].filter(Boolean).join(" · "),
+        initials: st.coupleNames
+          .split(/\s*&\s*|\s+and\s+/i)
+          .map((n) => n.trim().replace(/^(Dr|Eng)\.?\s+/i, "")[0] || "")
+          .join("")
+          .toUpperCase() || "VK",
+        photo: st.photoUrl,
+      })),
+    [stories, t.stories.watchStory],
+  );
 
   const n = items.length;
   const [i, setI] = useState(0);
@@ -47,10 +69,10 @@ export function SuccessStories() {
   const go = useCallback((k: number) => setI(((k % n) + n) % n), [n]);
 
   useEffect(() => {
-    if (paused) return;
+    if (paused || n < 2) return;
     const timer = window.setTimeout(() => go(i + 1), INTERVAL);
     return () => window.clearTimeout(timer);
-  }, [i, paused, go]);
+  }, [i, paused, go, n]);
 
   useEffect(() => {
     prev.current = i;
@@ -70,6 +92,8 @@ export function SuccessStories() {
       touchX.current = null;
     },
   };
+
+  if (n === 0) return null;
 
   return (
     <section

@@ -45,8 +45,13 @@ public class AuthService : IAuthService
 
     public async Task<AuthResult> RegisterAsync(RegisterDto dto, ClientInfo client, CancellationToken ct = default)
     {
-        var email = Identifiers.RequireEmail(dto.Email);
         var phone = string.IsNullOrWhiteSpace(dto.PhoneNumber) ? string.Empty : Identifiers.RequirePhone(dto.PhoneNumber);
+        if (phone.Length == 0 && string.IsNullOrWhiteSpace(dto.Email))
+        {
+            throw AppException.Validation("Enter your mobile number or email address.", "phoneNumber");
+        }
+        // Mobile-only sign-up gets a placeholder e-mail (same pattern as SMS sign-in); the member can add a real one later.
+        var email = string.IsNullOrWhiteSpace(dto.Email) ? PhoneEmail(phone) : Identifiers.RequireEmail(dto.Email);
         Identifiers.EnsureStrongPassword(dto.Password);
 
         if (await _context.Users.AnyAsync(u => u.Email == email, ct))
@@ -64,8 +69,9 @@ public class AuthService : IAuthService
         {
             Email = email,
             PasswordHash = _passwordHasher.HashPassword(dto.Password),
-            FullName = dto.FullName.Trim(),
+            FullName = string.IsNullOrWhiteSpace(dto.FullName) ? "New member" : dto.FullName.Trim(),
             PhoneNumber = phone,
+            PhoneVerified = false, // set by verify-otp
             Role = Roles.Member
         };
 
@@ -178,7 +184,7 @@ public class AuthService : IAuthService
             user = new User
             {
                 PhoneNumber = phone,
-                Email = $"phone_{phone.TrimStart('+')}@auramatrimony.lk",
+                Email = PhoneEmail(phone),
                 FullName = string.IsNullOrWhiteSpace(dto.FullName) ? "Phone Member" : dto.FullName.Trim(),
                 PasswordHash = _passwordHasher.HashPassword(SecureTokens.NewToken()),
                 Role = Roles.Member
@@ -217,6 +223,8 @@ public class AuthService : IAuthService
             ? null
             : await _context.Users.Include(u => u.Profile).FirstOrDefaultAsync(u => u.PhoneNumber == phone, ct);
     }
+
+    private static string PhoneEmail(string phone) => $"phone_{phone.TrimStart('+')}@auramatrimony.lk";
 
     private static AppException InvalidCredentials() =>
         new(401, ErrorCodes.InvalidCredentials, "Invalid email, mobile number or password.");

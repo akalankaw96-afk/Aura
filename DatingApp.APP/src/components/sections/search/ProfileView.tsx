@@ -62,6 +62,7 @@ export interface ViewProfile {
   aboutFamily?: string;
   rasi?: string;
   nakshatra?: string;
+  verified?: boolean;
 }
 
 const fallbackPhoto = (g: ViewProfile["gender"]) => (g === "groom" ? "/brand/groom.png" : "/brand/bride.png");
@@ -88,7 +89,7 @@ export function ProfileView({
   /** where Back leads: the search results, or Home when the profile was opened from the Home page */
   backTo?: "results" | "home" | "dashboard";
   /** false when the interest couldn’t be sent (free limit reached) */
-  onInterest: (p: ViewProfile) => boolean;
+  onInterest: (p: ViewProfile) => boolean | Promise<boolean>;
 }) {
   const [query, setQuery] = useState("");
   // keep the opened profile in the list even if the current filters exclude it
@@ -221,7 +222,7 @@ function Photo({ p, className }: { p: ViewProfile; className?: string }) {
   );
 }
 
-function Detail({ p, x, onInterest }: { p: ViewProfile; x?: ProfileExtras; onInterest: (p: ViewProfile) => boolean }) {
+function Detail({ p, x, onInterest }: { p: ViewProfile; x?: ProfileExtras; onInterest: (p: ViewProfile) => boolean | Promise<boolean> }) {
   const toast = useToast();
   const signedIn = useSignedIn();
   const { profiles: favourites, save } = useFavourites();
@@ -231,7 +232,7 @@ function Detail({ p, x, onInterest }: { p: ViewProfile; x?: ProfileExtras; onInt
   const [shareUrl, setShareUrl] = useState<string | null>(null);
   const [reportOpen, setReportOpen] = useState(false);
   const [viewer, setViewer] = useState<number | null>(null);
-  // Demo gallery: the API will return each member’s photos; for now the main photo is shown in a few framings
+  // Gallery: the main photo for now — the photos API (Sprint 02) will return every photo
   const photos = useMemo(() => galleryOf(p, x?.photos ?? 1), [p, x?.photos]);
   const [reported, setReported] = useState(false);
 
@@ -242,16 +243,16 @@ function Detail({ p, x, onInterest }: { p: ViewProfile; x?: ProfileExtras; onInt
     { icon: Ruler, label: "Height", value: p.height },
     { icon: Ruler, label: "Weight", value: signedIn ? p.details?.weightKg ? `${p.details.weightKg} kg` : "—" : "Unlock with login" },
     { icon: Book1, label: "Religion", value: p.religion },
-    { icon: People, label: "Ethnicity", value: x?.ethnicity ?? "—" },
+    { icon: People, label: "Ethnicity", value: x?.ethnicity || "—" },
     { icon: People, label: "Caste", value: p.details?.caste || "—" },
     { icon: Briefcase, label: "Profession", value: p.profession },
     { icon: Briefcase, label: "Monthly salary range", value: signedIn ? p.details?.monthlySalaryRange || "—" : "Unlock with login" },
     { icon: Teacher, label: "Education", value: p.education || x?.education || "—" },
-    { icon: Heart, label: "Civil status", value: x?.civil ?? "Never married" },
+    { icon: Heart, label: "Civil status", value: x?.civil || "—" },
     { icon: Location, label: "Lives in", value: p.location },
     { icon: Location, label: "Resident country", value: p.countryName || COUNTRIES.find((country) => country.iso === p.country)?.name || "—" },
     { icon: Location, label: "District", value: p.details?.district || x?.district || "—" },
-    { icon: Profile, label: "Posted by", value: x?.postedBy ?? "Self" },
+    { icon: Profile, label: "Posted by", value: x?.postedBy || "—" },
     { icon: Star1, label: "Horoscope", value: p.horoscope ? "Available" : "On request" },
     { icon: Star1, label: "Zodiac sign", value: signedIn ? p.details?.zodiacSign || "—" : "Unlock with login" },
   ];
@@ -265,7 +266,7 @@ function Detail({ p, x, onInterest }: { p: ViewProfile; x?: ProfileExtras; onInt
   const send = () => {
     if (!requireMember("send an interest")) return;
     if (sent) return;
-    onInterest(p);
+    void onInterest(p);
   };
 
   return (
@@ -326,13 +327,13 @@ function Detail({ p, x, onInterest }: { p: ViewProfile; x?: ProfileExtras; onInt
                 )}
               </p>
               <div className="flex flex-wrap gap-2 pt-1">
-                <Badge tone="success">ID verified</Badge>
+                {p.verified !== false && <Badge tone="success">ID verified</Badge>}
                 {p.horoscope && <Badge tone="info">Horoscope</Badge>}
-                {x && <Badge tone="neutral">{x.posted}</Badge>}
+                {x?.posted && <Badge tone="neutral">{x.posted}</Badge>}
               </div>
             </div>
             <div className="flex shrink-0 items-start gap-2">
-              {x && (
+              {x && x.match !== null && (
                 <div className="flex flex-col items-center gap-0.5 rounded-[16px] bg-success-bg px-3 py-2 text-success-fg">
                   <span className="text-h5">{x.match}%</span>
                   <span className="text-caption">{matchLabel(x.match)}</span>
@@ -567,7 +568,7 @@ function ReportModal({ id, open, onCancel, onSubmit }: { id: string; open: boole
 interface GalleryPhoto {
   src: string;
   fallback: string;
-  /** demo framing of the same photo */
+  /** framing of the photo in the gallery */
   zoom: number;
   origin: string;
 }

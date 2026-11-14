@@ -10,6 +10,7 @@ import { useLanguage } from "@/context/LanguageContext";
 import { ProfileCard } from "@/components/cards/ProfileCard";
 import { useRouter } from "next/navigation";
 import { FEATURED, type FeaturedProfile } from "@/content/home";
+import { sendInterest, toFeatured, useMemberProfiles } from "@/lib/profiles";
 
 /**
  * Figma: 04 Featured profiles — padding 48/80/96, gap 48.
@@ -21,11 +22,16 @@ export function FeaturedProfiles() {
   const toast = useToast();
   const { t, lang } = useLanguage();
   const [filter, setFilter] = useState<"all" | "bride" | "groom">("all");
-  const list = useMemo(() => FEATURED.profiles.filter((p) => filter === "all" || p.gender === filter), [filter]);
+  // Public home page: the 8 most recent approved members (empty until profiles are approved)
+  const { profiles } = useMemberProfiles({ verifiedOnly: true });
+  const members = useMemo(() => profiles.slice(0, 8).map(toFeatured), [profiles]);
+  const list = useMemo(() => members.filter((p) => filter === "all" || p.gender === filter), [members, filter]);
 
   const router = useRouter();
   // Profile details open as a full page (search results list + profile)
   const handleOpenDetail = (p: FeaturedProfile) => router.push(`/search?for=${p.gender}&id=${p.id}&from=home`);
+
+  if (members.length === 0) return null;
 
   return (
     <section id="profiles" className="scroll-mt-28 overflow-hidden pb-16 pt-12 lg:pb-24">
@@ -53,7 +59,12 @@ export function FeaturedProfiles() {
               <ProfileCard
                 profile={p}
                 onView={handleOpenDetail}
-                onInterest={() => toast.success("Interest sent", `${p.id} will be notified. We’ll tell you when they reply.`)}
+                onInterest={async () => {
+                  const r = await sendInterest(p);
+                  if (r.ok) toast.success("Interest sent", r.message);
+                  else toast.error("Interest not sent", r.message);
+                  return r.ok;
+                }}
                 onShortlist={(pr, saved) =>
                   saved
                     ? toast.success(lang === "si" ? "ලැයිස්තුවට එක් කළා" : "Added to shortlist", `${pr.id} ${lang === "si" ? "ඔබගේ ලැයිස්තුවට සුරැකිණි." : "is saved to your shortlist."}`)

@@ -38,18 +38,13 @@ export interface MarqueeProfile {
   location: string;
   language: string;
   photo: string;
+  /** False for members still waiting for review (no "Verified" badge). */
+  verified?: boolean;
 }
 
 /** Figma: Profile Marquee (auto-scroll) — Profile Photo Card 1…7 (the track repeats them) */
-export const MARQUEE_PROFILES: MarqueeProfile[] = [
-  { id: "MP-24817", city: "Kandy", country: "lk", age: 28, height: "5′ 4″", profession: "Doctor", religion: "Buddhist", avatar: "/images/profiles/avatar-mp-24817.jpg", gender: "groom", name: "Kavindu", location: "Kandy, Sri Lanka", language: "Sinhala", photo: "/images/profiles/mp-24817.jpg" },
-  { id: "MP-24790", city: "Melbourne", country: "au", age: 32, height: "5′ 9″", profession: "Engineer", religion: "Catholic", avatar: "/images/profiles/avatar-mp-24790.jpg", gender: "bride", name: "Nethmi", location: "Melbourne, Australia", language: "Sinhala", photo: "/images/profiles/mp-24790.jpg" },
-  { id: "MP-24766", city: "Toronto", country: "ca", age: 29, height: "5′ 3″", profession: "Nurse", religion: "Hindu", avatar: "/images/profiles/avatar-mp-24766.jpg", gender: "bride", name: "Tharshini", location: "Toronto, Canada", language: "Tamil", photo: "/images/profiles/mp-24766.jpg" },
-  { id: "MP-24751", city: "Colombo", country: "lk", age: 30, height: "5′ 8″", profession: "Accountant", religion: "Muslim", avatar: "/images/profiles/avatar-mp-24751.jpg", gender: "groom", name: "Rizwan", location: "Colombo, Sri Lanka", language: "Tamil", photo: "/images/profiles/mp-24751.jpg" },
-  { id: "MP-24733", city: "Galle", country: "lk", age: 26, height: "5′ 2″", profession: "Teacher", religion: "Buddhist", avatar: "/images/profiles/avatar-mp-24733.jpg", gender: "bride", name: "Sachini", location: "Galle, Sri Lanka", language: "Sinhala", photo: "/images/profiles/mp-24733.jpg" },
-  { id: "MP-24702", city: "Doha", country: "qa", age: 34, height: "5′ 10″", profession: "Civil Eng.", religion: "Buddhist", avatar: "/images/profiles/avatar-mp-24702.jpg", gender: "bride", name: "Dilini", location: "Doha, Qatar", language: "Sinhala", photo: "/images/profiles/mp-24702.jpg" },
-  { id: "MP-24688", city: "Kurunegala", country: "lk", age: 27, height: "5′ 5″", profession: "Pharmacist", religion: "Buddhist", avatar: "/images/profiles/avatar-mp-24688.jpg", gender: "bride", name: "Hiruni", location: "Kurunegala, Sri Lanka", language: "Sinhala", photo: "/images/profiles/mp-24688.jpg" },
-];
+/** Hero marquee: filled from GET /api/profiles (lib/profiles.ts). No sample members. */
+export const MARQUEE_PROFILES: MarqueeProfile[] = [];
 
 /* ── 02 How it works ─────────────────────────────────────────────────── */
 export const HOW_IT_WORKS = {
@@ -66,7 +61,12 @@ export const HOW_IT_WORKS = {
 
 /* ── 04 Featured profiles ────────────────────────────────────────────── */
 export interface FeaturedProfile {
+  /** Shown on cards and used in links (profile code, e.g. LK-1234). */
   id: string;
+  /** Database id — needed to send an interest. */
+  profileId?: string;
+  /** False for members still waiting for review (no "Verified" badge). */
+  verified?: boolean;
   location: string;
   country: CountryCode;
   age: number;
@@ -83,106 +83,16 @@ export const FEATURED = {
   title: "Recently verified proposals",
   description: "Every photo is checked by our team before it goes live — send interest to start the conversation.",
   cta: "View all proposals",
-  profiles: [
-    { id: "MP-24817", location: "Kandy, Sri Lanka", country: "lk", age: 28, height: "5′ 4″", profession: "Doctor (MBBS)", religion: "Buddhist", photo: "/images/profiles/mp-24817.jpg", horoscope: true, gender: "groom" },
-    { id: "MP-24790", location: "Melbourne, Australia", country: "au", age: 32, height: "5′ 9″", profession: "Software Engineer", religion: "Catholic", photo: "/images/profiles/mp-24790.jpg", horoscope: false, gender: "bride" },
-    { id: "MP-24766", location: "Toronto, Canada", country: "ca", age: 29, height: "5′ 3″", profession: "Registered Nurse", religion: "Hindu", photo: "/images/profiles/mp-24766.jpg", horoscope: true, gender: "bride" },
-    { id: "MP-24751", location: "Colombo, Sri Lanka", country: "lk", age: 30, height: "5′ 8″", profession: "Chartered Accountant", religion: "Muslim", photo: "/images/profiles/mp-24751.jpg", horoscope: false, gender: "groom" },
-    { id: "MP-24733", location: "Galle, Sri Lanka", country: "lk", age: 26, height: "5′ 2″", profession: "Teacher (BEd)", religion: "Buddhist", photo: "/images/profiles/mp-24733.jpg", horoscope: true, gender: "bride" },
-    { id: "MP-24702", location: "Doha, Qatar", country: "qa", age: 34, height: "5′ 10″", profession: "Civil Engineer", religion: "Buddhist", photo: "/images/profiles/mp-24702.jpg", horoscope: false, gender: "bride" },
-    { id: "MP-24688", location: "Kurunegala, Sri Lanka", country: "lk", age: 27, height: "5′ 5″", profession: "Pharmacist", religion: "Buddhist", photo: "/images/profiles/mp-24688.jpg", horoscope: true, gender: "bride" },
-    { id: "MP-24671", location: "London, UK", country: "gb", age: 31, height: "5′ 7″", profession: "Bank Officer", religion: "Christian", photo: "/images/profiles/mp-24671.jpg", horoscope: false, gender: "groom" },
-  ] satisfies FeaturedProfile[],
+  profiles: [] as FeaturedProfile[], // filled from GET /api/profiles (lib/profiles.ts)
 };
 
 /* ── 05 Success stories ──────────────────────────────────────────────── */
 export const STORIES = {
   eyebrow: "Success stories",
-  title: "Trusted by 100+ happy couples",
+  title: "Real couples, real weddings",
   description: "Real families, real weddings — from Colombo to Melbourne.",
-  /**
-   * Item 1 is the story shown in Figma. Items 2–7 are PLACEHOLDER copy so the
-   * carousel arrows have something to show — replace with real stories.
-   */
-  items: [
-    {
-      badge: "Married 2025",
-      headline: "Our families clicked first",
-      quote: "Amma found his profile, we spoke for a month, and the horoscopes matched perfectly.",
-      initials: "KS",
-      names: "Kasun & Sachini",
-      meta: "Colombo · Buddhist",
-      photo: "/images/stories/story-main.jpg",
-      caption: "Watch their story",
-      captionMeta: "Poruwa ceremony · March 2025",
-    },
-    {
-      badge: "Married 2024",
-      headline: "Across two continents",
-      quote: "I was in Melbourne, she was in Kandy. Video calls with both families made it feel easy.",
-      initials: "RN",
-      names: "Ravindu & Nadeesha",
-      meta: "Melbourne · Buddhist",
-      photo: "/images/stories/story-2.jpg",
-      caption: "Watch their story",
-      captionMeta: "Kandyan wedding · June 2024",
-    },
-    {
-      badge: "Married 2024",
-      headline: "Verified made us brave",
-      quote: "Knowing every profile was checked gave my parents the confidence to say yes.",
-      initials: "AT",
-      names: "Arun & Tharshini",
-      meta: "Jaffna · Hindu",
-      photo: "/images/stories/story-3.jpg",
-      caption: "Watch their story",
-      captionMeta: "Temple wedding · August 2024",
-    },
-    {
-      badge: "Married 2023",
-      headline: "A match at the first call",
-      quote: "We talked for three hours on our first call. Six months later we were on the poruwa.",
-      initials: "DM",
-      names: "Dilan & Malsha",
-      meta: "Galle · Buddhist",
-      photo: "/images/stories/story-4.jpg",
-      caption: "Watch their story",
-      captionMeta: "Poruwa ceremony · December 2023",
-    },
-    {
-      badge: "Married 2023",
-      headline: "Our parents became friends",
-      quote: "Both mothers chatted on the app before we did. By the time we met, the families were already close.",
-      initials: "SH",
-      names: "Sahan & Hiruni",
-      meta: "Kurunegala · Buddhist",
-      photo: "/images/stories/story-1.jpg",
-      caption: "Watch their story",
-      captionMeta: "Poruwa ceremony · May 2023",
-    },
-    {
-      badge: "Married 2025",
-      headline: "Home, even from Dubai",
-      quote: "Working abroad I worried I'd miss out. Vikasitha brought a match from my own hometown.",
-      initials: "MF",
-      names: "Mohamed & Fathima",
-      meta: "Dubai · Islam",
-      photo: "/images/stories/story-5.jpg",
-      caption: "Watch their story",
-      captionMeta: "Nikah ceremony · January 2025",
-    },
-    {
-      badge: "Married 2024",
-      headline: "Same values, same dreams",
-      quote: "We both wanted a simple wedding and a big family. The filters found exactly that.",
-      initials: "JP",
-      names: "Janith & Piumi",
-      meta: "Negombo · Catholic",
-      photo: "/images/stories/story-6.jpg",
-      caption: "Watch their story",
-      captionMeta: "Church wedding · October 2024",
-    },
-  ],
+  /** Stories come from GET /api/content/stories (shared by real couples). */
+  items: [] as { initials: string; photo: string }[],
 };
 
 /* ── Category Brick Wall ─────────────────────────────────────────────── */
@@ -195,30 +105,31 @@ export const CATEGORIES = {
   title: "Browse proposals your way",
   description: "Jump straight to the profiles that matter to your family.",
   cta: "Explore all categories",
+  /** `count` stays empty until the API returns real numbers per category. */
   rows: [
     [
-      { label: "Female teachers", count: "1,820", icon: "teacher" },
-      { label: "Parent-posted ads", count: "4,310", icon: "people" },
-      { label: "ID-verified ads", count: "6,950", icon: "verify" },
-      { label: "Degree holders", count: "5,140", icon: "book" },
-      { label: "Female doctors", count: "960", icon: "health" },
-      { label: "Male engineers", count: "2,280", icon: "cpu" },
+      { label: "Female teachers", count: "", icon: "teacher" },
+      { label: "Parent-posted ads", count: "", icon: "people" },
+      { label: "ID-verified ads", count: "", icon: "verify" },
+      { label: "Degree holders", count: "", icon: "book" },
+      { label: "Female doctors", count: "", icon: "health" },
+      { label: "Male engineers", count: "", icon: "cpu" },
     ],
     [
-      { label: "Overseas grooms", count: "1,470", icon: "global" },
-      { label: "Brides in Sri Lanka", count: "7,860", icon: "location" },
-      { label: "Diploma holders", count: "2,030", icon: "briefcase" },
-      { label: "Male IT experts", count: "3,120", icon: "monitor" },
-      { label: "With horoscope", count: "5,610", icon: "star" },
-      { label: "Premium members", count: "1,150", icon: "crown" },
+      { label: "Overseas grooms", count: "", icon: "global" },
+      { label: "Brides in Sri Lanka", count: "", icon: "location" },
+      { label: "Diploma holders", count: "", icon: "briefcase" },
+      { label: "Male IT experts", count: "", icon: "monitor" },
+      { label: "With horoscope", count: "", icon: "star" },
+      { label: "Premium members", count: "", icon: "crown" },
     ],
     [
-      { label: "Kandyan", count: "2,640", icon: "house" },
-      { label: "Low-country", count: "3,380", icon: "map" },
-      { label: "Second marriage", count: "890", icon: "lovely" },
-      { label: "Nurses", count: "1,560", icon: "hospital" },
-      { label: "Government sector", count: "2,950", icon: "building" },
-      { label: "Business owners", count: "1,240", icon: "profile-2user" },
+      { label: "Kandyan", count: "", icon: "house" },
+      { label: "Low-country", count: "", icon: "map" },
+      { label: "Second marriage", count: "", icon: "lovely" },
+      { label: "Nurses", count: "", icon: "hospital" },
+      { label: "Government sector", count: "", icon: "building" },
+      { label: "Business owners", count: "", icon: "profile-2user" },
     ],
   ] as { label: string; count: string; icon: CategoryIcon }[][],
 };

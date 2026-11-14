@@ -8,7 +8,7 @@ Bugs go to `BUG_TRACKER.md`; debt goes here. Add an item whenever you knowingly 
 
 | ID | P | Area | Item | Impact | Status |
 |---|---|---|---|---|---|
-| TD-01 | P2 | Web | ~4,260 lines of dead legacy UI | Confuses search/AI tools; holds most palette violations (BUG-019) | Planned (05) |
+| TD-01 | P2 | Web | ~4,260 lines of dead legacy UI | Confuses search/AI tools; holds most palette violations (BUG-019) | Planned (05) — 2026-11-14: legacy files emptied to stubs; delete them (list in CHANGELOG) |
 | TD-02 | P2 | Web | 9 hand-built modals, no shared `Modal`/`Dialog` | Inconsistent focus trap, Esc, scroll lock, portal, a11y | Planned (05) |
 | TD-03 | P1 | API | `ChatController` and `ChatHub` use the DbContext directly | Business rules in the transport layer; untestable | Planned (01/03) |
 | TD-04 | P1 | Web | No typed fetch helper (timeouts, errors, auth header, refresh) | Every call re-implements error handling; mock fallbacks hide failures | Planned (01) |
@@ -28,7 +28,7 @@ Bugs go to `BUG_TRACKER.md`; debt goes here. Add an item whenever you knowingly 
 | TD-18 | P1 | Web | `services/passwordReset.ts` is a demo adapter (fixed code, in-memory attempts) | Forgot password doesn't really work until the API exists | Planned (01) — adapter replaced by real API calls 2026-11-13; Done after verification |
 | TD-20 | P1 | Web | Contact sharing runs on local state + demo phone numbers; decline/cancel not sent to the hub | Works only in the browser until the API exists | Planned (03) |
 | TD-21 | P1 | API | SMS and e-mail senders are log-only placeholders (`LoggingSmsSender`, `LoggingEmailSender`) | Codes and "password changed" alerts aren't delivered outside Development; pick providers before launch | Open |
-| TD-22 | P3 | Web | Forgot-password Demo tips still show the old fixed codes; real codes now appear in the API console (Development) | Misleading for testers | Open |
+| TD-22 | P3 | Web | Forgot-password Demo tips still show the old fixed codes; real codes now appear in the API console (Development) | Misleading for testers | Done (2026-11-14, Demo tips removed) |
 | TD-19 | P3 | Web | `IdentifierTabs` active segment barely stands out in dark theme (`bg-surface-card` ≈ track) — same as Login before | Low contrast for the selected method in dark mode | Done (2026-11-11, brand-gradient `SegmentedSwitch`) |
 
 ## Rules

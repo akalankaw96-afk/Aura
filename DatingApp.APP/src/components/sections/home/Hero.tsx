@@ -10,7 +10,8 @@ import { AgeRangePopover, formatAgeRange, type AgeRange } from "./AgeRangePopove
 import { useToast } from "@/components/ui/Toast";
 import { useLanguage } from "@/context/LanguageContext";
 import { ProfilePhotoCard } from "@/components/cards/ProfilePhotoCard";
-import { HERO, MARQUEE_PROFILES } from "@/content/home";
+import { HERO } from "@/content/home";
+import { toMarquee, useMemberProfiles } from "@/lib/profiles";
 import { BumpTitle } from "@/components/motion/BumpTitle";
 
 /**
@@ -23,7 +24,10 @@ import { BumpTitle } from "@/components/motion/BumpTitle";
 export function Hero() {
   const { t, lang } = useLanguage();
   const [filter, setFilter] = useState<"all" | "bride" | "groom">("all");
-  const list = useMemo(() => MARQUEE_PROFILES.filter((p) => filter === "all" || p.gender === filter), [filter]);
+  // Public home page: approved (verified) members only — empty until the safety team approves profiles.
+  const { profiles } = useMemberProfiles({ verifiedOnly: true });
+  const members = useMemo(() => profiles.map(toMarquee), [profiles]);
+  const list = useMemo(() => members.filter((p) => filter === "all" || p.gender === filter), [members, filter]);
 
   return (
     <section aria-label="Find a partner" className="relative isolate overflow-hidden bg-rose-950 text-ink-on-brand">
@@ -55,7 +59,8 @@ export function Hero() {
         </div>
       </div>
 
-      {/* Figma: Frame 5 — filter tabs + marquee */}
+      {/* Figma: Frame 5 — filter tabs + marquee (only when there are real members to show) */}
+      {members.length > 0 ? (
       <div className="flex flex-col items-center gap-6 pb-16">
         <div role="tablist" aria-label="Show" className="enter flex gap-2" style={{ "--enter-delay": "380ms" } as React.CSSProperties}>
           {(
@@ -78,6 +83,9 @@ export function Hero() {
           </Marquee>
         </div>
       </div>
+      ) : (
+        <div className="pb-16" />
+      )}
     </section>
   );
 }

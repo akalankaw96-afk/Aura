@@ -8,7 +8,9 @@ import { ProfilePhotoCard } from "@/components/cards/ProfilePhotoCard";
 import { Marquee } from "@/components/sections/home/Hero";
 import { useLanguage } from "@/context/LanguageContext";
 import { BEST_MATCHES } from "@/content/dashboard";
-import { HERO, MARQUEE_PROFILES } from "@/content/home";
+import { HERO } from "@/content/home";
+import { toMarquee, useMemberProfiles } from "@/lib/profiles";
+import { useAuthSession } from "@/lib/session";
 
 /**
  * Figma: Dashboard → Best matches — full-width band on the hero photo (same layers as
@@ -19,7 +21,14 @@ import { HERO, MARQUEE_PROFILES } from "@/content/home";
 export function BestMatches() {
   const { t, lang } = useLanguage();
   const [filter, setFilter] = useState<"all" | "groom" | "bride">("all");
-  const list = useMemo(() => MARQUEE_PROFILES.filter((p) => filter === "all" || p.gender === filter), [filter]);
+  // Other members from the database (no matching engine yet: newest first, excluding yourself)
+  const { profiles } = useMemberProfiles();
+  const { session } = useAuthSession();
+  const members = useMemo(
+    () => profiles.filter((p) => p.id !== session?.profileId).slice(0, 12).map(toMarquee),
+    [profiles, session?.profileId],
+  );
+  const list = useMemo(() => members.filter((p) => filter === "all" || p.gender === filter), [members, filter]);
 
   return (
     <section id="matches" aria-label={t.dashboard.bestMatchesTitle} className="relative isolate scroll-mt-28 overflow-hidden bg-rose-950 pb-10 pt-14 text-ink-on-brand">
@@ -51,12 +60,17 @@ export function BestMatches() {
                 </Chip>
               ))}
             </div>
-            <Link href="/register" className="flex items-center gap-1 text-link-sm underline">
+            <Link href="/search" className="flex items-center gap-1 text-link-sm underline">
               {lang === "si" ? "සියල්ල බලන්න" : "View all"} <ArrowRight2 size={16} color="currentColor" />
             </Link>
           </div>
         </div>
 
+        {members.length === 0 ? (
+          <p className="container-page text-body-md text-ink-on-brand-muted">
+            {lang === "si" ? "තවම පෙන්වීමට පැතිකඩ නොමැත. නව සාමාජිකයින් එක්වන විට ඔවුන් මෙහි පෙනෙනු ඇත." : "No profiles to show yet. New members will appear here as they join."}
+          </p>
+        ) : (
         <div className="reveal">
           <Marquee key={filter}>
             {list.map((p) => (
@@ -64,6 +78,7 @@ export function BestMatches() {
             ))}
           </Marquee>
         </div>
+        )}
       </div>
     </section>
   );

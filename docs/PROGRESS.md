@@ -3,7 +3,7 @@
 **Status values:** Not Started · In Progress · Testing · Completed · Blocked · Deferred.
 "Completed" only when acceptance criteria pass and tests/manual checks are recorded (`TESTING_GUIDELINES.md` §6).
 
-_Last updated: 2026-11-13 — Auth API (endpoints #1–14) on branch `S01-api-auth`, awaiting build + test._
+_Last updated: 2026-11-14 — demo data removed; 2026-11-13 — Auth API (endpoints #1–14) on branch `S01-api-auth`, awaiting build + test._
 
 ## Overall
 | Area | State |
@@ -23,7 +23,7 @@ _Last updated: 2026-11-13 — Auth API (endpoints #1–14) on branch `S01-api-au
 | S01-T04 Google token verification + no fake session | Testing | Google ID token (One Tap) + access token (popup) verified with Google; web fake sessions removed (register, Google, OTP, profile auto-session) |
 | S01-T05 Refresh / logout / token storage | In Progress | API done: 15-min access token, rotating refresh token in httpOnly `vk_refresh` cookie, reuse detection, refresh/logout/sessions. Web: login/register/Google send cookies, logout calls API. Remaining: access token out of localStorage + refresh-on-401 (BUG-017) |
 | S01-T06 Chat authentication | Not Started | |
-| S01-T07 Stop auto-verify on profile save | Not Started | |
+| S01-T07 Stop auto-verify on profile save | Testing | New profiles saved with `Verified = false` (2026-11-13). Existing-profile updates leave the flag unchanged |
 | S01-T08 Admin link + role gate | Not Started | |
 | S01-T09 Dashboard guest guard / KycGuard default | Not Started | |
 | S01-T10 Migrations, SQL default, dev-only seed | In Progress | Startup runs `Migrate()`, SQL Server default, demo member only in Development with password from user-secrets. Remaining: generate `InitialCreate` (needs `dotnet ef`) |
@@ -49,6 +49,11 @@ _Last updated: 2026-11-13 — Auth API (endpoints #1–14) on branch `S01-api-au
 | How to use page `/how-to-use` + menu links (journey 50/50 list + phone, pinned-note tour, 2 screens per feature, 31 screens) | Completed | Tested 1440/390, EN/SI, light/dark, no overflow, member menu → page; build passes. SI tour details + screenshots in SI pending |
 | Contact-share card buttons on phones | Completed | Fixed squashed buttons; checked 390 |
 | Forgot password back button (all 3 steps) | Completed | Tested 1440/390: each step goes back one step, step 1 → /login; build passes |
+
+## Owner requests
+| Change | Status | Notes |
+|---|---|---|
+| Remove all demo data from the app (owner request) | Testing | 2026-11-14: tsc clean in a harness (React types from the project, stubs for Next/icons); needs `npm run check` + walk-through on the owner machine. Files: CHANGELOG "All demo data removed" |
 
 ## Documentation
 | Item | Status |
@@ -80,6 +85,9 @@ Remaining before "Completed":
 4. Walk-through (Swagger or the web app): register → login → wrong password ×5 = 429 locked → refresh → logout →
    refresh fails; send-otp twice < 60 s = 429; verify wrong code ×5; forgot → verify → reset → old sessions gone;
    Google One Tap + popup; sessions list + revoke; response never contains a code.
+2026-11-13 later: build + `InitialCreate` migration succeeded on the owner's machine (SQL Express); API serves seeded
+content. Registration wired to the API (see CHANGELOG "Registration now saves to the database"). The built-in test
+browser can't make cross-port calls, so the end-to-end registration check runs in the owner's browser.
 Blockers: none. Files: see CHANGELOG 2026-11-13. Next: S01-T05 web part (BUG-017), then chat auth (S01-T06) on its own branch.
 
 Template for an unfinished task:

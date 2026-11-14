@@ -36,14 +36,13 @@ import {
   BlockedRow,
   ChatActionMenu,
 } from "@/components/sections/member/ChatSafety";
-import { DEMO_BLOCKED_CONV, DEMO_CONVERSATIONS, demoHistory, type BlockInfo } from "@/content/demoChat";
 import {
   ContactShareCard,
   ContactShareHeaderAction,
   contactShareMenuLabel,
   type ContactShareStatus,
 } from "@/components/sections/member/ContactShare";
-import { DemoTips } from "@/components/auth/DemoTips";
+import { useAuthSession } from "@/lib/session";
 import {
   signalrService,
   getConversations,
@@ -55,22 +54,21 @@ import {
   type ConnectionStatus,
 } from "@/services/signalrService";
 
-/** Demo-only phone numbers until the API returns the partner's verified number. */
-function demoPhone(convId: string) {
-  let h = 0;
-  for (const ch of convId) h = (h * 31 + ch.charCodeAt(0)) % 100_000_000;
-  const d = String(h).padStart(8, "0");
-  return `+94 7${d[0]} ${d.slice(1, 4)} ${d.slice(4, 8)}`; // 7X XXX XXXX
+/** Why / when a member was blocked (Figma: Messages — Blocked list). */
+interface BlockInfo {
+  date: string;
+  reason: string;
 }
 
 export default function MessagesPage() {
   const { t, lang } = useLanguage();
   const router = useRouter();
 
-  // Current logged in user context
-  const currentProfileId = "5272b78c-df15-4c1e-9fa0-c3b9e6ed9fc2";
-  const currentProfileCode = "LK-9021";
-  const currentUserName = "Dr. Kavinda Perera";
+  // The signed-in member (from the login session — no demo identity)
+  const { session, fullName } = useAuthSession();
+  const currentProfileId = session?.profileId ?? "";
+  const currentProfileCode = currentProfileId;
+  const currentUserName = fullName;
 
   const [conversations, setConversations] = useState<ConversationDto[]>([]);
   const [activeConvId, setActiveConvId] = useState<string>("");
@@ -83,7 +81,6 @@ export default function MessagesPage() {
   const [muted, setMuted] = useState<Record<string, boolean>>({});
   const [blockTargetId, setBlockTargetId] = useState<string | null>(null);
   const [leavingId, setLeavingId] = useState<string | null>(null);
-  const demoModeRef = useRef(false);
   const [search, setSearch] = useState("");
   const [inputText, setInputText] = useState("");
   const [mobileChatOpen, setMobileChatOpen] = useState(false);
@@ -94,7 +91,7 @@ export default function MessagesPage() {
   const [partnerPhones, setPartnerPhones] = useState<Record<string, string>>({});
   const shareCardRef = useRef<HTMLDivElement>(null);
   const setShare = useCallback((convId: string, status: ContactShareStatus) => setShareByConv((s) => ({ ...s, [convId]: status })), []);
-  const MY_PHONE = "+94 77 123 4567"; // TODO(api): from the member's verified profile
+  const MY_PHONE = session?.phoneNumber ?? "";
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -115,18 +112,8 @@ export default function MessagesPage() {
 
   // Load conversations from backend
   const loadData = useCallback(async () => {
-    let list = await getConversations(currentProfileCode);
-    // Offline / no backend → demo conversations so the UI flows can be reviewed.
-    if (!list || list.length === 0) {
-      if (!demoModeRef.current) {
-        demoModeRef.current = true;
-        setBlocked((b) => ({ ...DEMO_BLOCKED_CONV, ...b }));
-        // Demo: the 2nd conversation has an incoming "share contact details" request
-        const incoming = DEMO_CONVERSATIONS[1]?.conversationId;
-        if (incoming) setShareByConv((s) => ({ [incoming]: "received", ...s }));
-      }
-      list = DEMO_CONVERSATIONS;
-    }
+    // No profile yet → no conversations. (Chat API security: BUG-004/005, next on the sprint.)
+    const list = currentProfileCode ? await getConversations(currentProfileCode) : [];
     setConversations(list || []);
     if (list && list.length > 0) {
       if (!list.some((c) => c.conversationId === activeConvId)) {
@@ -144,7 +131,7 @@ export default function MessagesPage() {
       setMessages([]);
       return;
     }
-    const history = demoModeRef.current ? demoHistory(convId) : await getChatHistory(convId, currentProfileId);
+    const history = await getChatHistory(convId, currentProfileId);
     if (history && history.length > 0) {
       setMessages(history);
 
@@ -422,7 +409,7 @@ export default function MessagesPage() {
     }
   }, [shareStatus, activeConvId]);
   const partnerPhone = activeConv
-    ? partnerPhones[activeConv.conversationId] || activeConv.partnerPhoneNumber || demoPhone(activeConv.conversationId)
+    ? partnerPhones[activeConv.conversationId] || activeConv.partnerPhoneNumber || ""
     : "";
   // Bring the Blocked Notice into view when a chat is blocked
   useEffect(() => {
@@ -900,20 +887,6 @@ export default function MessagesPage() {
         onConfirm={confirmBlock}
       />
 
-      {activeConv && demoModeRef.current && (
-        <DemoTips
-          tips={[
-            { label: "Share contact: request → accept / decline" },
-            { label: `2nd chat (${DEMO_CONVERSATIONS[1]?.partnerName ?? "—"}) has an incoming request` },
-          ]}
-          actions={[
-            { label: `Simulate ${activeConv.partnerName.split(" ")[0]} accepts`, onClick: () => setShare(activeConv.conversationId, "accepted"), active: shareStatus === "accepted" },
-            { label: `Simulate ${activeConv.partnerName.split(" ")[0]} declines`, onClick: () => setShare(activeConv.conversationId, "declined-by-them"), active: shareStatus === "declined-by-them" },
-            { label: "Simulate incoming request", onClick: () => setShare(activeConv.conversationId, "received"), active: shareStatus === "received" },
-            { label: "Reset", onClick: () => setShare(activeConv.conversationId, "none"), active: shareStatus === "none" },
-          ]}
-        />
-      )}
 
       <Footer />
     </div>

@@ -28,7 +28,8 @@ import {
   defaultFilters,
   type SearchFilters,
 } from "@/components/sections/search/FiltersSidebar";
-import { FEATURED, MARQUEE_PROFILES, type FeaturedProfile } from "@/content/home";
+import type { FeaturedProfile } from "@/content/home";
+import { sendInterest as sendInterestApi, toFeatured } from "@/lib/profiles";
 import {
   COUNTRY_OPTIONS,
   HEIGHT_MAX,
@@ -43,7 +44,6 @@ import {
   type MoreKey,
   type SortKey,
 } from "@/content/search";
-import { mockProfiles } from "@/data/mockData";
 import { apiService } from "@/services/api";
 import type { Profile } from "@/types";
 
@@ -53,8 +53,7 @@ interface CandidateProposal extends FeaturedProfile {
   education?: string;
   bio?: string;
   aboutFamily?: string;
-  rasi?: string;
-  nakshatra?: string;
+  community?: string;
   professionCategory?: string;
   district?: string;
   countryName?: string;
@@ -114,135 +113,62 @@ function SearchPageContent() {
   // Live Database Connectivity State
   const [liveDbProfiles, setLiveDbProfiles] = useState<Profile[]>([]);
 
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
   useEffect(() => {
     let isMounted = true;
-    apiService.getProfiles().then((profiles) => {
-      if (isMounted) setLiveDbProfiles(profiles);
-    });
+    setLoading(true);
+    apiService
+      .getProfiles()
+      .then((profiles) => {
+        if (!isMounted) return;
+        setLiveDbProfiles(profiles);
+        setLoadError(null);
+      })
+      .catch((err: unknown) => {
+        if (isMounted) setLoadError(err instanceof Error ? err.message : "We couldn’t load profiles.");
+      })
+      .finally(() => isMounted && setLoading(false));
     return () => {
       isMounted = false;
     };
   }, [signedIn]);
 
-  // Master Pool of Candidates combining Live SQL Server DB, Featured, Mock, and Marquee data
-  const candidatePool: CandidateProposal[] = useMemo(() => {
-    const list: CandidateProposal[] = [];
-    const seenIds = new Set<string>();
+  // Members from the database (GET /api/profiles) — the only source; empty when nobody has registered yet.
+  const candidatePool: CandidateProposal[] = useMemo(
+    () =>
+      liveDbProfiles.map((p) => ({
+        ...toFeatured(p),
+        name: p.name,
+        countryName: p.country,
+        district: p.details?.district || undefined,
+        details: p.details,
+        bio: p.bio,
+        education: p.education,
+        community: p.community,
+        aboutFamily: p.aboutFamily,
+        professionCategory: p.professionCategory,
+      })),
+    [liveDbProfiles],
+  );
 
-    // 0. If Live SQL Server profiles are returned from the API, add them first!
-    if (liveDbProfiles && liveDbProfiles.length > 0) {
-      for (const p of liveDbProfiles) {
-        const code = p.code || p.id;
-        if (!seenIds.has(code)) {
-          seenIds.add(code);
-          const isBride = p.gender === "female";
-          const cCode = [...COUNTRY_OPTIONS, ...MORE_COUNTRIES].find((country) => country.label.toLowerCase() === p.country?.toLowerCase())?.code ?? "lk";
-          list.push({
-            id: code,
-            name: p.name,
-            gender: isBride ? "bride" : "groom",
-            age: p.age,
-            height: p.height,
-            profession: p.profession,
-            religion: p.religion,
-            location: [p.location, p.country].filter(Boolean).join(", "),
-            country: cCode,
-            countryName: p.country,
-            district: p.details?.district || undefined,
-            details: p.details,
-            photo: p.photoUrl,
-            horoscope: p.horoscopeAvailable,
-            bio: p.bio,
-            education: p.education,
-            aboutFamily: p.aboutFamily,
-            professionCategory: p.professionCategory,
-            rasi: p.horoscopeAvailable ? "Simha" : undefined,
-            nakshatra: p.horoscopeAvailable ? "Makha" : undefined,
-          });
-        }
-      }
-    }
-
-    // 1. Add Featured Profiles
-    for (const p of FEATURED.profiles) {
-      if (!seenIds.has(p.id)) {
-        seenIds.add(p.id);
-        list.push({
-          ...p,
-          bio: `Verified member (${p.id}). Dedicated professional with family values and balanced cultural lifestyle.`,
-          education: p.profession.includes("Doctor") ? "MBBS, Colombo" : p.profession.includes("Engineer") ? "BSc Eng (Moratuwa)" : "Bachelor's Degree",
-          aboutFamily: "Respected, traditional Sri Lankan family background with high social standing.",
-          rasi: p.horoscope ? "Mesha" : undefined,
-          nakshatra: p.horoscope ? "Aswida" : undefined,
-        });
-      }
-    }
-
-    // 2. Add Mock Profiles from Database
-    for (const p of mockProfiles) {
-      const code = p.code || p.id;
-      if (!seenIds.has(code)) {
-        seenIds.add(code);
-        const isBride = p.gender === "female";
-        const cCode = (p.country.toLowerCase() === "australia" ? "au" : p.country.toLowerCase() === "united kingdom" ? "gb" : "lk") as CountryCode;
-        list.push({
-          id: code,
-          name: p.name,
-          gender: isBride ? "bride" : "groom",
-          age: p.age,
-          height: p.height,
-          profession: p.profession,
-          religion: p.religion,
-          location: `${p.location}, ${p.country}`,
-          country: cCode,
-          photo: p.photoUrl,
-          horoscope: p.horoscopeAvailable,
-          bio: p.bio,
-          education: p.education,
-          aboutFamily: p.aboutFamily,
-          professionCategory: p.professionCategory,
-          rasi: p.horoscopeAvailable ? "Simha" : undefined,
-          nakshatra: p.horoscopeAvailable ? "Makha" : undefined,
-        });
-      }
-    }
-
-    // 3. Add Marquee Profiles
-    for (const p of MARQUEE_PROFILES) {
-      if (!seenIds.has(p.id)) {
-        seenIds.add(p.id);
-        list.push({
-          id: p.id,
-          gender: p.gender,
-          age: p.age,
-          height: p.height,
-          profession: p.profession,
-          religion: p.religion,
-          location: `${p.city}, ${p.country.toUpperCase()}`,
-          country: p.country,
-          photo: p.avatar,
-          horoscope: true,
-          bio: `Verified proposal from ${p.city}. Values honesty and family harmony.`,
-          education: "University Graduate",
-          aboutFamily: "Respectable family settled in Sri Lanka.",
-        });
-      }
-    }
-
-    return list;
-  }, []);
-
-  // Extra list-card details (demo) per profile
+  // List-card details from each member's real profile
   const extrasById = useMemo(
-    () => Object.fromEntries(candidatePool.map((p) => {
-      const extras = profileExtras(p.id, p.location, p.religion);
-      return [p.id, {
-        ...extras,
-        district: p.district || extras.district,
-        civil: p.details?.civilStatus || extras.civil,
-        postedBy: p.details?.createdBy || extras.postedBy,
-      }];
-    })),
+    () =>
+      Object.fromEntries(
+        candidatePool.map((p) => [
+          p.id,
+          profileExtras({
+            location: p.location,
+            education: p.education,
+            community: p.community,
+            district: p.district,
+            civil: p.details?.civilStatus,
+            postedBy: p.details?.createdBy,
+            photo: p.photo,
+          }),
+        ]),
+      ),
     [candidatePool]
   );
 
@@ -298,17 +224,14 @@ function SearchPageContent() {
       return true;
     });
     const sorted = [...list];
-    if (sort === "best") sorted.sort((a, b) => extrasById[b.id].match - extrasById[a.id].match);
+    if (sort === "best") sorted.sort((a, b) => (extrasById[b.id].match ?? 0) - (extrasById[a.id].match ?? 0));
     if (sort === "age-asc") sorted.sort((a, b) => a.age - b.age);
     if (sort === "age-desc") sorted.sort((a, b) => b.age - a.age);
     return sorted;
   }, [candidatePool, applied, extrasById]);
 
-  // Promoted = the three best-matching results (demo); shown in their own band in grid view
-  const promotedIds = useMemo(
-    () => new Set([...results].sort((a, b) => extrasById[b.id].match - extrasById[a.id].match).slice(0, 3).map((p) => p.id)),
-    [results, extrasById]
-  );
+  // Promoted = members with an active boost. Boosts need the payments API (Sprint 04), so none yet.
+  const promotedIds = useMemo(() => new Set<string>(), []);
   const promoted = results.filter((p) => promotedIds.has(p.id));
   const pool = view === "grid" ? results.filter((p) => !promotedIds.has(p.id)) : [...promoted, ...results.filter((p) => !promotedIds.has(p.id))];
   const size = PAGE_SIZE[view];
@@ -382,15 +305,22 @@ function SearchPageContent() {
     topRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
   const clearAll = () => setFilters(defaultFilters(filters.lookingFor));
-  const sendInterest = (p: FeaturedProfile) => {
+  // POST /api/match-requests; the card shows "Interest sent" only after the API accepted it
+  const sendInterest = async (p: FeaturedProfile): Promise<boolean> => {
     if (!requireMember("send an interest")) return false;
     if (allSearchLimitsExhausted()) return false;
     if (!consume("interests")) return false;
-    if (!saveInterest({ ...favouriteProfile(p), time: "Just now", note: "You sent an interest. Waiting for a reply." })) return false;
+    const r = await sendInterestApi(p);
+    if (!r.ok) {
+      toast.error("Interest not sent", r.message);
+      return false;
+    }
+    saveInterest({ ...favouriteProfile(p), time: "Just now", note: "You sent an interest. Waiting for a reply." });
     toast.success("Interest sent", `${p.id} will be notified. You can chat once they accept.`);
     return true;
   };
-  const saveSearch = () => toast.success("Search saved", "We’ll let you know when new matches join.");
+  // Saved searches need the API (Sprint 03) — say so instead of pretending to save
+  const saveSearch = () => toast.info("Saved searches are coming soon", "For now, bookmark this page to come back to these filters.");
 
   /* ---------- active filter chips ---------- */
   const chips: { key: string; label: string; value: React.ReactNode; icon?: React.ReactNode; remove: () => void }[] = [];
@@ -533,7 +463,19 @@ function SearchPageContent() {
             )}
           </div>
 
-          {results.length === 0 ? (
+          {loadError ? (
+            <div role="alert" className="flex flex-col items-center gap-3 rounded-xl border border-line bg-surface-card p-8 text-center">
+              <p className="text-h6 text-ink">Profiles couldn’t load</p>
+              <p className="text-body-md text-ink-secondary">{loadError}</p>
+            </div>
+          ) : loading ? (
+            <p className="py-12 text-center text-body-md text-ink-tertiary">Loading profiles…</p>
+          ) : candidatePool.length === 0 ? (
+            <div className="flex flex-col items-center gap-2 rounded-xl border border-line bg-surface-card p-8 text-center">
+              <p className="text-h6 text-ink">No members yet</p>
+              <p className="text-body-md text-ink-secondary">Profiles appear here as members register. Check back soon.</p>
+            </div>
+          ) : results.length === 0 ? (
             <EmptyResults onClear={clearAll} />
           ) : (
             <>

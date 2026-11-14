@@ -26,7 +26,8 @@ public class ContentService : IContentService
 
     public async Task<HomeContentDto> GetHomeContentAsync(CancellationToken ct = default)
     {
-        var profiles = await _profileService.GetProfilesAsync(null, ct);
+        // Public page: approved members only
+        var profiles = await _profileService.GetProfilesAsync(new ProfileFilterDto { VerifiedOnly = true }, ct);
         var stories = await GetStoriesAsync(ct);
         var plans = await GetPlansAsync(ct);
         var faqs = await GetFaqsAsync(ct);
@@ -37,76 +38,27 @@ public class ContentService : IContentService
             SuccessStories = stories,
             PricingPlans = plans,
             Faqs = faqs,
-            TotalVerifiedCount = 50000,
-            TotalWeddingsCount = 12000
+            TotalVerifiedCount = await _context.CandidateProfiles.CountAsync(p => p.Verified, ct),
+            TotalWeddingsCount = stories.Count
         };
     }
 
+    /// <summary>Stories shared by real couples. Empty until someone shares one (no sample stories).</summary>
     public async Task<List<SuccessStoryDto>> GetStoriesAsync(CancellationToken ct = default)
     {
-        try
+        var list = await _context.SuccessStories.AsNoTracking().OrderByDescending(s => s.CreatedAt).ToListAsync(ct);
+        return list.Select(s => new SuccessStoryDto
         {
-            var list = await _context.SuccessStories.AsNoTracking().ToListAsync(ct);
-            if (list.Any())
-            {
-                return list.Select(s => new SuccessStoryDto
-                {
-                    Id = s.Id,
-                    CoupleNames = s.CoupleNames,
-                    Title = s.Title,
-                    Quote = s.Quote,
-                    Story = s.Story,
-                    WeddingDate = s.WeddingDate,
-                    Location = s.Location,
-                    PhotoUrl = s.PhotoUrl,
-                    ProfessionInfo = s.ProfessionInfo
-                }).ToList();
-            }
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"SQL Server stories query notice: {ex.Message}");
-        }
-
-        return new List<SuccessStoryDto>
-        {
-            new()
-            {
-                Id = Guid.NewGuid(),
-                CoupleNames = "Dr. Ashan & Dr. Tharushi",
-                Title = "Our hearts are full of love & mutual respect",
-                Quote = "\"Being medical doctors with round-the-clock emergency shifts, finding someone who genuinely understands the sacrifices of our profession seemed nearly impossible. Through this platform, our families connected respectfully, we matched our values, and today we are happily married for over a year.\"",
-                Story = "Matched in March 2024, married in Colombo with family blessings.",
-                WeddingDate = "December 2024",
-                Location = "Colombo, Sri Lanka",
-                PhotoUrl = "https://images.unsplash.com/photo-1519741497674-611481863552?q=80&w=800&auto=format&fit=crop",
-                ProfessionInfo = "Consultant Physician & Pediatric Surgeon"
-            },
-            new()
-            {
-                Id = Guid.NewGuid(),
-                CoupleNames = "Eng. Dilshan & Shenali",
-                Title = "Two engineers across continents united",
-                Quote = "\"I was living in Sydney while Shenali was working as a Cloud Architect in Colombo. The verified background and family involvement gave both our parents tremendous peace of mind. We are now building our dream life in Melbourne!\"",
-                Story = "Long-distance courtship supported by verified identity and sincere family communication.",
-                WeddingDate = "September 2025",
-                Location = "Melbourne, Australia",
-                PhotoUrl = "https://images.unsplash.com/photo-1511285560929-80b456fea0bc?q=80&w=800&auto=format&fit=crop",
-                ProfessionInfo = "Civil Engineer & Cloud Architect"
-            },
-            new()
-            {
-                Id = Guid.NewGuid(),
-                CoupleNames = "Malik & Dr. Zainab",
-                Title = "A blessed partnership founded on shared faith & career goals",
-                Quote = "\"The privacy filters gave us complete dignity. We loved the detailed criteria matching education and religious values. It was seamless from our first verified greeting to our Nikah.\"",
-                Story = "Matched with matching cultural expectations and verified professional credentials.",
-                WeddingDate = "November 2025",
-                Location = "Kandy, Sri Lanka",
-                PhotoUrl = "https://images.unsplash.com/photo-1606800052052-a08af7148866?q=80&w=800&auto=format&fit=crop",
-                ProfessionInfo = "Corporate Banker & Medical Registrar"
-            }
-        };
+            Id = s.Id,
+            CoupleNames = s.CoupleNames,
+            Title = s.Title,
+            Quote = s.Quote,
+            Story = s.Story,
+            WeddingDate = s.WeddingDate,
+            Location = s.Location,
+            PhotoUrl = s.PhotoUrl,
+            ProfessionInfo = s.ProfessionInfo
+        }).ToList();
     }
 
     public async Task<List<PricingPlanDto>> GetPlansAsync(CancellationToken ct = default)

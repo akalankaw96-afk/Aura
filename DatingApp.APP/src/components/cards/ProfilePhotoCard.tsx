@@ -56,9 +56,11 @@ function ProfilePhotoCardGlass({ profile, className }: { profile: MarqueeProfile
         />
         <div aria-hidden className="absolute inset-x-0 bottom-0 h-[150px] bg-[linear-gradient(180deg,rgba(42,6,18,0)_0%,rgba(42,6,18,0.55)_55%,rgba(42,6,18,0.92)_100%)]" />
 
-        <span className="absolute left-2 top-2 inline-flex items-center gap-1 rounded-full bg-[rgba(23,3,13,0.42)] py-1 pl-1.5 pr-2 text-label-sm backdrop-blur-[8px]">
-          <Verify size={14} color="currentColor" variant="Bold" className="text-gold-300" /> Verified
-        </span>
+        {profile.verified !== false && (
+          <span className="absolute left-2 top-2 inline-flex items-center gap-1 rounded-full bg-[rgba(23,3,13,0.42)] py-1 pl-1.5 pr-2 text-label-sm backdrop-blur-[8px]">
+            <Verify size={14} color="currentColor" variant="Bold" className="text-gold-300" /> Verified
+          </span>
+        )}
 
         <button
           type="button"
@@ -130,9 +132,11 @@ function ProfilePhotoCardSolid({ profile, className }: { profile: MarqueeProfile
           loading="lazy"
           className="absolute inset-0 h-full w-full object-cover transition-transform duration-700 ease-out group-hover/card:scale-[1.06]"
         />
-        <span className="absolute left-3 top-3 inline-flex h-[22px] items-center gap-1 rounded-full bg-success-bg px-2 text-label-sm text-success-fg">
-          <Verify size={14} color="currentColor" /> Verified
-        </span>
+        {profile.verified !== false && (
+          <span className="absolute left-3 top-3 inline-flex h-[22px] items-center gap-1 rounded-full bg-success-bg px-2 text-label-sm text-success-fg">
+            <Verify size={14} color="currentColor" /> Verified
+          </span>
+        )}
       </div>
       <div className="flex flex-col gap-1 p-4">
         <p className="flex items-center gap-2 text-h5 transition-colors group-hover/card:text-brand-text">

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { FRIENDS, friendProfileId, type RequestProfile } from "@/content/dashboard";
+import type { RequestProfile } from "@/content/dashboard";
 import type { CountryCode } from "@/components/ui/Flag";
 import { SESSION_KEY, useSignedIn } from "@/lib/session";
 
@@ -63,7 +63,7 @@ export const useDeclinedInterests = () => useStoredProfiles<{ id: string }>("dec
 export function useIsConnected(profileId: string) {
   const signedIn = useSignedIn();
   const { profiles } = useAddedFriends();
-  return signedIn && (profiles.some((profile) => profile.id === profileId) || FRIENDS.some((friend) => friendProfileId(friend) === profileId));
+  return signedIn && profiles.some((profile) => profile.id === profileId);
 }
 
 /** Adapt a search card to the same profile details panel used on Requests. */

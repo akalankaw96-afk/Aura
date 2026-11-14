@@ -35,24 +35,27 @@ import {
   useToast,
 } from "@/components/ui";
 import { cn } from "@/lib/cn";
-import { ageFrom, containsContactDetails, emptyDraft, loadDraft, saveDraft, type RegistrationDraft } from "@/lib/demo";
+import { ageFrom, containsContactDetails, emptyDraft, loadDraft, saveDraft, type RegistrationDraft } from "@/lib/registrationDraft";
 import { profileDetailsFromKyc, saveSubmittedKycDetails } from "@/lib/kycDetails";
 import { AuthShell } from "./AuthShell";
-import { DemoTips } from "./DemoTips";
 import { GoogleSignInButton } from "./GoogleSignInButton";
-import { DEMO, formatPhone } from "./shared";
+import { formatPhone } from "./shared";
+
+/** Same as the API (AuthRules.CodeMaxAttempts). */
+const CODE_MAX_ATTEMPTS = 5;
 import { setKyc } from "@/lib/verification";
 import { AVATARS, avatarDataUri, isIllustration, type AvatarGender } from "@/content/avatars";
 import { DISTRICT_OPTIONS } from "@/content/search";
 import type { CountryCode } from "@/components/ui/Flag";
-import { apiService } from "@/services/api";
+import { ApiError, apiService } from "@/services/api";
+import { hasSession } from "@/lib/session";
 import { PhotoSlot } from "@/components/ui/PhotoSlot";
 import { SegmentedSwitch } from "@/components/ui/SegmentedSwitch";
 
 /**
  * Registration journeys 3–6 (Figma 02 Account, 03 Verify, 04 Profile,
  * 05 Photos, with every error / success / toast state from the flow).
- * No API: values are kept in sessionStorage (src/lib/demo.ts).
+ * Draft kept in sessionStorage (src/lib/registrationDraft.ts); steps call the auth + profile APIs.
  */
 export type RegisterStep = 1 | 2 | 3 | 4;
 
@@ -87,9 +90,7 @@ export function RegisterFlow({ initialStep = 1, embedded, onComplete }: Register
       onComplete(d);
       return;
     }
-    flashToast("success", "Profile submitted", "You can explore your dashboard while we review it.");
-
-    // Sync candidate profile with backend API
+    // Save the profile in the database (POST /api/profiles). Stay on this step if it fails.
     try {
       const fullName = d.fullName || `${d.firstName || ""} ${d.lastName || ""}`.trim() || "New Member";
       const calculatedAge = d.dob ? ageFrom(d.dob) : 28;
@@ -115,8 +116,11 @@ export function RegisterFlow({ initialStep = 1, embedded, onComplete }: Register
         details: profileDetailsFromKyc(d),
       });
     } catch (err) {
-      console.warn("Backend profile sync notice:", err);
+      const message = err instanceof Error ? err.message : "Please try again.";
+      toast.error("Couldn’t submit your profile", message);
+      return;
     }
+    flashToast("success", "Profile submitted", "You can explore your dashboard while we review it.");
 
     // signed in with a pending profile → Dashboard (features unlock after review)
     try {
@@ -145,13 +149,13 @@ export function RegisterFlow({ initialStep = 1, embedded, onComplete }: Register
       <Stepper step={step} className="max-w-[680px]" />
       <Card className="w-full max-w-[680px] p-5 sm:p-8">
         {step === 1 && <AccountStep draft={draft} update={update} onNext={() => go(2)} onGoogleSuccess={() => go(3)} />}
-        {step === 2 && <VerifyStep mobile={draft.mobile || DEMO.registeredMobile} onBack={() => go(1)} onNext={() => go(3)} />}
+        {step === 2 && <VerifyStep mobile={draft.mobile} onBack={() => go(1)} onNext={() => go(3)} />}
         {step === 3 && <ProfileStep draft={draft} update={update} onBack={() => go(2)} onNext={() => go(4)} />}
         {step === 4 && <PhotosStep draft={draft} update={update} onBack={() => go(3)} onFinish={finish} />}
       </Card>
       {step === 2 && (
         <p className="inline-flex items-center gap-1.5 rounded-full bg-info-bg px-3 py-1 text-body-xs font-semibold text-info-fg">
-          <InfoCircle size={14} color="currentColor" /> Tip: the code expires in 10 minutes
+          <InfoCircle size={14} color="currentColor" /> Tip: the code expires in 5 minutes
         </p>
       )}
     </AuthShell>
@@ -183,7 +187,7 @@ function AccountStep({
 
   const clear = (k: keyof typeof errors) => setErrors((e) => ({ ...e, [k]: undefined }));
 
-  const submit = (e: React.FormEvent) => {
+  const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     setTaken(false);
     const er: typeof errors = {};
@@ -199,20 +203,30 @@ function AccountStep({
     if (Object.keys(er).length) return;
 
     setLoading(true);
-    window.setTimeout(() => {
-      setLoading(false);
-      if (mobile === DEMO.registeredMobile || mobile === DEMO.suspendedMobile) {
-        setTaken(true);
-        return;
-      }
-      if (mobile === DEMO.serverErrorMobile) {
-        toast.error("Couldn’t create your account", "No internet connection or our server is busy. Please try again.");
-        return;
+    try {
+      // Back from step 2 with the same number: the account already exists — just send a new code.
+      const sameAccount = draft.mobile === mobile && hasSession();
+      if (!sameAccount) {
+        await apiService.register({ phoneNumber: mobile, password: pw }); // POST /api/auth/register
       }
       update({ mobile });
-      toast.success("Code sent", `We sent a 6-digit code to ${formatPhone(mobile)}.`);
+      try {
+        await apiService.sendOtp(mobile); // POST /api/auth/send-otp
+        toast.success("Code sent", `We sent a 6-digit code to ${formatPhone(mobile)}.`);
+      } catch (err) {
+        // Account is created; the member can resend from the next step.
+        toast.warning("Couldn’t send the code yet", err instanceof Error ? err.message : "Tap Resend on the next step.");
+      }
       onNext();
-    }, 700);
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 409) {
+        setTaken(true);
+      } else {
+        toast.error("Couldn’t create your account", err instanceof Error ? err.message : "Please try again.");
+      }
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -285,27 +299,6 @@ function AccountStep({
         <Link href="/login" className="font-semibold text-brand underline">Log in</Link>
       </p>
 
-      <DemoTips
-        tips={[
-          { label: "Already registered", value: formatPhone(DEMO.registeredMobile) },
-          { label: "Server error", value: formatPhone(DEMO.serverErrorMobile) },
-          { label: "Any other 7X number → works" },
-          { label: "Password needs 6+ chars & a number" },
-        ]}
-        actions={[
-          {
-            label: "Fill valid form",
-            onClick: () => {
-              setMobile("771112222");
-              setPw("Vikasitha1");
-              setPw2("Vikasitha1");
-              setTerms(true);
-              setErrors({});
-              setTaken(false);
-            },
-          },
-        ]}
-      />
     </form>
   );
 }
@@ -319,9 +312,10 @@ function VerifyStep({ mobile, onBack, onNext }: { mobile: string; onBack: () => 
   const [attempts, setAttempts] = useState(0);
   const [expired, setExpired] = useState(false);
   const [blockedFor, setBlockedFor] = useState(0);
-  const [resendIn, setResendIn] = useState(45);
+  const [resendIn, setResendIn] = useState(60);
   const [error, setError] = useState<string>();
   const checked = useRef("");
+  const verifying = useRef(false);
 
   useEffect(() => {
     if (resendIn <= 0 && blockedFor <= 0) return;
@@ -333,42 +327,49 @@ function VerifyStep({ mobile, onBack, onNext }: { mobile: string; onBack: () => 
   }, [resendIn, blockedFor]);
 
   useEffect(() => {
-    if (blockedFor === 0 && attempts >= DEMO.maxOtpAttempts) {
+    if (blockedFor === 0 && attempts >= CODE_MAX_ATTEMPTS) {
       setAttempts(0);
       setError(undefined);
     }
   }, [blockedFor, attempts]);
 
-  const verify = (value = code) => {
+  const verify = async (value = code) => {
     if (value.length < 6) {
       setError("Enter all 6 digits");
       setState("error");
       return;
     }
+    // One check at a time: the code is single-use, so a second request (auto-check + button press) would fail.
+    if (verifying.current) return;
+    verifying.current = true;
     checked.current = value;
-    if (value === DEMO.expiredOtp) {
-      setExpired(true);
-      setCode("");
-      setState("default");
-      setError(undefined);
-      return;
-    }
-    if (value === DEMO.otp || value === "123456") {
+    try {
+      await apiService.verifyOtp(mobile, value); // POST /api/auth/verify-otp — marks the number verified
       setState("success");
       setError(undefined);
       toast.success("Mobile verified", `Your number ${formatPhone(mobile)} is confirmed.`);
       window.setTimeout(onNext, 900);
-      return;
-    }
-    const n = attempts + 1;
-    setAttempts(n);
-    setState("error");
-    if (n >= DEMO.maxOtpAttempts) {
-      setBlockedFor(30);
-      setError(undefined);
-    } else {
-      const left = DEMO.maxOtpAttempts - n;
-      setError(`Incorrect code · ${left} attempt${left === 1 ? "" : "s"} left`);
+    } catch (err) {
+      setState("error");
+      const apiErr = err instanceof ApiError ? err : null;
+      if (apiErr?.code === "CODE_EXPIRED") {
+        setExpired(true);
+        setCode("");
+        setState("default");
+        setError(undefined);
+      } else if (apiErr?.code === "TOO_MANY_ATTEMPTS") {
+        setAttempts(CODE_MAX_ATTEMPTS);
+        setBlockedFor(30);
+        setError(undefined);
+      } else if (apiErr?.code === "CODE_INVALID") {
+        const left = apiErr.extras.attemptsLeft ?? 0;
+        setAttempts(CODE_MAX_ATTEMPTS - left);
+        setError(`Incorrect code · ${left} attempt${left === 1 ? "" : "s"} left`);
+      } else {
+        setError(err instanceof Error ? err.message : "Couldn’t check the code. Please try again.");
+      }
+    } finally {
+      verifying.current = false;
     }
   };
 
@@ -382,13 +383,22 @@ function VerifyStep({ mobile, onBack, onNext }: { mobile: string; onBack: () => 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [code]);
 
-  const resend = () => {
-    setResendIn(45);
-    setExpired(false);
-    setCode("");
-    setError(undefined);
-    setState("default");
-    toast.info("New code sent", `Check your SMS on ${formatPhone(mobile)}.`);
+  const resend = async () => {
+    try {
+      const res = await apiService.sendOtp(mobile); // POST /api/auth/send-otp
+      setResendIn(res.resendAvailableInSeconds ?? 60);
+      setExpired(false);
+      setCode("");
+      setError(undefined);
+      setState("default");
+      setAttempts(0);
+      setBlockedFor(0);
+      toast.info("New code sent", `Check your SMS on ${formatPhone(mobile)}.`);
+    } catch (err) {
+      const wait = err instanceof ApiError ? err.extras.retryAfterSeconds : undefined;
+      if (wait) setResendIn(Math.min(wait, 59));
+      toast.error("Couldn’t send a new code", err instanceof Error ? err.message : "Please try again.");
+    }
   };
 
   const blocked = blockedFor > 0;
@@ -410,13 +420,9 @@ function VerifyStep({ mobile, onBack, onNext }: { mobile: string; onBack: () => 
         Change number
       </button>
 
-      <div className="bg-rose-50 border border-rose-200 text-brand px-3.5 py-1.5 rounded-full text-center text-body-xs font-semibold">
-        Demo OTP: <strong className="font-mono text-ink">482913</strong> or <strong className="font-mono text-ink">123456</strong>
-      </div>
-
       {expired && (
         <Alert type="warning" title="Code expired" action={<button type="button" onClick={resend} className="font-bold text-brand hover:underline">Resend code</button>}>
-          Codes are valid for 10 minutes. Request a new one to continue.
+          Codes are valid for 5 minutes. Request a new one to continue.
         </Alert>
       )}
       {blocked && (
@@ -455,17 +461,6 @@ function VerifyStep({ mobile, onBack, onNext }: { mobile: string; onBack: () => 
         </Button>
       </div>
 
-      <DemoTips
-        tips={[
-          { label: "Correct code", value: DEMO.otp },
-          { label: "Expired code", value: DEMO.expiredOtp },
-          { label: "3 wrong codes → blocked 30 s" },
-        ]}
-        actions={[
-          { label: "Fill correct code", onClick: () => setCode(DEMO.otp) },
-          { label: "Skip resend timer", onClick: () => setResendIn(0) },
-        ]}
-      />
     </div>
   );
 }
@@ -683,38 +678,6 @@ export function ProfileStep({
           Save &amp; finish later
         </button>
       )}
-
-      {!review && (
-      <DemoTips
-        tips={[{ label: "Birthday under 18 → blocked" }, { label: "Phone number in About you → error" }, { label: "Continue with empty fields → missing" }]}
-        actions={[
-          {
-            label: "Fill sample profile",
-            onClick: () => {
-              update({
-                firstName: "Sanjeewa",
-                lastName: "Silva",
-                fullName: "Sanjeewa Silva",
-                displayNameFormat: "First name and first letter of last name",
-                createdBy: "Self",
-                email: "sanjeewa@example.com",
-                height: "5' 8\"",
-                dob: "1994-05-12",
-                gender: "Male",
-                civilStatus: "Never married",
-                religion: "Buddhist",
-                ethnicity: "Sinhalese",
-                caste: "",
-                country: "Sri Lanka",
-                about: "I’m an engineer working in Colombo, close to my family. I love travelling and cricket. Looking for a kind, educated partner who values family.",
-              });
-              setErrors({});
-              setShowMissing(false);
-            },
-          },
-        ]}
-      />
-      )}
     </form>
   );
 }
@@ -906,16 +869,6 @@ export function PhotosStep({
         <button type="button" onClick={() => setConfirmSkip(true)} className="text-left text-body-sm font-semibold text-brand hover:underline">
           Skip for now — I’ll add photos later
         </button>
-      )}
-
-      {!review && (
-      <DemoTips
-        tips={[{ label: "Upload any JPG/PNG under 5 MB" }, { label: "Other file types or > 5 MB → upload failed" }, { label: "Finish without a photo → warning" }]}
-        actions={[
-          { label: "Simulate failed upload", onClick: () => uploadFailed("We couldn’t upload that photo. Check your connection and try again.") },
-          { label: "Use sample photo", onClick: () => { update({ photo: "/brand/bride.png" }); setFailed(undefined); toast.success("Photo uploaded", "Looking great! It’ll be checked by our team."); } },
-        ]}
-      />
       )}
     </div>
   );

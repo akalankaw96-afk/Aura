@@ -10,16 +10,13 @@ namespace DatingApp.Infrastructure.Persistence;
 public class ApplicationDbContextInitialiser
 {
     private readonly ApplicationDbContext _context;
-    private readonly IPasswordHasher _passwordHasher;
     private readonly ILogger<ApplicationDbContextInitialiser> _logger;
 
     public ApplicationDbContextInitialiser(
         ApplicationDbContext context,
-        IPasswordHasher passwordHasher,
         ILogger<ApplicationDbContextInitialiser> logger)
     {
         _context = context;
-        _passwordHasher = passwordHasher;
         _logger = logger;
     }
 
@@ -39,16 +36,11 @@ public class ApplicationDbContextInitialiser
         }
     }
 
-    /// <param name="seedDemoMember">True only in Development (BUG-015).</param>
-    /// <param name="demoMemberPassword">From user-secrets `Seed:DemoMemberPassword`; no demo member is created without it.</param>
-    public async Task SeedAsync(bool seedDemoMember, string? demoMemberPassword)
+    /// <summary>Seeds site content only. No demo members (removed 2026-11-14).</summary>
+    public async Task SeedAsync()
     {
         try
         {
-            if (seedDemoMember && !string.IsNullOrWhiteSpace(demoMemberPassword))
-            {
-                await SeedDemoMemberAsync(demoMemberPassword);
-            }
             await TrySeedAsync();
         }
         catch (Exception ex)
@@ -57,70 +49,9 @@ public class ApplicationDbContextInitialiser
         }
     }
 
-    private async Task SeedDemoMemberAsync(string password)
-    {
-        if (await _context.Users.AnyAsync(u => u.Email == "demo@auramatrimony.lk")) return;
-
-        _context.Users.Add(new User
-        {
-            Email = "demo@auramatrimony.lk",
-            PasswordHash = _passwordHasher.HashPassword(password),
-            FullName = "Aura Demo Member",
-            PhoneNumber = "+94771234567",
-            PhoneVerified = true,
-            Role = Roles.Member,
-            IsActive = true
-        });
-        await _context.SaveChangesAsync();
-    }
-
-    /// <summary>Content seed (stories, plans, FAQs) — safe in every environment.</summary>
+    /// <summary>Content seed (plans, FAQs) — safe in every environment. No sample members or success stories.</summary>
     private async Task TrySeedAsync()
     {
-        // 2. Static Platform Data: Seed Success Stories
-        var stories = new List<SuccessStory>
-        {
-            new()
-            {
-                CoupleNames = "Dr. Ashan & Dr. Tharushi",
-                Title = "Our hearts are full of love & mutual respect",
-                Quote = "\"Being medical doctors with round-the-clock emergency shifts, finding someone who genuinely understands the sacrifices of our profession seemed nearly impossible. Through this platform, our families connected respectfully, we matched our values, and today we are happily married for over a year.\"",
-                Story = "Matched in March 2024, married in Colombo with family blessings.",
-                WeddingDate = "December 2024",
-                Location = "Colombo, Sri Lanka",
-                PhotoUrl = "https://images.unsplash.com/photo-1519741497674-611481863552?q=80&w=800&auto=format&fit=crop",
-                ProfessionInfo = "Consultant Physician & Pediatric Surgeon"
-            },
-            new()
-            {
-                CoupleNames = "Eng. Dilshan & Shenali",
-                Title = "Two engineers across continents united",
-                Quote = "\"I was living in Sydney while Shenali was working as a Cloud Architect in Colombo. The verified background and family involvement gave both our parents tremendous peace of mind. We are now building our dream life in Melbourne!\"",
-                Story = "Long-distance courtship supported by verified identity and sincere family communication.",
-                WeddingDate = "September 2025",
-                Location = "Melbourne, Australia",
-                PhotoUrl = "https://images.unsplash.com/photo-1511285560929-80b456fea0bc?q=80&w=800&auto=format&fit=crop",
-                ProfessionInfo = "Civil Engineer & Cloud Architect"
-            },
-            new()
-            {
-                CoupleNames = "Malik & Dr. Zainab",
-                Title = "A blessed partnership founded on shared faith & career goals",
-                Quote = "\"The privacy filters gave us complete dignity. We loved the detailed criteria matching education and religious values. It was seamless from our first verified greeting to our Nikah.\"",
-                Story = "Matched with matching cultural expectations and verified professional credentials.",
-                WeddingDate = "November 2025",
-                Location = "Kandy, Sri Lanka",
-                PhotoUrl = "https://images.unsplash.com/photo-1606800052052-a08af7148866?q=80&w=800&auto=format&fit=crop",
-                ProfessionInfo = "Corporate Banker & Medical Registrar"
-            }
-        };
-
-        if (!await _context.SuccessStories.AnyAsync())
-        {
-            _context.SuccessStories.AddRange(stories);
-            await _context.SaveChangesAsync();
-        }
-
         // 4. Seed Pricing Plans
         var plans = new List<PricingPlan>
         {

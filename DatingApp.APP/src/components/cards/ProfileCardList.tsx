@@ -47,7 +47,7 @@ export function ProfileCardList({
   promoted?: boolean;
   onView: (p: FeaturedProfile) => void;
   /** return false when the interest couldn’t be sent (e.g. free limit reached) */
-  onInterest: (p: FeaturedProfile) => boolean | void;
+  onInterest: (p: FeaturedProfile) => boolean | void | Promise<boolean>;
   style?: React.CSSProperties;
 }) {
   const { profiles, save } = useFavourites();
@@ -90,11 +90,11 @@ export function ProfileCardList({
             <span className="promo-badge inline-flex h-[22px] items-center gap-1 rounded-full bg-premium-bg px-2 text-label-sm text-premium-fg">
               <Crown1 size={14} color="currentColor" /> Promoted
             </span>
-          ) : (
+          ) : profile.verified !== false ? (
             <span className="inline-flex h-[22px] items-center gap-1 rounded-full bg-success-bg px-2 text-label-sm text-success-fg">
               <Verify size={14} color="currentColor" /> Verified
             </span>
-          )}
+          ) : null}
         </span>
         <span className="absolute bottom-2.5 left-2.5 inline-flex h-[22px] items-center gap-1 rounded-full bg-surface-scrim px-2 text-label-sm text-ink-on-brand backdrop-blur-[8px]">
           <Gallery size={14} color="currentColor" /> {extras.photos} photos
@@ -109,20 +109,24 @@ export function ProfileCardList({
               <button type="button" onClick={() => onView(profile)} className="transition-colors hover:text-brand-text">
                 {profile.id}
               </button>
-              <Verify size={20} color="currentColor" variant="Bold" className="text-gold-500" />
+              {profile.verified !== false && <Verify size={20} color="currentColor" variant="Bold" className="text-gold-500" />}
               <span className="text-h5 font-semibold text-ink-secondary">· {profile.age} yrs · {profile.height}</span>
             </h3>
             <p className="mt-1 flex flex-wrap items-center gap-1.5 text-body-md text-ink-secondary">
               <Flag country={profile.country} />
               {profile.location}
-              <span aria-hidden>·</span>
-              <span className="inline-flex items-center gap-1 text-label-sm text-success-fg">
-                <span className={cn("h-2 w-2 rounded-full bg-success-fg", online && "animate-pulse")} />
-                {extras.active}
-              </span>
+              {extras.active && (
+                <>
+                  <span aria-hidden>·</span>
+                  <span className="inline-flex items-center gap-1 text-label-sm text-success-fg">
+                    <span className={cn("h-2 w-2 rounded-full bg-success-fg", online && "animate-pulse")} />
+                    {extras.active}
+                  </span>
+                </>
+              )}
             </p>
           </div>
-          <MatchPill pct={extras.match} />
+          {extras.match !== null && <MatchPill pct={extras.match} />}
           <button
             type="button"
             aria-pressed={saved}
@@ -156,13 +160,15 @@ export function ProfileCardList({
               <Star1 size={14} color="currentColor" /> Horoscope
             </span>
           )}
-          {/* posted time — list (landscape) card only */}
-          <span title={`Posted on ${extras.postedAt}`} className="inline-flex h-[26px] items-center gap-1.5 rounded-full bg-surface-subtle px-2.5 text-label-sm text-ink-secondary">
-            <Clock size={14} color="currentColor" className="text-icon-brand" />
-            {extras.posted}
-            <span aria-hidden className="text-ink-disabled">·</span>
-            <span className="text-ink-tertiary">{extras.postedAt}</span>
-          </span>
+          {/* posted time — list (landscape) card only, once the API returns it */}
+          {extras.posted && (
+            <span title={`Posted on ${extras.postedAt}`} className="inline-flex h-[26px] items-center gap-1.5 rounded-full bg-surface-subtle px-2.5 text-label-sm text-ink-secondary">
+              <Clock size={14} color="currentColor" className="text-icon-brand" />
+              {extras.posted}
+              <span aria-hidden className="text-ink-disabled">·</span>
+              <span className="text-ink-tertiary">{extras.postedAt}</span>
+            </span>
+          )}
           <div className="ml-auto flex gap-2">
             <Button variant="outline" size="md" className="rounded-full" onClick={() => onView(profile)}>
               View profile
@@ -175,7 +181,9 @@ export function ProfileCardList({
               leftIcon={<HeartAdd size={18} color="currentColor" />}
               onClick={() => {
                 if (!requirePaidAction("interests", "send an interest")) return;
-                if (onInterest(profile) !== false) setSent(true);
+                const result = onInterest(profile);
+                if (result instanceof Promise) void result.then((ok) => ok && setSent(true));
+                else if (result !== false) setSent(true);
               }}
             >
               {sent ? "Interest sent" : "Send interest"}

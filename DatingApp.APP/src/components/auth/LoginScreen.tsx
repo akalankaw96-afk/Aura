@@ -22,7 +22,6 @@ import {
   useToast,
 } from "@/components/ui";
 import { AuthShell } from "./AuthShell";
-import { DemoTips } from "./DemoTips";
 import { GoogleSignInButton } from "./GoogleSignInButton";
 import { IdentifierTabs } from "./IdentifierTabs";
 import { apiService } from "@/services/api";
@@ -167,7 +166,7 @@ export function LoginScreen() {
             <Input
               label="Email address"
               type="email"
-              placeholder="e.g. demo@auramatrimony.lk"
+              placeholder="e.g. you@example.com"
               value={email}
               onChange={(e) => {
                 setEmail(e.target.value);
@@ -234,34 +233,6 @@ export function LoginScreen() {
         </form>
       </Card>
 
-      <DemoTips
-        tips={[
-          { label: "Demo Account", value: "demo@auramatrimony.lk" },
-          { label: "Password", value: "AuraDemo123!" },
-          { label: "Custom Account", value: "Use any registered email or phone" },
-        ]}
-        actions={[
-          {
-            label: "Fill Demo Login",
-            onClick: () => {
-              setMode("email");
-              setEmail("demo@auramatrimony.lk");
-              setPassword("AuraDemo123!");
-              setError(null);
-              setFieldErrors({});
-            },
-          },
-          {
-            label: "Reset Attempts",
-            onClick: () => {
-              setAttempts(0);
-              setLockLeft(0);
-              setError(null);
-              setFieldErrors({});
-            },
-          },
-        ]}
-      />
     </AuthShell>
   );
 }

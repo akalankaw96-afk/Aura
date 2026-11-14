@@ -1,178 +1,118 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
-import { saveDraft } from "@/lib/demo";
+import { useEffect, useState } from "react";
+import { apiService } from "@/services/api";
 
 /**
- * Profile verification (KYC) state for a newly registered member.
- *   pending      → profile submitted, safety team reviewing
- *   changes      → review rejected some fields — member must fix & resubmit
+ * Profile verification (KYC) status and membership plan — read ONLY from the session the API returned
+ * (login / register / refresh / GET /auth/me). Nothing here can be changed from the browser (BUG-011).
+ *   pending      → profile submitted (or not yet), safety team reviewing
+ *   changes      → review rejected some fields (needs the KYC API, Sprint 02 — not returned yet)
  *   resubmitted  → fixes sent, waiting again
  *   live         → approved: every feature unlocked
- * Demo: stored in localStorage (no API yet). `/dashboard?kyc=pending|changes|live` previews a state.
- * TODO(api): read this from the member's profile status (PendingAdminApproval / Published).
  */
 export type KycStatus = "pending" | "changes" | "resubmitted" | "live";
+export type Plan = "free" | "gold" | "platinum";
 
-const KEY = "vk-kyc";
-const EVENT = "vk-kyc-change";
+const SESSION_KEY = "aura_session";
+const KYC_EVENT = "vk-kyc-change";
+const PLAN_EVENT = "vk-plan-change";
 
-export function readKyc(): KycStatus {
-  if (typeof window === "undefined") return "live";
+interface SessionFlags {
+  isVerified?: boolean;
+  isUnderReview?: boolean;
+  hasCompletedProfile?: boolean;
+  isPremium?: boolean;
+  planId?: string;
+}
+
+function readSession(): SessionFlags | null {
+  if (typeof window === "undefined") return null;
   try {
-    const q = new URLSearchParams(window.location.search).get("kyc");
-    if (q === "pending" || q === "changes" || q === "resubmitted" || q === "live") return q;
-
-    const v = localStorage.getItem(KEY);
-    if (v === "pending" || v === "changes" || v === "resubmitted" || v === "live") return v;
-
-    // Check authenticated session
-    const rawSess = localStorage.getItem("aura_session");
-    if (rawSess) {
-      const sess = JSON.parse(rawSess);
-      if (sess.isUnderReview || sess.isVerified === false || !sess.hasCompletedProfile) {
-        return "pending";
-      }
-      if (sess.isVerified === true) {
-        return "live";
-      }
-    }
-
-    return "live";
+    const raw = localStorage.getItem(SESSION_KEY);
+    return raw ? (JSON.parse(raw) as SessionFlags) : null;
   } catch {
-    return "live";
+    return null;
   }
 }
 
-export function setKyc(status: KycStatus) {
+/** Not signed in or not approved → "pending" (never assume approved — BUG-012). */
+export function readKyc(): KycStatus {
+  const s = readSession();
+  return s?.isVerified === true ? "live" : "pending";
+}
+
+/**
+ * After the member submits their profile: mark the cached session as "under review" so the dashboard
+ * shows the review panel straight away. Can't approve anything — approval only comes from the server.
+ */
+export function setKyc(status: "pending" | "resubmitted") {
   try {
-    if (status === "live") localStorage.removeItem(KEY);
-    else localStorage.setItem(KEY, status);
-    // keep the registration review screen (/register/status) in step
-    saveDraft({ reviewStatus: status === "pending" ? "submitted" : status });
-  } catch {}
-  window.dispatchEvent(new Event(EVENT));
+    const raw = localStorage.getItem(SESSION_KEY);
+    if (raw) {
+      const s = JSON.parse(raw);
+      localStorage.setItem(SESSION_KEY, JSON.stringify({ ...s, isUnderReview: true, isVerified: false, hasCompletedProfile: true, kycStatus: status }));
+    }
+  } catch {
+    /* storage unavailable */
+  }
+  window.dispatchEvent(new Event(KYC_EVENT));
+}
+
+export function readPlan(): Plan {
+  const s = readSession();
+  if (!s?.isPremium) return "free";
+  return s.planId === "platinum" ? "platinum" : "gold";
+}
+
+/** Plan start / expiry. The API doesn't return subscriptions yet (Sprint 04), so this is null for now. */
+export interface MembershipInfo {
+  plan: Exclude<Plan, "free">;
+  start: Date;
+  expires: Date;
+  totalDays: number;
+  daysLeft: number;
+  months: number;
+}
+export function readMembership(): MembershipInfo | null {
+  return null;
+}
+
+function useSessionValue<T>(read: () => T, initial: T, events: string[]): T {
+  const [value, setValue] = useState<T>(initial);
+  useEffect(() => {
+    const update = () => setValue(read());
+    update();
+    for (const e of [...events, "storage", "aura_auth_change"]) window.addEventListener(e, update);
+    return () => {
+      for (const e of [...events, "storage", "aura_auth_change"]) window.removeEventListener(e, update);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  return value;
+}
+
+/** Ask the server for the latest status once per page load (approval can happen while the member is away). */
+let refreshed = false;
+function refreshOnce() {
+  if (refreshed || typeof window === "undefined") return;
+  refreshed = true;
+  void apiService.refreshSession();
 }
 
 export function useKyc() {
-  const [status, setStatus] = useState<KycStatus>("live");
-  useEffect(() => {
-    const update = () => setStatus(readKyc());
-    update();
-    window.addEventListener(EVENT, update);
-    window.addEventListener("storage", update);
-    return () => {
-      window.removeEventListener(EVENT, update);
-      window.removeEventListener("storage", update);
-    };
-  }, []);
-  const set = useCallback((s: KycStatus) => {
-    // drop a ?kyc= preview param so the new state sticks
-    if (typeof window !== "undefined" && window.location.search.includes("kyc=")) {
-      const url = new URL(window.location.href);
-      url.searchParams.delete("kyc");
-      window.history.replaceState(null, "", url.toString());
-    }
-    setKyc(s);
-  }, []);
-  return { status, locked: status !== "live", setStatus: set };
-}
-
-/* ------------------------------------------------------------------ */
-/* Membership plan — free members get limited features, paid get all   */
-/* ------------------------------------------------------------------ */
-export type Plan = "free" | "gold" | "platinum";
-const PLAN_KEY = "vk-plan";
-const PLAN_EVENT = "vk-plan-change";
-
-export function readPlan(): Plan {
-  if (typeof window === "undefined") return "free";
-  try {
-    const q = new URLSearchParams(window.location.search).get("plan");
-    if (q === "free" || q === "gold" || q === "platinum") return q;
-
-    const v = localStorage.getItem(PLAN_KEY);
-    if (v === "gold" || v === "platinum" || v === "free") return v;
-
-    const rawSess = localStorage.getItem("aura_session");
-    if (rawSess) {
-      const sess = JSON.parse(rawSess);
-      if (sess.isPremium) {
-        return sess.planId === "platinum" ? "platinum" : "gold";
-      }
-      return "free";
-    }
-
-    return "free";
-  } catch {
-    return "free";
-  }
-}
-
-const MEMBERSHIP_KEY = "vk-membership";
-
-/** Paid period — when it started and how many months were bought (demo, no API). */
-export interface Membership {
-  plan: Exclude<Plan, "free">;
-  startedAt: string; // ISO date
-  months: number;
-}
-
-/** `months` = the billing period bought on /plans (1, 3 or 6). */
-export function setPlan(plan: Plan, months = 3) {
-  try {
-    if (plan === "free") {
-      localStorage.removeItem(PLAN_KEY);
-      localStorage.removeItem(MEMBERSHIP_KEY);
-    } else {
-      localStorage.setItem(PLAN_KEY, plan);
-      const m: Membership = { plan, startedAt: new Date().toISOString(), months };
-      localStorage.setItem(MEMBERSHIP_KEY, JSON.stringify(m));
-    }
-  } catch {}
-  window.dispatchEvent(new Event(PLAN_EVENT));
-}
-
-/** Membership details with start / expiry dates and days left. Null on the Free plan. */
-export function readMembership() {
-  const plan = readPlan();
-  if (plan === "free") return null;
-  let m: Membership | null = null;
-  try {
-    m = JSON.parse(localStorage.getItem(MEMBERSHIP_KEY) || "null");
-  } catch {}
-  if (!m || m.plan !== plan) {
-    // e.g. ?plan=gold preview — assume a 3-month plan bought 12 days ago
-    const d = new Date();
-    d.setDate(d.getDate() - 12);
-    m = { plan, startedAt: d.toISOString(), months: 3 };
-  }
-  const start = new Date(m.startedAt);
-  const expires = new Date(start);
-  expires.setMonth(expires.getMonth() + m.months);
-  const DAY = 86_400_000;
-  const total = Math.round((expires.getTime() - start.getTime()) / DAY);
-  const left = Math.max(0, Math.ceil((expires.getTime() - Date.now()) / DAY));
-  return { ...m, start, expires, totalDays: total, daysLeft: left };
+  useEffect(refreshOnce, []);
+  const status = useSessionValue(readKyc, "pending" as KycStatus, [KYC_EVENT]);
+  return { status, locked: status !== "live" };
 }
 
 /**
  * Everything a page needs to decide what a member can use:
- *  locked  → profile not approved yet (KYC pending / changes)
- *  isPaid  → Gold / Platinum: every feature
+ *  locked  → profile not approved yet
+ *  isPaid  → Gold / Platinum
  */
 export function useAccess() {
   const kyc = useKyc();
-  const [plan, setP] = useState<Plan>("free");
-  useEffect(() => {
-    const update = () => setP(readPlan());
-    update();
-    window.addEventListener(PLAN_EVENT, update);
-    window.addEventListener("storage", update);
-    return () => {
-      window.removeEventListener(PLAN_EVENT, update);
-      window.removeEventListener("storage", update);
-    };
-  }, []);
-  return { ...kyc, plan, isPaid: plan !== "free", setPlan };
+  const plan = useSessionValue(readPlan, "free" as Plan, [PLAN_EVENT]);
+  return { ...kyc, plan, isPaid: plan !== "free" };
 }

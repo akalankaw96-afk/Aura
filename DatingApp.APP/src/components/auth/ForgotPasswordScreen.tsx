@@ -29,9 +29,8 @@ import {
   type ResetChannel,
 } from "@/services/passwordReset";
 import { AuthShell } from "./AuthShell";
-import { DemoTips } from "./DemoTips";
 import { IdentifierTabs } from "./IdentifierTabs";
-import { DEMO, formatPhone } from "./shared";
+import { formatPhone } from "./shared";
 
 type Step = "identify" | "code" | "password";
 const STEP_NO: Record<Step, number> = { identify: 1, code: 2, password: 3 };
@@ -409,26 +408,6 @@ export function ForgotPasswordScreen() {
         )}
       </Card>
 
-      <DemoTips
-        tips={[
-          { label: "Registered number", value: formatPhone(DEMO.registeredMobile) },
-          { label: "Registered email", value: DEMO.registeredEmail },
-          { label: "Correct code", value: DEMO.otp },
-          { label: "Expired code", value: DEMO.expiredOtp },
-          { label: `Wrong code ${RESET_RULES.maxAttempts}× → locked` },
-          { label: "Unknown account → same message, code never works" },
-        ]}
-        actions={
-          step === "identify"
-            ? [
-                { label: "Fill registered number", onClick: () => { setChannel("phone"); setMobile(DEMO.registeredMobile); } },
-                { label: "Fill registered email", onClick: () => { setChannel("email"); setEmail(DEMO.registeredEmail); } },
-              ]
-            : step === "code"
-              ? [{ label: "Fill correct code", onClick: () => { setCode(DEMO.otp); setCodeError(undefined); setCodeState("default"); } }]
-              : []
-        }
-      />
     </AuthShell>
   );
 }

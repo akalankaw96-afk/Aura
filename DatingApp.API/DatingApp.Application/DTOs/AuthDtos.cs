@@ -4,12 +4,14 @@ namespace DatingApp.Application.DTOs;
 
 // ── Requests ────────────────────────────────────────────────────────────────
 
+/// <summary>Needs a mobile number or an e-mail (or both). The web app registers with mobile + password.</summary>
 public class RegisterDto
 {
-    [Required, StringLength(100, MinimumLength = 2)]
+    /// <summary>Optional at sign-up; the profile step fills in the real name.</summary>
+    [StringLength(100)]
     public string FullName { get; set; } = string.Empty;
 
-    [Required, StringLength(256)]
+    [StringLength(256)]
     public string Email { get; set; } = string.Empty;
 
     [Required, StringLength(128)]

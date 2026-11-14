@@ -5,6 +5,33 @@ Sections: Added · Changed · Fixed · Security · Removed · Breaking.
 
 ## [Unreleased]
 
+### Removed
+- 2026-11-14 — **All demo data removed from the web app (owner request: "remove all demo data").** Screens now show
+  only what the API returns, with empty states when there is nothing yet.
+  - Demo tools: Demo tips panels (login, register, forgot password, plans, messages), dashboard state switcher,
+    fake credentials/codes (`DEMO` in `lib/demo.ts`), "Demo OTP" banner, fake support numbers.
+  - Sample people: hero marquee, featured profiles, search pool (`data/mockData.ts`, Figma sample profiles),
+    best matches, dashboard requests/inbox/friends, conversations (`content/demoChat.ts`), fake member identity in
+    Messages ("Dr. Kavinda Perera"), sample success stories (EN + SI) and fake counts ("100+ couples",
+    "12,000+ profiles", category counts, dashboard stats, boost results).
+  - Fake behaviour: payment and boost "succeed" without a gateway → now "Online payment is coming soon"; interests
+    are sent with `POST /api/match-requests` and show "sent" only after the API accepts; saved search says "coming
+    soon"; generated match %, "active now", "posted" labels, horoscope values and education/civil defaults removed.
+  - Member status: verification + plan read only from the server session (`lib/verification.ts`, refreshed from
+    `GET /auth/me` on load) — the `?kyc=` / `?plan=` previews and localStorage overrides are gone (BUG-011 part, BUG-012).
+  - Admin: mock panel (any password, sample members) replaced by a placeholder; staff links removed from the menu (BUG-010).
+  - API: `ProfileService` fallback sample profiles and stock photos, `ContentService` fallback stories and fake
+    totals, sample success-story seed and demo member seed removed. Home shows approved members only.
+  - New: `lib/profiles.ts` (API → card adapters, `useMemberProfiles`, `sendInterest`), `lib/registrationDraft.ts`
+    (draft helpers moved out of `lib/demo.ts`), `MatchRequest` type, `apiService.getStories/refreshSession`.
+  - Retired files (now empty stubs — delete them): `lib/demo.ts`, `data/mockData.ts`, `content/demoChat.ts`,
+    `components/auth/DemoTips.tsx`, `components/sections/dashboard/DashboardDemo.tsx`, `components/MemberDashboard.tsx`,
+    `components/CheckoutModal.tsx`, `components/FoundMatchModal.tsx`, `components/AccountClosureModal.tsx`,
+    `components/profile/ProfileDetailModal.tsx`, `components/cards/ProfileGlassCard.tsx`,
+    `components/sections/member/MessagesScreen.tsx` (TD-01).
+  - Still kept in the browser until their APIs exist (not demo data, not secure yet): free-plan usage counters,
+    favourites, edit-profile text/photos.
+
 ### Added
 - 2026-11-13 — **Auth API, endpoints #1–14 (branch `S01-api-auth`, S01-T01/02/03/04/05/10/11/13/16).** New:
   `POST /api/auth/refresh`, `logout`, `forgot-password`, `forgot-password/verify`, `reset-password`,
@@ -58,6 +85,14 @@ Sections: Added · Changed · Fixed · Security · Removed · Breaking.
   `InitialCreate` migration; Swagger only in Development. Phone numbers are stored as E.164.
 
 ### Fixed
+- 2026-11-13 — **Registration now saves to the database.** The 4 steps used demo timers and the final save only reached
+  the API with a fake session (removed for BUG-002/003), so profiles stayed in the browser. Now: step 1 →
+  `POST /auth/register` (mobile + password; e-mail optional) + `POST /auth/send-otp`; step 2 → `POST /auth/verify-otp`
+  (real attempts / expiry / resend limits); finish → `POST /profiles` with the member's token, refreshed once on 401 via
+  the httpOnly cookie; a failed save shows an error and keeps the member on the step. New profiles start
+  **unverified** (BUG-009). Demo OTP banner removed. Files: `components/auth/RegisterFlow.tsx`, `services/api.ts`
+  (`ApiError`, `authFetch`, `refreshAccessToken`), `Application/DTOs/AuthDtos.cs`, `Application/Services/AuthService.cs`,
+  `Application/Services/ProfileService.cs`.
 - 2026-11-12 — Share-contact card on phones: "Accept & share" / "Not now" were squashed flat (flex-1 in a column) →
   full width when stacked, flex-1 only side by side. `member/ContactShare.tsx`
 - 2026-11-11 — **Responsive layout.** Scanned home, search, dashboard, friends, messages, plans, login, register and

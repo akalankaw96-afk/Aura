@@ -2,10 +2,10 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Calendar, Gallery, MessageText1 } from "iconsax-react";
+import { Gallery } from "iconsax-react";
 import { Card, Stepper, useToast } from "@/components/ui";
 import { flashToast } from "@/components/ui/Toast";
-import { containsContactDetails, loadDraft, saveDraft, type RegistrationDraft } from "@/lib/demo";
+import { containsContactDetails, loadDraft, saveDraft, type RegistrationDraft } from "@/lib/registrationDraft";
 import { readKyc, setKyc } from "@/lib/verification";
 import { saveSubmittedKycDetails } from "@/lib/kycDetails";
 import { AuthShell } from "./AuthShell";
@@ -19,11 +19,19 @@ import { PhotosStep, ProfileStep } from "./RegisterFlow";
  * lives on the Dashboard, so any other status redirects there.
  * When every flagged field is fixed → status "resubmitted" → back to the Dashboard.
  */
-export const FLAGGED = [
-  { key: "photo", label: "Main photo", reason: "Face not clearly visible — upload a clear photo", Icon: Gallery, fix: "photo" },
-  { key: "about", label: "About you", reason: "Contains a phone number — please remove it", Icon: MessageText1, fix: "details" },
-  { key: "dob", label: "Date of birth", reason: "Doesn’t match your ID — check and update", Icon: Calendar, fix: "details" },
-] as const;
+export interface FlaggedField {
+  key: "photo" | "about" | "dob";
+  label: string;
+  reason: string;
+  Icon: typeof Gallery;
+  fix: "photo" | "details";
+}
+
+/**
+ * Fields our safety team asked the member to change, with reasons.
+ * Comes from GET /api/kyc/status (Sprint 02); empty until that API exists, so the "changes needed" state never shows.
+ */
+export const FLAGGED: FlaggedField[] = [];
 
 const ORIGINAL_KEY = "vk-fix-original";
 interface Original {
@@ -32,7 +40,7 @@ interface Original {
   photo: string | null;
 }
 
-const reason = (k: (typeof FLAGGED)[number]["key"]) => FLAGGED.find((f) => f.key === k)!.reason;
+const reason = (k: FlaggedField["key"]) => FLAGGED.find((f) => f.key === k)?.reason ?? "";
 
 export function ReviewStatus() {
   const router = useRouter();
@@ -53,13 +61,8 @@ export function ReviewStatus() {
     try {
       o = JSON.parse(sessionStorage.getItem(ORIGINAL_KEY) || "null");
     } catch {}
-    let d = loadDraft();
+    const d = loadDraft();
     if (!o) {
-      // demo: make sure the rejected values look like the review reasons
-      d = saveDraft({
-        dob: d.dob || "1994-05-12",
-        about: containsContactDetails(d.about) ? d.about : `${d.about || "I’m a doctor working in Kandy, close to my family."} Call me on 077 123 4567.`,
-      });
       o = { dob: d.dob, about: d.about, photo: d.photo };
       try {
         sessionStorage.setItem(ORIGINAL_KEY, JSON.stringify(o));

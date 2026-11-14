@@ -272,7 +272,7 @@ class SignalRService {
 export const signalrService = new SignalRService();
 
 // REST Helpers
-export async function getConversations(profileId: string = "LK-9021"): Promise<ConversationDto[]> {
+export async function getConversations(profileId: string): Promise<ConversationDto[]> {
   try {
     const res = await fetch(`${API_BASE_URL}/chat/conversations?profileId=${encodeURIComponent(profileId)}`, {
       cache: "no-store",
@@ -280,14 +280,14 @@ export async function getConversations(profileId: string = "LK-9021"): Promise<C
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     return await res.json();
   } catch (err) {
-    console.warn("Failed to fetch conversations from API, using fallback:", err);
+    console.warn("Failed to fetch conversations from API:", err);
     return [];
   }
 }
 
 export async function getChatHistory(
   conversationId: string,
-  currentProfileId: string = "LK-9021"
+  currentProfileId: string
 ): Promise<ChatMessageDto[]> {
   try {
     const res = await fetch(

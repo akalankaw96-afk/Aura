@@ -30,7 +30,7 @@ export function ProfileCard({
   promoted?: boolean;
   className?: string;
   style?: React.CSSProperties;
-  onInterest?: (p: FeaturedProfile) => boolean | void;
+  onInterest?: (p: FeaturedProfile) => boolean | void | Promise<boolean>;
   onView?: (p: FeaturedProfile) => void;
   onShortlist?: (p: FeaturedProfile, saved: boolean) => void;
 }) {
@@ -68,9 +68,11 @@ export function ProfileCard({
         <div className="absolute inset-0 flex flex-col justify-between p-3 pointer-events-none">
           <div className="flex items-start justify-between">
             <div className="flex flex-col items-start gap-1.5">
-              <span className="inline-flex h-[22px] items-center gap-1 rounded-full bg-success-bg px-2 text-label-sm text-success-fg">
-                <Verify size={14} color="currentColor" /> Verified
-              </span>
+              {profile.verified !== false && (
+                <span className="inline-flex h-[22px] items-center gap-1 rounded-full bg-success-bg px-2 text-label-sm text-success-fg">
+                  <Verify size={14} color="currentColor" /> Verified
+                </span>
+              )}
               {promoted ? (
                 <span className="promo-badge inline-flex h-[22px] items-center gap-1 rounded-full bg-premium-bg px-2 text-label-sm text-premium-fg">
                   <Crown1 size={14} color="currentColor" /> Promoted
@@ -132,7 +134,9 @@ export function ProfileCard({
               type="button"
               onClick={() => {
                 if (!requirePaidAction("interests", "send an interest")) return;
-                if (onInterest(profile) !== false) setSent(true);
+                const result = onInterest(profile);
+                if (result instanceof Promise) void result.then((ok) => ok && setSent(true));
+                else if (result !== false) setSent(true);
               }}
               disabled={sent}
               className="flex h-[42px] min-w-0 flex-[1_1_auto] items-center justify-center gap-2 whitespace-nowrap rounded-full bg-brand-subtle px-4 text-button-sm text-brand-text transition-shadow hover:ring-1 hover:ring-inset hover:ring-brand disabled:cursor-default disabled:ring-0"
