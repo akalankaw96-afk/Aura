@@ -69,16 +69,16 @@ export function ProfileCard({
           <div className="flex items-start justify-between">
             <div className="flex flex-col items-start gap-1.5">
               {profile.verified !== false && (
-                <span className="inline-flex h-[22px] items-center gap-1 rounded-full bg-success-bg px-2 text-label-sm text-success-fg">
+                <span className="inline-flex h-[22px] items-center gap-1 on-photo rounded-full bg-success-bg px-2 text-label-sm text-success-fg">
                   <Verify size={14} color="currentColor" /> Verified
                 </span>
               )}
               {promoted ? (
-                <span className="promo-badge inline-flex h-[22px] items-center gap-1 rounded-full bg-premium-bg px-2 text-label-sm text-premium-fg">
+                <span className="promo-badge on-photo inline-flex h-[22px] items-center gap-1 rounded-full bg-premium-bg px-2 text-label-sm text-premium-fg">
                   <Crown1 size={14} color="currentColor" /> Promoted
                 </span>
               ) : profile.horoscope && (
-                <span className="inline-flex h-[22px] items-center gap-1 rounded-full bg-info-bg px-2 text-label-sm text-info-fg">
+                <span className="inline-flex h-[22px] items-center gap-1 on-photo rounded-full bg-info-bg px-2 text-label-sm text-info-fg">
                   <Star1 size={14} color="currentColor" /> Horoscope
                 </span>
               )}

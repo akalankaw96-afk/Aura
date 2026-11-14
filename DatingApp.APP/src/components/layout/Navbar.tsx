@@ -13,6 +13,7 @@ import {
   Logout,
   LogoutCurve,
   Messages2,
+  MessageText1,
   Setting2,
   TextalignJustifycenter,
   User,
@@ -25,6 +26,7 @@ import { useBackgroundAnimation } from "@/lib/backgroundAnimation";
 import { useLanguage } from "@/context/LanguageContext";
 import { MESSAGES, REQUESTS } from "@/content/dashboard";
 import { useKyc } from "@/lib/verification";
+import { openFeedback } from "@/lib/feedback";
 import { apiService, type AuthSession } from "@/services/api";
 
 /**
@@ -40,7 +42,7 @@ export type NavbarVariant = "light" | "glass" | "minimal" | "member";
 export function Navbar({ variant = "light" }: { variant?: NavbarVariant }) {
   const pathname = usePathname();
   const router = useRouter();
-  const { t } = useLanguage();
+  const { t, lang } = useLanguage();
   const [open, setOpen] = useState(false);
   const [session, setSession] = useState<AuthSession | null>(null);
 
@@ -252,6 +254,17 @@ export function Navbar({ variant = "light" }: { variant?: NavbarVariant }) {
                   type="button"
                   onClick={() => {
                     setOpen(false);
+                    openFeedback();
+                  }}
+                  className="flex items-center gap-2 rounded-md px-3 py-3 text-left text-label-lg text-ink hover:bg-brand-subtle"
+                >
+                  <MessageText1 size={20} color="currentColor" className="text-icon-brand" />
+                  {lang === "si" ? "අදහස් බෙදාගන්න" : "Share feedback"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setOpen(false);
                     handleLogout();
                   }}
                   className="flex h-12 items-center justify-center rounded-full bg-error-bg text-button-md text-error-fg"
@@ -389,6 +402,20 @@ function AccountMenu({ session, onLogout }: { session: AuthSession | null; onLog
               <Messages2 size={18} color="currentColor" className="text-icon-brand" />
               <span>{t.footer.contact}</span>
             </Link>
+          </li>
+          <li role="none">
+            <button
+              type="button"
+              role="menuitem"
+              onClick={() => {
+                setOpen(false);
+                openFeedback();
+              }}
+              className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-body-sm text-ink hover:bg-brand-subtle focus-visible:shadow-ring-brand"
+            >
+              <MessageText1 size={18} color="currentColor" className="text-icon-brand" />
+              <span>{lang === "si" ? "අදහස් බෙදාගන්න" : "Share feedback"}</span>
+            </button>
           </li>
 
           <div className="my-1 border-t border-line" />

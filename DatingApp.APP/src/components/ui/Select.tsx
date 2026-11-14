@@ -463,8 +463,7 @@ export function SortDropdown({
         onClick={() => setOpen((prev) => !prev)}
         className={cn(
           "flex h-[40px] items-center gap-1.5 rounded-md border border-line-strong bg-surface-card pl-3.5 pr-2.5 transition-all outline-none",
-          "hover:border-ink-tertiary",
-          open && "border-brand shadow-ring-brand"
+          open ? "border-brand shadow-ring-brand" : "hover:border-ink-tertiary"
         )}
       >
         <TextalignLeft size={16} color="currentColor" className="shrink-0 text-icon-muted" />

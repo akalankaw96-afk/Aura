@@ -4,7 +4,7 @@ import type { MetadataRoute } from "next";
 export default function manifest(): MetadataRoute.Manifest {
   return {
     id: "/dashboard",
-    name: "Vikasitha — Sri Lankan marriage proposals",
+    name: "Vikasitha | Sri Lankan marriage proposals",
     short_name: "Vikasitha",
     description: "Real, photo-verified marriage proposals from across Sri Lanka and Sri Lankans overseas.",
     start_url: "/dashboard",

@@ -31,7 +31,7 @@ export function Textarea({ label, hint, value, onChange, maxLength = 500, helper
         className={cn(
           "rounded-md border bg-surface-card px-3.5 pb-2 pt-3 transition-all",
           "focus-within:border-brand-focus focus-within:shadow-ring-brand",
-          error ? "border-error-line focus-within:border-error-line focus-within:shadow-ring-error" : "border-line-strong hover:border-ink-tertiary"
+          error ? "border-error-line focus-within:border-error-line focus-within:shadow-ring-error" : "border-line-strong [&:not(:focus-within)]:hover:border-ink-tertiary"
         )}
       >
         <textarea

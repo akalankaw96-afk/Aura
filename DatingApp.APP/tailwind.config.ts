@@ -98,7 +98,7 @@ const config: Config = {
       warning: { bg: v("color-status-warning-bg"), fg: v("color-status-warning-fg"), line: v("amber-500") },
       error: { bg: v("color-status-error-bg"), fg: v("color-status-error-fg"), line: v("color-border-error"), ring: v("red-100") },
       info: { bg: v("color-status-info-bg"), fg: v("color-status-info-fg"), line: v("blue-500") },
-      premium: { bg: v("color-status-premium-bg"), fg: v("color-status-premium-fg"), line: v("gold-300") },
+      premium: { bg: v("color-status-premium-bg"), fg: v("color-status-premium-fg"), line: v("color-border-premium") },
     },
     fontFamily: {
       sans: [v("font-family-base")],

@@ -14,7 +14,7 @@ export function KycGuard() {
   const router = useRouter();
   useEffect(() => {
     if (readKyc() !== "live") {
-      flashToast("info", "Available after approval", "We’re still reviewing your profile — this unlocks once you’re approved.");
+      flashToast("info", "Available after approval", "We’re still reviewing your profile. This unlocks once you’re approved.");
       router.replace("/dashboard");
     }
   }, [router]);

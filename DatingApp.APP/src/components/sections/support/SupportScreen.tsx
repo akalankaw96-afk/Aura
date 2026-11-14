@@ -3,6 +3,7 @@ import { MemberShell } from "@/components/layout/MemberShell";
 import { ButtonLink } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { SUPPORT } from "@/content/support";
+import { ShareFeedbackCard } from "@/components/feedback/ShareFeedbackCard";
 
 const ICONS = { email: Sms, whatsapp: Messages2, hotline: CallCalling };
 
@@ -42,6 +43,10 @@ export function SupportScreen() {
           );
         })}
       </ul>
+      {/* paid members: rating / feedback / success story popup */}
+      <div className="mt-4 lg:mt-6">
+        <ShareFeedbackCard />
+      </div>
     </MemberShell>
   );
 }

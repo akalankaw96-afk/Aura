@@ -5,6 +5,26 @@ Sections: Added · Changed · Fixed · Security · Removed · Breaking.
 
 ## [Unreleased]
 
+### Security
+- 2026-11-14 — **Sprint 01 completion (S01-T05/06/08/09/11/12/14/15).**
+  - Chat (BUG-004/005, TD-03): `ChatController` and `ChatHub` require login; the member comes from the JWT (WebSocket
+    token via `?access_token=`), never from arguments. New `Application/Services/ChatService.cs`: only members with an
+    accepted interest can chat, outsiders get 404, contact share needs the other member's accept and each side receives
+    the other's number, 2,000-char limit, one conversation id per pair, real presence (`WebApi/Hubs/PresenceTracker.cs`).
+    Web `services/signalrService.ts` sends the token; `app/messages/page.tsx` swaps optimistic messages for saved ones.
+  - Tokens (BUG-017, TD-14): access token in memory only, restored from the refresh cookie (`lib/http.ts`); `aura_token`
+    / `aura_auth_user` removed. One fetch helper with timeout used by `services/api.ts`, `services/passwordReset.ts` and
+    chat REST (TD-04).
+  - Guards (BUG-010/012): `components/auth/RequireMember.tsx` on Dashboard, Friends, Messages, Admin (Admin/Moderator);
+    API policies `Admin` / `Staff` (`WebApi/Auth/Policies.cs`).
+  - Errors (S01-T11): match-request, profile and content endpoints use `AppException` (400 / 403 `PROFILE_REQUIRED` /
+    404 / 409 `ALREADY_EXISTS`); `AppException.Forbidden/Conflict`, codes `FORBIDDEN`, `PROFILE_REQUIRED`, `NOT_MATCHED`.
+  - Tooling: `DatingApp.Tests` (xUnit + EF InMemory, 17 tests), `eslint.config.mjs` + ESLint devDeps,
+    `.github/workflows/ci.yml` (to be added by the owner), ui index exports, root README rewritten.
+- 2026-11-14 — **Merged `main` into `S01-api-auth`.** Kept main's feedback popup, promote placement and styling; kept this
+  branch's real-data versions where main restored sample stories, "100+ couples", sample requests / conversations,
+  Demo tips, staff links, a hard-coded phone number and client-side plan / KYC switching. Retired demo files are stubs again.
+
 ### Removed
 - 2026-11-14 — **All demo data removed from the web app (owner request: "remove all demo data").** Screens now show
   only what the API returns, with empty states when there is nothing yet.
@@ -50,6 +70,20 @@ Sections: Added · Changed · Fixed · Security · Removed · Breaking.
   Files (web): `services/api.ts`, `services/passwordReset.ts`, `components/ui/PasswordField.tsx`,
   `components/auth/{RegisterFlow,ForgotPasswordScreen}.tsx`. **Not yet compiled or tested** — see PROGRESS handover.
 
+- 2026-11-14 — **Feedback popup for paid members** (Gold / Platinum, KYC approved). One reusable `FeedbackDialog`
+  (mounted in the root layout) with a brand illustration on top (couple + love stickers, badge per step):
+  rate 1–5 stars → 4–5: quick tags, optional public review (first name + city consent), "Found your partner?" link ·
+  1–3: private feedback (tags or text required) + Contact support link · Success story form (names, wedding date,
+  city, story ≥ 30 chars, up to 3 photos, both-partner consent) · Thank you with reference (VK-DDMM-NNNN).
+  Opens automatically on the dashboard (2 s after load) only after a happy moment: 3 days after a contact share is
+  accepted · 14 days after paying with ≥ 1 accepted interest · after a renewal. Never in the first 3 days after paying
+  or 7 days after a report/block; max once per 30 days; "Don't ask again"; none for 6 months after sending.
+  Manual: profile menu "Share feedback" (desktop + mobile) and a new Share feedback card on `/support`
+  (Share your story · Share feedback); Free members get an info toast. Demo tips: "Feedback popup". Demo storage in
+  localStorage; planned `POST /api/feedback`. Files: `lib/feedback.ts`, `components/feedback/FeedbackDialog.tsx`,
+  `components/feedback/ShareFeedbackCard.tsx`, `app/layout.tsx`, `layout/Navbar.tsx`, `support/SupportScreen.tsx`,
+  `app/messages/page.tsx` (contact accepted, block/report), `search/ProfileView.tsx` (report), `lib/verification.ts`
+  (renewal), `dashboard/DashboardDemo.tsx`.
 - 2026-11-12 — **"How to use" page (`/how-to-use`)**, concept inspired by invitation.lk's guide, built with our design
   system: hero with Create New / Login (member: Go to dashboard) + trust chips; **6-step journey** (create account →
   log in → get verified → find a match → send interest → chat & share contacts) — tap a step to see its real phone
@@ -93,6 +127,14 @@ Sections: Added · Changed · Fixed · Security · Removed · Breaking.
   **unverified** (BUG-009). Demo OTP banner removed. Files: `components/auth/RegisterFlow.tsx`, `services/api.ts`
   (`ApiError`, `authFetch`, `refreshAccessToken`), `Application/DTOs/AuthDtos.cs`, `Application/Services/AuthService.cs`,
   `Application/Services/ProfileService.cs`.
+- 2026-11-14 — **Home hero search bar (Sinhala)**: the age "25 - 32" and the "යෝජනා සොයන්න" button wrapped to two
+  lines. Bar max width 600 → 760 px, segments size to their content (min 230 px), labels / values / button text no
+  longer wrap. Checked SI + EN at 1440, 1024, 768, 390. `home/Hero.tsx`.
+- 2026-11-14 — Search crashed with "Cannot read properties of undefined (reading 'MP-24817')": `content/home.ts` was
+  re-saved from an older copy, dropping `FEATURED_ABOUT`. Moved it to its own file `content/featuredAbout.ts`.
+- 2026-11-14 — Hovering a focused input/textarea replaced the rose focus border with the grey hover border (both
+  themes). `ui/Field.tsx`, `ui/Textarea.tsx` hover now applies only when not focused; `ui/Select.tsx` sort trigger
+  only hovers when closed.
 - 2026-11-12 — Share-contact card on phones: "Accept & share" / "Not now" were squashed flat (flex-1 in a column) →
   full width when stacked, flex-1 only side by side. `member/ContactShare.tsx`
 - 2026-11-11 — **Responsive layout.** Scanned home, search, dashboard, friends, messages, plans, login, register and
@@ -107,6 +149,57 @@ Sections: Added · Changed · Fixed · Security · Removed · Breaking.
     price wraps. `auth/PlansScreen.tsx`
 
 ### Changed
+- 2026-11-14 — **"Your profile is promoted" card moved under the dashboard hero.** While a boost is active the status
+  card (days left, extra views, interests, Extend 7 days) shows right under the welcome banner; the "Promote your
+  profile" offer (not promoted) stays between Requests & messages and Best matches. New `placement` prop on
+  `PromoteCard` ("top" | "offer"). Files: `promote/PromoteFlow.tsx`, `app/dashboard/page.tsx`.
+- 2026-11-14 — **Dashboard order for paid members** (Approved Gold, Platinum, expiring soon): the Promote your profile
+  and Gold/Platinum member cards moved from under the hero to between Requests & messages and the Best matches band.
+  Free and pending members unchanged. `app/dashboard/page.tsx`.
+- 2026-11-14 — **No em dashes (—) in any UI text** (EN + SI): titles, toasts, errors, FAQs, How to use copy, demo
+  chat text, aria-labels and the PWA name. Replaced with a comma, full stop, colon or space as fits the sentence;
+  empty-cell placeholders now "-". 31 files across `content/*`, `components/*`, `app/*`, `lib/usage.ts`. Code
+  comments untouched. How to use screenshots (`public/how-to-use`) still show old copy until re-captured.
+- 2026-11-14 — **Removed the match pill** ("95% · Excellent match · 10 of 10 preferences") from the search list card;
+  the shortlist heart stays top right. Unused `MatchPill` component removed from `cards/ProfileCardList.tsx`.
+- 2026-11-14 — **Search list card: "About me" + "Created by".** The quoted one-line placeholder ("Verified member
+  (MP-…). Dedicated professional…") is replaced by an **About me** block — the member's short description from the
+  KYC "About you" field, 2 lines, hidden when empty. "Posted by" renamed **Created by** on the list card, the
+  profile Basic details and the search filter title (matches the profile's "Created by" badge). Demo About text for
+  the 8 featured profiles in `content/featuredAbout.ts` (`FEATURED_ABOUT`), also used on the profile page. Files:
+  `cards/ProfileCardList.tsx`, `app/search/page.tsx`, `sections/search/ProfileView.tsx`, `content/search.ts`.
+- 2026-11-14 — **Chat header ⋯ (More options) button** is now a 40 px round outline button matching Share contact /
+  View profile beside it (surface card + `ring-line-strong`); hover and open = brand-subtle fill, rose ring, rose
+  icon; keyboard focus ring; removed the 90° rotate. `app/messages/page.tsx`.
+- 2026-11-14 — **Dark mode colour pass (UX audit).** Measured issues: cards vs page 1.13:1 (no depth), brand-subtle
+  rose-950 1.0:1 on cards (icon tiles / selected rows invisible), white on rose-500 4.03:1 (failed AA), solid 700
+  status fills (loud), cool blue-grey neutrals clashing with the rose brand, full-opacity heart pattern. New dark
+  tokens in `styles/tokens.css`: warm plum neutrals (page `#110B0E`, card `#241A1F`, raised `#2F2329`), brand
+  rose-600 (4.98:1), brand-subtle `#43182A`, softer text (`#F7EFF2` / `#D3C4CB` / `#A8979F`), translucent status
+  tints with light text, warm page gradient, `--color-border-premium` (gold-300 → 45 % in dark; Tailwind
+  `premium.line` now uses it). Heart pattern 35 % in dark (`ui/Decor.tsx`). Light theme unchanged.
+  - **Input focus in dark:** soft translucent rose ring (`--focus-ring-brand` / `--focus-ring-error` dark overrides)
+    instead of the bright rose-100 halo.
+  - **Badges on photos** (Verified / Horoscope / Promoted on `ProfileCard`, `ProfilePhotoCard`, `ProfileDetailModal`)
+    get `.on-photo` (dark glass backing, `app/globals.css`) so translucent tints stay readable on light photos.
+  - **Pinned notes** (`ui/PinNote.tsx`, home How it works, How to use tour) use dark rose/gold surfaces
+    (`--gradient-note-rose|gold`) with token text in dark instead of bright paper.
+  - **Gold member band** (`dashboard/ProPlanCard.tsx`) uses `--gradient-premium-band` in dark.
+- 2026-11-14 — Profile details: "Created by Self / Mother / Father / Relative" chip next to ID verified (who manages
+  the profile); "Posted …" chip shown without the person icon so the two aren't confused.
+- 2026-11-14 — Profile details: hidden fields shown as **blurred placeholder values with a lock badge** in their own
+  section (Weight, Monthly income, Zodiac sign; new **Contact details** section with Mobile and Email). Real values are
+  never rendered — the blur is fake text. Guests tap → login popup ("Log in to see …"). Members: weight / income /
+  zodiac unlock; Mobile / Email stay hidden until both accept a contact share (tap explains, or opens Messages when
+  already friends). Removed the grouped "More details for members" box, the separate privacy box and the section
+  menu chips.
+- 2026-11-14 — **Profile details redesigned** (`search/ProfileView.tsx`): square main photo + 4 square thumbnails
+  (last shows "+N", all open the photo viewer); summary on the right — name, location, badges, round **Share** and
+  **Favourite** icon buttons (replace the match-% card and the heart on the photo), 4 key facts, About, Message /
+  Send interest. Below: section menu (Chips, highlights the section in view) and titled full-width sections —
+  Basic details · Religion and background · Education and career · Location · Horoscope · Family — using the
+  icon-tile rows. Empty fields are hidden; guest-only fields (weight, salary, zodiac) are grouped in one
+  "More details for members" box with Log in. Phones: 2-column rows, long values wrap.
 - 2026-11-12 — How to use: removed Create New / Login from the page header, removed the divider lines between tour
   groups and the extra love stickers around the phones — the page now uses only the home page's heart pattern background.
 - 2026-11-12 — How to use tour: **every feature now shows two screens** (before/after or list/detail), e.g. register →

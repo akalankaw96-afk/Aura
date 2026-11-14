@@ -41,7 +41,7 @@ export const STATS: { icon: StatIcon; value: string; label: string; meta: string
 export const BEST_MATCHES = {
   eyebrow: "Best matches",
   title: "Your best matches today",
-  description: "Based on your age, religion and location preferences — updated daily.",
+  description: "Based on your age, religion and location preferences, updated daily.",
 };
 
 export interface InterestRequest {

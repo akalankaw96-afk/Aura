@@ -239,23 +239,23 @@ function TourCard({ item, index, whereLabel }: { item: TourItem; index: number; 
             <span className="flex h-12 w-12 items-center justify-center rounded-md bg-brand-gradient text-ink-on-brand">
               <Icon size={24} color="currentColor" />
             </span>
-            <span className={cn("text-[56px] font-bold leading-none", tone === "rose" ? "text-brand" : "text-gold-700")}>
+            <span className={cn("text-[56px] font-bold leading-none", tone === "rose" ? "text-brand" : "text-gold-700 dark:text-gold-300")}>
               {String(index + 1).padStart(2, "0")}
             </span>
           </div>
           {/* paper panel is always light → fixed light-paper colours */}
-          <h4 className="text-h4 text-gray-900 md:text-h3">{item.title}</h4>
-          <p className="text-body-md text-gray-600">{item.summary}</p>
+          <h4 className="text-h4 text-gray-900 dark:text-ink md:text-h3">{item.title}</h4>
+          <p className="text-body-md text-gray-600 dark:text-ink-secondary">{item.summary}</p>
           <ul className="flex flex-col gap-2">
             {item.bullets.map((b) => (
-              <li key={b} className="flex items-start gap-2.5 text-body-sm text-gray-800">
-                <TickCircle size={18} color="currentColor" variant="Bold" className={cn("mt-0.5 shrink-0", tone === "rose" ? "text-rose-600" : "text-gold-700")} />
+              <li key={b} className="flex items-start gap-2.5 text-body-sm text-gray-800 dark:text-ink-secondary">
+                <TickCircle size={18} color="currentColor" variant="Bold" className={cn("mt-0.5 shrink-0", tone === "rose" ? "text-rose-600 dark:text-rose-400" : "text-gold-700 dark:text-gold-300")} />
                 <span>{b}</span>
               </li>
             ))}
           </ul>
           {item.statuses && <StatusFlow statuses={item.statuses} align="start" />}
-          <span className="inline-flex w-fit items-center gap-1 rounded-full bg-white px-3 py-1.5 text-label-sm text-rose-700 shadow-xs">
+          <span className="inline-flex w-fit items-center gap-1 rounded-full bg-white px-3 py-1.5 text-label-sm text-rose-700 shadow-xs dark:bg-surface-raised dark:text-rose-300">
             {whereLabel}: {item.where}
             <ArrowRight2 size={12} color="currentColor" />
           </span>

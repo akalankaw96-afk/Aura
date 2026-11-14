@@ -124,7 +124,7 @@ export default function ComponentsPage() {
             </div>
             <div className="mt-6 grid gap-6 md:grid-cols-2">
               <Textarea label="About you" hint="Optional" value={about} onChange={setAbout} helper="Tip: profiles with a short, warm description get more replies." />
-              <Textarea label="About you" value="Call me on 077 123 4567" onChange={() => {}} error="Rejected: contains a phone number — please remove it" />
+              <Textarea label="About you" value="Call me on 077 123 4567" onChange={() => {}} error="Rejected: contains a phone number, please remove it" />
             </div>
           </Section>
         </Card>

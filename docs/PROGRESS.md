@@ -3,7 +3,7 @@
 **Status values:** Not Started · In Progress · Testing · Completed · Blocked · Deferred.
 "Completed" only when acceptance criteria pass and tests/manual checks are recorded (`TESTING_GUIDELINES.md` §6).
 
-_Last updated: 2026-11-14 — demo data removed; 2026-11-13 — Auth API (endpoints #1–14) on branch `S01-api-auth`, awaiting build + test._
+_Last updated: 2026-11-14 — Sprint 01 code complete (chat security, in-memory tokens, page guards, tests, CI) and `main` merged in; awaiting build + test. Earlier: demo data removed; Auth API #1–14._
 
 ## Overall
 | Area | State |
@@ -21,17 +21,17 @@ _Last updated: 2026-11-14 — demo data removed; 2026-11-13 — Auth API (endpoi
 | S01-T02 CORS allow-list | Testing | `Cors:AllowedOrigins` allow-list (dev: localhost:3001/3000); production list empty until set |
 | S01-T03 OTP hardening | Testing | Hashed codes, 5 min, 5 tries, 60 s resend, 3 resends/hour, per-IP limit; no master code; never in response. `ISmsSender` logs in dev only (TD-21: real provider) |
 | S01-T04 Google token verification + no fake session | Testing | Google ID token (One Tap) + access token (popup) verified with Google; web fake sessions removed (register, Google, OTP, profile auto-session) |
-| S01-T05 Refresh / logout / token storage | In Progress | API done: 15-min access token, rotating refresh token in httpOnly `vk_refresh` cookie, reuse detection, refresh/logout/sessions. Web: login/register/Google send cookies, logout calls API. Remaining: access token out of localStorage + refresh-on-401 (BUG-017) |
-| S01-T06 Chat authentication | Not Started | |
+| S01-T05 Refresh / logout / token storage | Testing | API: 15-min access token, rotating refresh token in httpOnly `vk_refresh` cookie, reuse detection. Web (2026-11-14): access token in memory only (`lib/http.ts`), restored with `/auth/refresh` after reload, old `aura_token` removed (BUG-017) |
+| S01-T06 Chat authentication | Testing | Hub + chat API `[Authorize]`; identity from the JWT (`?access_token=` on the WebSocket); only matched members can chat; outsiders get 404; contact share needs the other member's accept (`ChatService`, BUG-004/005, TD-03) |
 | S01-T07 Stop auto-verify on profile save | Testing | New profiles saved with `Verified = false` (2026-11-13). Existing-profile updates leave the flag unchanged |
-| S01-T08 Admin link + role gate | Not Started | |
-| S01-T09 Dashboard guest guard / KycGuard default | Not Started | |
-| S01-T10 Migrations, SQL default, dev-only seed | In Progress | Startup runs `Migrate()`, SQL Server default, demo member only in Development with password from user-secrets. Remaining: generate `InitialCreate` (needs `dotnet ef`) |
-| S01-T11 Global ProblemDetails handler | In Progress | `AppExceptionHandler` + ProblemDetails (`code`, `traceId`) and model validation; auth endpoints use it. Remaining: other controllers |
-| S01-T12 Typed fetch helper | Not Started | |
+| S01-T08 Admin link + role gate | Testing | Admin links stay out of the menu (also after merging `main`); `/admin` needs Admin/Moderator (`RequireMember role`); API policies `Admin` / `Staff` |
+| S01-T09 Dashboard guest guard / KycGuard default | Testing | Guests on Dashboard / Friends / Messages → `/login?next=…` (`RequireMember`); `KycGuard` only acts for signed-in members; KYC default is "pending" |
+| S01-T10 Migrations, SQL default, dev-only seed | Testing | `Migrate()` on start, SQL Server default, `InitialCreate` migration generated (2026-11-14), content seed only (no demo member) |
+| S01-T11 Global ProblemDetails handler | Testing | All controllers throw `AppException` → ProblemDetails (`code`, `traceId`); match requests: 400 / 403 `PROFILE_REQUIRED` / 404 / 409; content no longer swallows DB errors |
+| S01-T12 Typed fetch helper | Testing | `lib/http.ts`: `apiRequest` / `apiJson`, 15 s timeout, refresh-once on 401, `ApiError`; used by `api.ts`, `passwordReset.ts`, chat REST (TD-04) |
 | S01-T13 Password hashing upgrade | Testing | PBKDF2-SHA256 600k (`v2.` format); old hashes verify and are upgraded at login |
-| S01-T14 Lint, tests, CI, ui exports | Not Started | |
-| S01-T15 README update | Not Started | |
+| S01-T14 Lint, tests, CI, ui exports | Testing | `eslint.config.mjs` (+ devDeps — run `npm install`); `DatingApp.Tests` (xUnit, 17 tests: OTP, sessions, chat, interests); `.github/workflows/ci.yml` (owner to add — tool can't write `.github`); `SegmentedTabs`, `PhotoSlot`, `ButtonLink` exported |
+| S01-T15 README update | Testing | Root README: start-here links to CLAUDE.md / docs, run + check commands, status |
 | S01-T16 Forgot password journey | Testing | API endpoints #9–11 + change password #12 built; `services/passwordReset.ts` now calls them. Password rule aligned web ↔ API: 8+ chars, letter + number |
 
 ## Small UI changes (outside sprint tasks)
@@ -48,7 +48,17 @@ _Last updated: 2026-11-14 — demo data removed; 2026-11-13 — Auth API (endpoi
 | Sinhala home title −8 px | Completed | Checked 1440/390 SI + EN unchanged; build passes |
 | How to use page `/how-to-use` + menu links (journey 50/50 list + phone, pinned-note tour, 2 screens per feature, 31 screens) | Completed | Tested 1440/390, EN/SI, light/dark, no overflow, member menu → page; build passes. SI tour details + screenshots in SI pending |
 | Contact-share card buttons on phones | Completed | Fixed squashed buttons; checked 390 |
+| Profile details redesign (square photo + thumbs, sections, blurred locked fields) | Completed | Tested 1440/390, member + guest, no overflow; build passes |
 | Forgot password back button (all 3 steps) | Completed | Tested 1440/390: each step goes back one step, step 1 → /login; build passes |
+| Hero search bar: Sinhala text wrapping fixed | Completed | Checked SI/EN 1440, 1024, 768, 390 light/dark |
+| Feedback popup for paid members (rating, review, private feedback, success story) | Completed (front end) | Tested 1440 light/dark + 390: all 5 steps, validation, auto-open rules (free, day 2, shown 5 d ago, report 2 d ago → no popup; clean → popup; Not now → none), Free toast; `tsc` clean. API pending |
+| Dashboard: active promotion card under hero | Completed | Checked 1440 dark, Gold + active boost; `tsc` clean |
+| Dashboard: Promote + plan cards moved above Best matches (paid states) | Completed | Checked 1440 dark, Gold state |
+| Remove em dashes from all UI text | Completed | 0 left outside code comments; `tsc` clean; 8 main pages load (200). How to use screenshots need re-capture |
+| Search list card: match pill removed | Completed | Checked 1440 dark; `tsc` clean |
+| Search list card: About me (KYC) + Created by | Completed | Checked 1440 light/dark + 390; `tsc` clean. Real API must return the KYC `about` text as `bio` |
+| Chat header ⋯ button styled as round outline button | Completed | Checked 1440 light + dark, default + hover |
+| Dark mode colour pass (tokens, focus ring, photo badges, pinned notes, gold band) + focus/hover fix | Testing | Checked in dark at 1440: home, login focus, dashboard, search, profile, friends, How to use; light unchanged; `tsc` clean. Needs 390 px + real-device review |
 
 ## Owner requests
 | Change | Status | Notes |
@@ -88,7 +98,16 @@ Remaining before "Completed":
 2026-11-13 later: build + `InitialCreate` migration succeeded on the owner's machine (SQL Express); API serves seeded
 content. Registration wired to the API (see CHANGELOG "Registration now saves to the database"). The built-in test
 browser can't make cross-port calls, so the end-to-end registration check runs in the owner's browser.
-Blockers: none. Files: see CHANGELOG 2026-11-13. Next: S01-T05 web part (BUG-017), then chat auth (S01-T06) on its own branch.
+Blockers: none. Files: see CHANGELOG 2026-11-13.
+
+### S01 completion + merge of `main` (2026-11-14)
+- Sprint 01 code is complete; every S01 task is **Testing** until the owner runs `dotnet build`, `dotnet test`,
+  `npm.cmd install`, `npm.cmd run lint`, `npm.cmd run check` and a manual pass (register → login → reload → chat between two matched members).
+- `main` merged into `S01-api-auth`; 15 conflicts resolved (13 web, 2 docs). Rule used: keep main's new features (feedback
+  popup, promote card placement, styling) and keep this branch wherever main brought back demo data (sample stories, fake
+  "100+ couples", sample requests / conversations, hard-coded phone, Demo tips, staff links, client-side plan/KYC switching).
+  Retired demo files that main had edited are back to empty stubs (TD-01).
+- Not verified here: C# was reviewed by hand only (no .NET in the assistant's workspace); web passes `tsc`.
 
 Template for an unfinished task:
 ```

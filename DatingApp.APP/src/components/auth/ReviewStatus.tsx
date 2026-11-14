@@ -90,12 +90,12 @@ export function ReviewStatus() {
 
   const next = (from: "details" | "photo") => {
     if (from === "details" && !photoFixed) {
-      toast.info("One more thing", "Your details are fixed — now replace your main photo.");
+      toast.info("One more thing", "Your details are fixed, now replace your main photo.");
       router.push("/register/status?fix=photo");
       return;
     }
     if (from === "photo" && !detailsFixed) {
-      toast.info("One more thing", "Your photo is updated — now fix the highlighted details.");
+      toast.info("One more thing", "Your photo is updated, now fix the highlighted details.");
       router.push("/register/status?fix=details");
       return;
     }

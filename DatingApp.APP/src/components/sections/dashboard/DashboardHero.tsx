@@ -58,10 +58,10 @@ export function DashboardHero() {
           <p className="enter text-body-md text-ink-on-brand-muted md:text-body-lg" style={{ "--enter-delay": "160ms" } as React.CSSProperties}>
             {locked
               ? lang === "si"
-                ? "ඔබේ පැතිකඩ සමාලෝචනය වෙමින් පවතී — අතරතුර ඔබේ පාලක පුවරුව බලන්න."
+                ? "ඔබේ පැතිකඩ සමාලෝචනය වෙමින් පවතී, අතරතුර ඔබේ පාලක පුවරුව බලන්න."
                 : !hasCompletedProfile
                 ? "Please complete your candidate profile to activate personalized match recommendations."
-                : "Your profile is being reviewed — take a look around while we get your matches ready."
+                : "Your profile is being reviewed. Take a look around while we get your matches ready."
               : lang === "si"
               ? "ශ්‍රී ලංකාවෙන් සහ විදේශයන්හි සත්‍යාපිත සාමාජිකයින් අතරින් ඔබේ සහකරු සොයාගන්න."
               : DASH_HERO.subtitle}

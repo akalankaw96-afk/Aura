@@ -81,7 +81,7 @@ export interface FeaturedProfile {
 export const FEATURED = {
   eyebrow: "Featured profiles",
   title: "Recently verified proposals",
-  description: "Every photo is checked by our team before it goes live — send interest to start the conversation.",
+  description: "Every photo is checked by our team before it goes live. Send interest to start the conversation.",
   cta: "View all proposals",
   profiles: [] as FeaturedProfile[], // filled from GET /api/profiles (lib/profiles.ts)
 };
@@ -90,7 +90,7 @@ export const FEATURED = {
 export const STORIES = {
   eyebrow: "Success stories",
   title: "Real couples, real weddings",
-  description: "Real families, real weddings — from Colombo to Melbourne.",
+  description: "Real families, real weddings, from Colombo to Melbourne.",
   /** Stories come from GET /api/content/stories (shared by real couples). */
   items: [] as { initials: string; photo: string }[],
 };
@@ -138,7 +138,7 @@ export const CATEGORIES = {
 export const PRICING = {
   eyebrow: "Pricing",
   title: "Plans for every family",
-  description: "Start free. Upgrade when you are ready to connect. Prices in LKR — overseas members can pay by card.",
+  description: "Start free. Upgrade when you are ready to connect. Prices in LKR. Overseas members can pay by card.",
   plans: [
     {
       id: "free",
@@ -203,7 +203,7 @@ export const FAQ = {
       a: "Yes. Upload your horoscope and Gold members can view and compare horoscopes before sending interest.",
     },
     {
-      q: "I live overseas — can I join?",
+      q: "I live overseas, can I join?",
       a: "Absolutely. Sri Lankans in Australia, the UK, Canada, the Middle East and beyond can register and pay by card.",
     },
   ],
@@ -213,7 +213,7 @@ export const FAQ = {
 export const SIGN_UP = {
   eyebrow: "Join free today",
   title: "Ready to meet your life partner?",
-  body: "Create your profile in two minutes — for yourself or for your family. Your details stay private until you choose to share them.",
+  body: "Create your profile in two minutes, for yourself or for your family. Your details stay private until you choose to share them.",
   benefits: ["Verified, genuine members only", "Photo-verified profiles you can trust", "Sinhala, Tamil & English support"],
   form: {
     title: "Create your free profile",
@@ -225,7 +225,7 @@ export const SIGN_UP = {
 
 /* ── 09 Footer ───────────────────────────────────────────────────────── */
 export const FOOTER = {
-  brand: "Sri Lanka’s trusted home for verified marriage proposals — for you and your family.",
+  brand: "Sri Lanka’s trusted home for verified marriage proposals, for you and your family.",
   columns: [
     { title: "Browse", links: [["Brides", "/search?for=bride"], ["Grooms", "/search?for=groom"], ["Overseas proposals", "/search?overseas=1"], ["Success stories", "/#stories"]] },
     { title: "Company", links: [["About us", "/about"], ["How it works", "/#how-it-works"], ["Pricing", "/#pricing"], ["Contact", "/contact"]] },

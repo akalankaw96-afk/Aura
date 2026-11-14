@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useMemo, useRef, useState, useEffect, useCallback } from "react";
+import { markContactAccepted, markSafetyEvent } from "@/lib/feedback";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -25,6 +26,7 @@ import { Footer } from "@/components/layout/Footer";
 import { useLanguage } from "@/context/LanguageContext";
 import { BackButton } from "@/components/ui/BackButton";
 import { KycGuard } from "@/components/auth/KycGuard";
+import { RequireMember } from "@/components/auth/RequireMember";
 import { requirePaidAction } from "@/lib/usage";
 import { FilterChip } from "@/components/ui/FilterChip";
 import { useToast } from "@/components/ui/Toast";
@@ -90,7 +92,10 @@ export default function MessagesPage() {
   const [shareByConv, setShareByConv] = useState<Record<string, ContactShareStatus>>({});
   const [partnerPhones, setPartnerPhones] = useState<Record<string, string>>({});
   const shareCardRef = useRef<HTMLDivElement>(null);
-  const setShare = useCallback((convId: string, status: ContactShareStatus) => setShareByConv((s) => ({ ...s, [convId]: status })), []);
+  const setShare = useCallback((convId: string, status: ContactShareStatus) => {
+    if (status === "accepted") markContactAccepted(); // feedback popup: happy moment
+    setShareByConv((s) => ({ ...s, [convId]: status }));
+  }, []);
   const MY_PHONE = session?.phoneNumber ?? "";
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -112,8 +117,8 @@ export default function MessagesPage() {
 
   // Load conversations from backend
   const loadData = useCallback(async () => {
-    // No profile yet → no conversations. (Chat API security: BUG-004/005, next on the sprint.)
-    const list = currentProfileCode ? await getConversations(currentProfileCode) : [];
+    // No profile yet → no conversations. The server works out whose chats these are from the token.
+    const list = currentProfileCode ? await getConversations() : [];
     setConversations(list || []);
     if (list && list.length > 0) {
       if (!list.some((c) => c.conversationId === activeConvId)) {
@@ -131,7 +136,7 @@ export default function MessagesPage() {
       setMessages([]);
       return;
     }
-    const history = await getChatHistory(convId, currentProfileId);
+    const history = await getChatHistory(convId);
     if (history && history.length > 0) {
       setMessages(history);
 
@@ -172,12 +177,23 @@ export default function MessagesPage() {
       if (!mounted) return;
 
       // Update message list if relevant to active conversation
-      setMessages((prev) => {
-        // Prevent duplicate appending if caller already added
-        if (prev.some((m) => m.id === newMsg.id)) return prev;
-        const isFromMe = newMsg.senderProfileId === currentProfileId || newMsg.senderName === currentUserName;
-        return [...prev, { ...newMsg, isMe: isFromMe }];
-      });
+      // Only messages for the open conversation belong in the thread
+      if (newMsg.conversationId === activeConvId) {
+        setMessages((prev) => {
+          if (prev.some((m) => m.id === newMsg.id)) return prev;
+          const isFromMe = newMsg.senderProfileId === currentProfileId;
+          // Replace the optimistic copy of my own message with the saved one (real id, safety flags)
+          const tempIndex = isFromMe
+            ? prev.findIndex((m) => m.id.startsWith("temp_") && m.messageText === newMsg.messageText)
+            : -1;
+          if (tempIndex >= 0) {
+            const next = [...prev];
+            next[tempIndex] = { ...newMsg, isMe: true };
+            return next;
+          }
+          return [...prev, { ...newMsg, isMe: isFromMe }];
+        });
+      }
 
       // Update conversation list item last message
       setConversations((prev) =>
@@ -303,7 +319,7 @@ export default function MessagesPage() {
       id: tempId,
       senderProfileId: currentProfileId,
       senderName: currentUserName,
-      senderPhotoUrl: "https://images.unsplash.com/photo-1622253692010-333f2da6031d?q=80&w=800&auto=format&fit=crop",
+      senderPhotoUrl: "",
       receiverProfileId: activeConv.partnerProfileId,
       receiverName: activeConv.partnerName,
       conversationId: activeConv.conversationId,
@@ -424,6 +440,7 @@ export default function MessagesPage() {
     const target = blockTarget;
     setBlockTargetId(null);
     if (!target) return;
+    markSafetyEvent(); // no feedback popup for 7 days
     setBlocked((b) => ({ ...b, [target.conversationId]: { date: todayLabel(), reason: opts.reason } }));
     setActiveConvId(target.conversationId);
     toast.success(t.messages.blockedToast(target.partnerName), opts.report ? t.messages.reportedToast : undefined);
@@ -446,7 +463,10 @@ export default function MessagesPage() {
     } else done();
   };
 
-  const reportMember = () => toast.info(t.messages.reportedToast);
+  const reportMember = () => {
+    markSafetyEvent();
+    toast.info(t.messages.reportedToast);
+  };
 
   const toggleMute = (id: string) => {
     const next = !muted[id];
@@ -458,6 +478,7 @@ export default function MessagesPage() {
     <div className="min-h-screen bg-page-gradient">
       <Navbar variant="member" />
       {/* Messages need an approved profile */}
+      <RequireMember />
       <KycGuard />
 
       <main className="container-page pb-20 pt-6 lg:pt-8">
@@ -721,8 +742,9 @@ export default function MessagesPage() {
                         aria-expanded={open}
                         onClick={toggle}
                         className={cn(
-                          "flex h-9 w-9 items-center justify-center rounded-full text-ink-tertiary transition-all hover:bg-surface-subtle",
-                          open && "bg-brand-subtle text-brand rotate-90"
+                          // matches the outline sm buttons beside it (40px, same ring) so the row reads as one set
+                          "flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-surface-card text-ink-secondary ring-1 ring-inset ring-line-strong transition-all hover:bg-brand-subtle hover:text-brand hover:ring-brand focus-visible:outline-none focus-visible:shadow-ring-brand active:scale-95",
+                          open && "bg-brand-subtle text-brand ring-brand"
                         )}
                       >
                         <More size={20} color="currentColor" />

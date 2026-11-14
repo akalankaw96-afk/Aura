@@ -300,7 +300,7 @@ function Detail({
 
       <div className="flex flex-wrap items-center gap-3">
         <p className="min-w-[160px] flex-1 text-body-sm text-ink-tertiary">
-          {tab === "received" ? "Accepting unlocks photos, contact details and chat." : tab === "sent" ? "We’ll let you know as soon as they reply." : tab === "favourites" ? "Saved to your favourites." : "You’re connected — say hello!"}
+          {tab === "received" ? "Accepting unlocks photos, contact details and chat." : tab === "sent" ? "We’ll let you know as soon as they reply." : tab === "favourites" ? "Saved to your favourites." : "You’re connected, say hello!"}
         </p>
         {tab === "received" && (
           <div className="flex gap-3 max-sm:w-full">

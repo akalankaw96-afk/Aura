@@ -126,7 +126,7 @@ export function UpgradePrompt() {
               {allUsedUp ? "You’ve used your free browsing allowance" : USAGE_LABEL[kind].limitReachedTitle || `You’ve used your ${limit} free ${unit}`}
             </h2>
             <p id="upgrade-description" className="text-body-sm text-ink-secondary">
-              {allUsedUp ? "You’ve used all your free searches and profile views this month. Upgrade to keep browsing, or return to your dashboard." : USAGE_LABEL[kind].limitReachedMsg || `Free members get ${limit} ${unit} a month — your allowance resets on the 1st. Upgrade to keep going right now.`}
+              {allUsedUp ? "You’ve used all your free searches and profile views this month. Upgrade to keep browsing, or return to your dashboard." : USAGE_LABEL[kind].limitReachedMsg || `Free members get ${limit} ${unit} a month. Your allowance resets on the 1st. Upgrade to keep going right now.`}
             </p>
           </div>
 
@@ -147,7 +147,7 @@ export function UpgradePrompt() {
               onClick={() => setPromptKind(null)}
               className="flex h-12 items-center justify-center gap-2 rounded-full bg-brand-gradient text-button-md text-ink-on-brand transition-shadow hover:shadow-glow"
             >
-              <Crown1 size={18} color="currentColor" /> Upgrade to Gold — from LKR 1,875/mo
+              <Crown1 size={18} color="currentColor" /> Upgrade to Gold, from LKR 1,875/mo
             </Link>
             {goldFeature ? (
               <Button variant="outline" size="md" fullWidth onClick={() => setPromptKind(null)}>

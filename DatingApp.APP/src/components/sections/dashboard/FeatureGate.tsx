@@ -51,7 +51,7 @@ export function FeatureGate({
               ? text ?? "Upgrade to Gold or Platinum to unlock this."
               : status === "changes"
               ? "Fix the flagged details above and resubmit to unlock this."
-              : "We’re reviewing your profile — this usually takes less than 24 hours."}
+              : "We’re reviewing your profile. This usually takes less than 24 hours."}
           </p>
           {planLock && (
             <ButtonLink href="/plans" size="sm" className="mt-1" leftIcon={<Crown1 size={16} color="currentColor" />}>

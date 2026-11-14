@@ -28,7 +28,7 @@ export const USAGE_LABEL: Record<UsageKind, { title: string; unit: string; limit
     title: "Profile views",
     unit: "profile views",
     limitReachedTitle: "You’ve viewed your 5 free profiles",
-    limitReachedMsg: "Free members can open 5 profiles a month — your allowance resets on the 1st. Upgrade to view unlimited profiles right now.",
+    limitReachedMsg: "Free members can open 5 profiles a month. Your allowance resets on the 1st. Upgrade to view unlimited profiles right now.",
   },
   chats: {
     title: "Free Chat Connections",
