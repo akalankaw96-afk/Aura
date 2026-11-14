@@ -14,7 +14,9 @@ import { BumpTitle } from "@/components/motion/BumpTitle";
  * Story Card (760 × 420); its neighbours are the side photo cards
  * (104 × 300, then 76 × 212 at 75 % / 40 %). On each step every card slides
  * one slot, so the next photo grows into the centre card — no static images.
- * Auto-advances every INTERVAL ms, pauses on hover / focus, swipe on touch.
+ * Auto-advances every INTERVAL ms. Pauses only while the pointer is on the open story card
+ * or keyboard focus is inside the carousel (mouse clicks on the arrows / dots don't pause it).
+ * Swipe on touch.
  */
 const INTERVAL = 5000;
 
@@ -56,6 +58,11 @@ export function SuccessStories() {
     prev.current = i;
   }, [i]);
 
+  // a manual change (arrow / dot / side card) restarts the timer instead of staying paused
+  useEffect(() => {
+    setPaused(false);
+  }, [i]);
+
   /** -3 … 3 for 7 stories: where card k sits relative to the active one */
   const half = Math.floor(n / 2);
   const offsetOf = (k: number, active: number) => ((k - active + n + half) % n) - half;
@@ -77,9 +84,7 @@ export function SuccessStories() {
       aria-roledescription="carousel"
       aria-label={t.stories.title}
       className="scroll-mt-28 overflow-hidden py-16 lg:py-24"
-      onMouseEnter={() => setPaused(true)}
-      onMouseLeave={() => setPaused(false)}
-      onFocusCapture={() => setPaused(true)}
+      onFocusCapture={(e) => (e.target as HTMLElement).matches(":focus-visible") && setPaused(true)}
       onBlurCapture={() => setPaused(false)}
     >
       <div className="flex flex-col gap-12">
@@ -101,6 +106,8 @@ export function SuccessStories() {
                 key={s.names}
                 aria-hidden={!active}
                 onClick={active ? undefined : () => go(k)}
+                onMouseEnter={active ? () => setPaused(true) : undefined}
+                onMouseLeave={active ? () => setPaused(false) : undefined}
                 className={cn(
                   "absolute overflow-hidden bg-surface-card",
                   active ? "z-10 rounded-xl border border-line shadow-xl" : "cursor-pointer rounded-xl shadow-md hover:shadow-lg",
@@ -157,7 +164,7 @@ export function SuccessStories() {
 
         {/* Mobile / tablet: one card, slides in on change */}
         <div className="px-page-x lg:hidden" {...swipe}>
-          <article key={i} aria-live="polite" className="mx-auto flex w-full max-w-[760px] animate-story-in flex-col-reverse gap-3 rounded-xl border border-line bg-surface-card p-3 shadow-xl md:min-h-[420px] md:flex-row">
+          <article key={i} aria-live="polite" onMouseEnter={() => setPaused(true)} onMouseLeave={() => setPaused(false)} className="mx-auto flex w-full max-w-[760px] animate-story-in flex-col-reverse gap-3 rounded-xl border border-line bg-surface-card p-3 shadow-xl md:min-h-[420px] md:flex-row">
             <div className="flex flex-1 flex-col justify-between gap-6 p-4 md:py-6 md:pl-6 md:pr-4">
               <StoryText story={story} />
             </div>

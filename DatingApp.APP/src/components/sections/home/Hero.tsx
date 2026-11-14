@@ -131,7 +131,7 @@ export function HeroSearch() {
   // outer side (Looking for: left 24, Age: right 24); the side next to the divider stays square.
   const segment = (active: boolean, side: "left" | "right") =>
     cn(
-      "flex w-full items-center gap-3 rounded-md px-6 py-2 text-left text-ink transition-colors md:w-[220px]",
+      "flex w-full items-center gap-3 rounded-md px-6 py-2 text-left text-ink transition-colors md:w-auto md:min-w-[230px]",
       side === "left" ? "md:rounded-l-[24px] md:rounded-r-none" : "md:rounded-l-none md:rounded-r-[24px]",
       active ? "bg-brand-subtle" : "hover:bg-surface-subtle"
     );
@@ -139,14 +139,14 @@ export function HeroSearch() {
   const lookingForLabel = lookingFor === "Bride" ? t.hero.bride : t.hero.groom;
 
   return (
-    <div ref={ref} className="relative z-20 w-full max-w-[600px] text-left md:w-auto">
+    <div ref={ref} className="relative z-20 w-full max-w-[760px] text-left md:w-auto">
       <div className="flex flex-col gap-2 rounded-xl bg-surface-card p-3 shadow-xl md:flex-row md:items-center md:gap-0 md:rounded-full md:p-2">
         {/* Looking for */}
         <button type="button" aria-haspopup="listbox" aria-expanded={open === "for"} onClick={() => setOpen(open === "for" ? null : "for")} className={segment(open === "for", "left")}>
           <Heart size={24} color="currentColor" className="shrink-0 text-icon-brand" />
           <span className="flex flex-1 flex-col">
-            <span className="text-label-sm text-ink-tertiary">{t.hero.lookingFor}</span>
-            <span className="text-body-md font-semibold">{lookingForLabel}</span>
+            <span className="whitespace-nowrap text-label-sm text-ink-tertiary">{t.hero.lookingFor}</span>
+            <span className="whitespace-nowrap text-body-md font-semibold">{lookingForLabel}</span>
           </span>
           <ArrowDown2 size={24} color="currentColor" className={cn("shrink-0 text-icon-brand transition-transform", open === "for" && "rotate-180")} />
         </button>
@@ -155,15 +155,15 @@ export function HeroSearch() {
         <button type="button" aria-haspopup="dialog" aria-expanded={open === "age"} onClick={() => setOpen(open === "age" ? null : "age")} className={segment(open === "age", "right")}>
           <User size={24} color="currentColor" className="shrink-0 text-icon-brand" />
           <span className="flex flex-1 flex-col">
-            <span className="text-label-sm text-ink-tertiary">{t.hero.age}</span>
-            <span className="text-body-md font-semibold">{ageLabel}</span>
+            <span className="whitespace-nowrap text-label-sm text-ink-tertiary">{t.hero.age}</span>
+            <span className="whitespace-nowrap text-body-md font-semibold">{ageLabel}</span>
           </span>
           <ArrowDown2 size={24} color="currentColor" className={cn("shrink-0 text-icon-brand transition-transform", open === "age" && "rotate-180")} />
         </button>
         <button
           type="button"
           onClick={search}
-          className="flex h-[54px] items-center justify-center gap-2 rounded-full bg-brand-gradient px-8 text-button-md text-ink-on-brand transition-shadow hover:shadow-glow"
+          className="flex h-[54px] shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-full bg-brand-gradient px-8 text-button-md text-ink-on-brand transition-shadow hover:shadow-glow md:ml-2"
         >
           <SearchNormal1 size={20} color="currentColor" />
           {t.hero.search}

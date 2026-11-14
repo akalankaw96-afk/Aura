@@ -50,6 +50,7 @@ _Last updated: 2026-11-14 — dark mode colour pass + input focus fix._
 | Contact-share card buttons on phones | Completed | Fixed squashed buttons; checked 390 |
 | Profile details redesign (square photo + thumbs, sections, blurred locked fields) | Completed | Tested 1440/390, member + guest, no overflow; build passes |
 | Forgot password back button (all 3 steps) | Completed | Tested 1440/390: each step goes back one step, step 1 → /login; build passes |
+| Hero search bar: Sinhala text wrapping fixed | Completed | Checked SI/EN 1440, 1024, 768, 390 light/dark |
 | Feedback popup for paid members (rating, review, private feedback, success story) | Completed (front end) | Tested 1440 light/dark + 390: all 5 steps, validation, auto-open rules (free, day 2, shown 5 d ago, report 2 d ago → no popup; clean → popup; Not now → none), Free toast; `tsc` clean. API pending |
 | Dashboard: active promotion card under hero | Completed | Checked 1440 dark, Gold + active boost; `tsc` clean |
 | Dashboard: Promote + plan cards moved above Best matches (paid states) | Completed | Checked 1440 dark, Gold state |

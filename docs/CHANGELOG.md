@@ -43,6 +43,9 @@ Sections: Added · Changed · Fixed · Security · Removed · Breaking.
   `services/passwordReset.ts` (new), `lib/demo.ts` (`registeredEmail`).
 
 ### Fixed
+- 2026-11-14 — **Home hero search bar (Sinhala)**: the age "25 - 32" and the "යෝජනා සොයන්න" button wrapped to two
+  lines. Bar max width 600 → 760 px, segments size to their content (min 230 px), labels / values / button text no
+  longer wrap. Checked SI + EN at 1440, 1024, 768, 390. `home/Hero.tsx`.
 - 2026-11-14 — Search crashed with "Cannot read properties of undefined (reading 'MP-24817')": `content/home.ts` was
   re-saved from an older copy, dropping `FEATURED_ABOUT`. Moved it to its own file `content/featuredAbout.ts`.
 - 2026-11-14 — Hovering a focused input/textarea replaced the rose focus border with the grey hover border (both
