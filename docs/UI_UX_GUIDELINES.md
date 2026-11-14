@@ -17,7 +17,15 @@ plain — "Send interest", not "Swipe". Bilingual English/Sinhala (Tamil planned
   Only scales: `rose`, `gray`, `gold`. **No hex, no default Tailwind palette, no `token/NN` modifiers** — use
   `rgba()`/`color-mix()` arbitrary values when you need transparency.
 - Type, spacing, radius, shadow: Tailwind theme values from the token file; no arbitrary pixel sizes unless Figma demands it.
+- **Copy: never use the em dash (—)** in UI text. Use a comma, full stop or colon instead; "-" for empty values.
 - Light and dark themes both required; check contrast in both.
+- **Dark theme rules (2026-11-14):** depth = lighter surfaces (page < subtle < card < raised), warm plum neutrals
+  only (never cool grey); brand fill rose-600 for AA with white text; status chips are translucent tints with light
+  text; a status badge sitting **on a photo** must add `.on-photo`; never hard-code light-only colours
+  (`text-gray-900`, `bg-white`, `*-50/100` fills) without a `dark:` token counterpart; dark-only gradients live in
+  tokens (`--gradient-note-*`, `--gradient-premium-band`), used via `dark:bg-[image:var(--…)]`.
+- Focus: `focus-within:border-brand-focus focus-within:shadow-ring-brand`; hover borders must not override focus
+  (`[&:not(:focus-within)]:hover:…`).
 
 ## 3. Layout and responsive
 - Design at **1440 px** and **390 px**; check 768 px **and in-between widths (480, 640, 700, 900, 1024)** — below 768 px the
@@ -59,6 +67,7 @@ reveal animations); contrast ≥ 4.5:1 for text.
 - Posted time on landscape profile cards; "Promoted" label + shine on boosted profiles.
 - Contact details are shared only by **mutual consent** from chat: Gold member requests → other member accepts.
   Only mobile/WhatsApp numbers, never e-mail or address. Component: `ContactShare.tsx`.
+- Profile details: hide empty "—" fields. Hidden fields = same row, lock badge on the icon, blurred **placeholder** value (never the real data); tap opens the login popup. Contact details unlock only after a mutual contact share.
 - Report profile: simple modal with reason + optional details, then toast.
 - Numbers and money: `LKR 500`, dates `12 Nov 2026`, relative time for recent ("2 h ago").
 

@@ -37,7 +37,12 @@ const PERKS = [
 /* ------------------------------------------------------------------ */
 /* Dashboard card — KYC approved + Pro (Gold / Platinum)               */
 /* ------------------------------------------------------------------ */
-export function PromoteCard() {
+/**
+ * `placement` lets the dashboard show the two states in different places:
+ * "top" renders only while promoted (status under the hero), "offer" only when not promoted.
+ * Omit it to render whichever state applies.
+ */
+export function PromoteCard({ placement }: { placement?: "top" | "offer" } = {}) {
   const { locked, isPaid } = useAccess();
   const boost = useBoost();
   const [bar, setBar] = useState(0);
@@ -51,6 +56,8 @@ export function PromoteCard() {
   }, [boost.active, boost.daysLeft, boost.totalDays]);
 
   if (locked || !isPaid) return null;
+  if (placement === "top" && !(boost.active && boost.ends)) return null;
+  if (placement === "offer" && boost.active && boost.ends) return null;
 
   // Active boost — status + results
   if (boost.active && boost.ends) {
@@ -107,7 +114,7 @@ export function PromoteCard() {
       <div className="flex min-w-0 flex-1 flex-col gap-1">
         <h2 className="text-h5 text-ink">Promote your profile</h2>
         <p className="text-body-sm text-ink-secondary">
-          Appear at the top of matching searches with a gold <span className="font-semibold text-premium-fg">Promoted</span> badge for {BOOST.days} days — get up to 10× more views.
+          Appear at the top of matching searches with a gold <span className="font-semibold text-premium-fg">Promoted</span> badge for {BOOST.days} days. Get up to 10× more views.
         </p>
       </div>
       <div className="flex shrink-0 items-center gap-4 max-md:justify-between">

@@ -28,7 +28,7 @@ export function ProfilePhotoCard({ profile, variant = "glass", className, href }
   const card = variant === "card" ? <ProfilePhotoCardSolid profile={profile} className={className} /> : <ProfilePhotoCardGlass profile={profile} className={className} />;
   if (!href) return card;
   return (
-    <Link href={href} aria-label={`View ${profile.name}, ${profile.age} — ${profile.id}`} className="block shrink-0 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-focus">
+    <Link href={href} aria-label={`View ${profile.name}, ${profile.age}, ${profile.id}`} className="block shrink-0 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-focus">
       {card}
     </Link>
   );
@@ -130,7 +130,7 @@ function ProfilePhotoCardSolid({ profile, className }: { profile: MarqueeProfile
           loading="lazy"
           className="absolute inset-0 h-full w-full object-cover transition-transform duration-700 ease-out group-hover/card:scale-[1.06]"
         />
-        <span className="absolute left-3 top-3 inline-flex h-[22px] items-center gap-1 rounded-full bg-success-bg px-2 text-label-sm text-success-fg">
+        <span className="on-photo absolute left-3 top-3 inline-flex h-[22px] items-center gap-1 rounded-full bg-success-bg px-2 text-label-sm text-success-fg">
           <Verify size={14} color="currentColor" /> Verified
         </span>
       </div>

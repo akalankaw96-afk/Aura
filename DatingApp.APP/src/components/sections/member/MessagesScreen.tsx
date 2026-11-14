@@ -211,7 +211,7 @@ export function MessagesScreen() {
               <div className="m-auto flex flex-col items-center gap-2 py-8 text-center">
                 <Photo c={active} size={64} />
                 <p className="text-label-lg text-ink">You and {active.name} are connected</p>
-                <p className="text-body-sm text-ink-tertiary">Start with a friendly hello — introduce yourself and your family.</p>
+                <p className="text-body-sm text-ink-tertiary">Start with a friendly hello, introduce yourself and your family.</p>
               </div>
             )}
             {active.messages.map((m) => (

@@ -40,7 +40,9 @@ export function PinNote({
         <div
           className={cn(
             "flex flex-col gap-2.5 rounded-md p-5",
-            rose ? "bg-[linear-gradient(180deg,var(--rose-100),var(--rose-50))]" : "bg-[linear-gradient(180deg,var(--gold-100),var(--gold-50))]",
+            rose
+              ? "bg-[linear-gradient(180deg,var(--rose-100),var(--rose-50))] dark:bg-[image:var(--gradient-note-rose)] dark:ring-1 dark:ring-inset dark:ring-rose-900"
+              : "bg-[linear-gradient(180deg,var(--gold-100),var(--gold-50))] dark:bg-[image:var(--gradient-note-gold)] dark:ring-1 dark:ring-inset dark:ring-gold-900",
             panelClassName,
           )}
         >

@@ -191,7 +191,7 @@ function AccountStep({
     else if (!isValidSriLankanMobile(mobile)) er.mobile = "Enter a valid Sri Lankan mobile number";
     if (!pw) er.pw = "Create a password";
     else if (pw.length < 6) er.pw = "Password must be at least 6 characters";
-    else if (!isPasswordAcceptable(pw)) er.pw = "Too weak — add at least one number";
+    else if (!isPasswordAcceptable(pw)) er.pw = "Too weak, add at least one number";
     if (!pw2) er.pw2 = "Confirm your password";
     else if (pw && pw !== pw2) er.pw2 = "Passwords don’t match";
     if (!terms) er.terms = "Please accept the Terms of Service and Privacy Policy to continue";
@@ -217,7 +217,7 @@ function AccountStep({
 
   return (
     <form onSubmit={submit} noValidate className="flex flex-col gap-5">
-      <CardTitle title="Create your free account" subtitle="No payment needed — browse and connect for free, upgrade anytime." />
+      <CardTitle title="Create your free account" subtitle="No payment needed, browse and connect for free, upgrade anytime." />
 
       <GoogleSignInButton
         isSignUp
@@ -523,7 +523,7 @@ export function ProfileStep({
   const [showMissing, setShowMissing] = useState(false);
   const age = ageFrom(draft.dob);
   const underage = age !== null && age < 18;
-  const aboutError = containsContactDetails(draft.about) ? "Please remove phone numbers or emails — members connect safely through Vikasitha" : undefined;
+  const aboutError = containsContactDetails(draft.about) ? "Please remove phone numbers or emails. Members connect safely through Vikasitha" : undefined;
 
   const setValue = (k: ProfileKey, v: string) => {
     const patch: Partial<RegistrationDraft> = { [k]: v };
@@ -575,7 +575,7 @@ export function ProfileStep({
         <>
           <CardTitle
             title="Fix the highlighted fields"
-            subtitle={`Our safety team flagged ${flaggedCount} field${flaggedCount === 1 ? "" : "s"}. Only these need changing — the rest is already approved.`}
+            subtitle={`Our safety team flagged ${flaggedCount} field${flaggedCount === 1 ? "" : "s"}. Only these need changing. The rest is already approved.`}
           />
           {stillRejected.dob || stillRejected.about ? (
             <Alert type="error" title={`${[stillRejected.dob, stillRejected.about].filter(Boolean).length} field${[stillRejected.dob, stillRejected.about].filter(Boolean).length === 1 ? "" : "s"} need changes`}>
@@ -583,7 +583,7 @@ export function ProfileStep({
             </Alert>
           ) : (
             <Alert type="success" title="All highlighted fields updated">
-              Looks good — tap Resubmit for review.
+              Looks good, tap Resubmit for review.
             </Alert>
           )}
         </>
@@ -768,7 +768,7 @@ export function PhotosStep({
     e.target.value = "";
     if (!f) return;
     if (!OK_TYPES.includes(f.type)) return uploadFailed("Photos must be JPG, PNG or WEBP.");
-    if (f.size > MAX_MB * 1024 * 1024) return uploadFailed(`This photo is ${(f.size / 1024 / 1024).toFixed(1)} MB — the limit is ${MAX_MB} MB.`);
+    if (f.size > MAX_MB * 1024 * 1024) return uploadFailed(`This photo is ${(f.size / 1024 / 1024).toFixed(1)} MB. The limit is ${MAX_MB} MB.`);
     const reader = new FileReader();
     reader.onload = () => {
       const url = String(reader.result);
@@ -817,19 +817,19 @@ export function PhotosStep({
     <div className="flex flex-col gap-5">
       {review ? (
         <>
-          <CardTitle title="Replace your main photo" subtitle="Your main photo wasn’t approved. Your other details are fine — just upload a new one." />
+          <CardTitle title="Replace your main photo" subtitle="Your main photo wasn’t approved. Your other details are fine, just upload a new one." />
           {photoRejected ? (
             <Alert type="error" title="Main photo rejected">
               {review.reason}. Reviewed on {review.reviewedOn}.
             </Alert>
           ) : (
             <Alert type="success" title="New main photo added">
-              Looks good — tap Resubmit for review.
+              Looks good, tap Resubmit for review.
             </Alert>
           )}
         </>
       ) : (
-        <CardTitle title="Add your best photos" subtitle="Profiles with clear photos receive more interest — every photo is checked by our team." />
+        <CardTitle title="Add your best photos" subtitle="Profiles with clear photos receive more interest. Every photo is checked by our team." />
       )}
 
       {/* Upload real photos ↔ use an illustration */}
@@ -884,7 +884,7 @@ export function PhotosStep({
       </div>
 
       <ul className="space-y-2 rounded-md bg-surface-subtle p-4 text-body-sm text-ink-secondary">
-        {["Clear face, good light — no sunglasses", "Recent photo (within 12 months)", "No group photos as your main photo"].map((t) => (
+        {["Clear face, good light, no sunglasses", "Recent photo (within 12 months)", "No group photos as your main photo"].map((t) => (
           <li key={t} className="flex items-center gap-2">
             <TickCircle size={18} color="currentColor" className="text-success-fg" /> {t}
           </li>
@@ -904,7 +904,7 @@ export function PhotosStep({
       </div>
       {mode === "upload" && !review && (
         <button type="button" onClick={() => setConfirmSkip(true)} className="text-left text-body-sm font-semibold text-brand hover:underline">
-          Skip for now — I’ll add photos later
+          Skip for now, I’ll add photos later
         </button>
       )}
 
@@ -1016,7 +1016,7 @@ function IllustrationPicker({ gender, value, onPick }: { gender?: AvatarGender; 
               );
             })}
           </div>
-          <p className="text-caption text-ink-tertiary">Tip: profiles with real photos get about 3× more replies — add yours whenever you’re ready.</p>
+          <p className="text-caption text-ink-tertiary">Tip: profiles with real photos get about 3× more replies. Add yours whenever you’re ready.</p>
         </div>
       </div>
     </div>

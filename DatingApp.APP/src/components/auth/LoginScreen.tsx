@@ -154,7 +154,7 @@ export function LoginScreen() {
           )}
 
           {error === "locked" && (
-            <Alert type="warning" title="Too many attempts — account locked">
+            <Alert type="warning" title="Too many attempts, account locked">
               For your safety, login is paused for <b>{mm}:{ss}</b>. You can{" "}
               <Link href="/forgot-password" className="font-bold text-brand hover:underline">
                 reset your password

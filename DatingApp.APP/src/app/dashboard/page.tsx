@@ -33,12 +33,10 @@ export default function DashboardPage() {
           {/* new members: profile review status (pending / changes needed) — hidden once live */}
           <VerificationPanel />
           <DashboardHero />
+          {/* paid members with an active promotion: "Your profile is promoted" status right under the hero */}
+          <PromoteCard placement="top" />
           {/* approved Free members: allowance + what Gold unlocks (hidden for paid members) */}
           <PlanUsageCard />
-          {/* approved Pro members: promote profile (LKR 500 · 7 days) */}
-          <PromoteCard />
-          {/* approved Gold / Platinum members: plan, expiry date and included features */}
-          <ProPlanCard />
           {/* profile insights are a paid feature */}
           <FeatureGate requires="paid" title="See who viewed & shortlisted you" text="Profile insights are included with Gold and Platinum.">
             <StatsRow />
@@ -53,6 +51,10 @@ export default function DashboardPage() {
               <SearchCard />
             </FeatureGate>
           )}
+          {/* Gold / Platinum members (incl. expiring soon): promote + plan cards sit between
+              Requests & messages and the Best matches band */}
+          <PromoteCard placement="offer" />
+          <ProPlanCard />
         </div>
         <FeatureGate title="Your matches are almost ready" text="Once you’re approved you can view profiles and send interests.">
           <BestMatches />

@@ -151,10 +151,10 @@ export function ForgotPasswordScreen() {
         setTooMany(true);
         setCodeError(undefined);
       } else if (res.reason === "expired") {
-        setCodeError("This code has expired — tap Resend for a new one");
+        setCodeError("This code has expired, tap Resend for a new one");
       } else {
         setCodeError(
-          `Incorrect code — ${res.attemptsLeft} ${res.attemptsLeft === 1 ? "try" : "tries"} left`,
+          `Incorrect code, ${res.attemptsLeft} ${res.attemptsLeft === 1 ? "try" : "tries"} left`,
         );
       }
     } catch {

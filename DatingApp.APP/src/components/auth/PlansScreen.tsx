@@ -34,7 +34,7 @@ const PLANS: { id: PlanId; name: string; tagline: string; features: string[] }[]
 const FAQ = [
   { q: "Can I stay on the Free plan?", a: "Yes. Your profile stays live and you get 3 searches and 5 profile views each month. Gold unlocks messages and interest requests." },
   { q: "Is my payment secure?", a: "Payments are processed by a PCI-DSS certified gateway. We never store your full card number." },
-  { q: "Can I cancel?", a: "Plans don’t auto-renew. When your period ends you simply move back to Free — no hidden fees." },
+  { q: "Can I cancel?", a: "Plans don’t auto-renew. When your period ends you simply move back to Free. No hidden fees." },
 ];
 
 const lkr = (n: number) => `LKR ${n.toLocaleString("en-LK")}`;
@@ -65,12 +65,12 @@ export function PlansScreen() {
 
       <div className="flex flex-col items-center gap-3 text-center">
         {current === "free" ? (
-          <Badge tone="success">You’re on the Free plan — your profile is live</Badge>
+          <Badge tone="success">You’re on the Free plan, your profile is live</Badge>
         ) : (
           <Badge tone="premium">You’re on {current === "gold" ? "Gold" : "Platinum"} 🎉</Badge>
         )}
         <h1 className="text-h2 md:text-display-lg">Connect faster with Gold</h1>
-        <p className="text-body-md text-ink-secondary md:text-body-lg">Upgrade only when you’re ready. Cancel anytime — no hidden fees.</p>
+        <p className="text-body-md text-ink-secondary md:text-body-lg">Upgrade only when you’re ready. Cancel anytime, no hidden fees.</p>
       </div>
 
       {/* billing period */}

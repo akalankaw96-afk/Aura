@@ -124,6 +124,7 @@
   --color-status-info-fg: var(--blue-700);
   --color-status-premium-bg: var(--gold-50);
   --color-status-premium-fg: var(--gold-700);
+  --color-border-premium: var(--gold-300);
 
   /* ── Spacing ────────────────────────────────────────────────────────── */
   --spacing-0: 0px;
@@ -214,48 +215,61 @@
 
 /* ── Color · Dark (Figma mode "Dark") ─────────────────────────────────── */
 [data-theme="dark"] {
-  --color-bg-page: var(--gray-950);
-  --color-bg-subtle: var(--gray-900);
-  --color-bg-muted: var(--gray-800);
-  --color-bg-brand: var(--rose-500);
-  --color-bg-brand-hover: var(--rose-400);
-  --color-bg-brand-subtle: var(--rose-950);
+  /* Warm "plum" neutrals — match the rose brand instead of cool blue-grey, and give
+     cards a visible step above the page (dark UI shows depth by getting lighter). */
+  --color-bg-page: #110b0e;
+  --color-bg-subtle: #1b1317;
+  --color-bg-muted: #2f2329;
+  --color-bg-brand: var(--rose-600); /* white text 4.98:1 (rose-500 was 4.03 — failed AA) */
+  --color-bg-brand-hover: var(--rose-500);
+  --color-bg-brand-subtle: #43182a; /* visible rose tint on cards (rose-950 was 1.0:1 — invisible) */
   --color-bg-brand-strong: var(--rose-700);
   --color-bg-inverse: var(--gray-0);
-  --color-bg-disabled: var(--gray-800);
+  --color-bg-disabled: #2f2329;
 
-  --color-surface-card: var(--gray-900);
-  --color-surface-raised: var(--gray-800);
+  --color-surface-card: #241a1f;
+  --color-surface-raised: #2f2329;
 
-  --color-text-primary: var(--gray-50);
-  --color-text-secondary: var(--gray-300);
-  --color-text-tertiary: var(--gray-400);
-  --color-text-disabled: var(--gray-600);
+  --color-text-primary: #f7eff2;
+  --color-text-secondary: #d3c4cb;
+  --color-text-tertiary: #a8979f;
+  --color-text-disabled: #73636b;
   --color-text-brand: var(--rose-300);
   --color-text-inverse: var(--gray-900);
   --color-text-link: var(--rose-300);
 
-  --color-border-default: var(--gray-700);
-  --color-border-strong: var(--gray-600);
+  --color-border-default: #3d2e35;
+  --color-border-strong: #54424b;
   --color-border-brand: var(--rose-400);
   --color-border-focus: var(--rose-400);
   --color-border-error: var(--red-500);
 
-  --color-icon-default: var(--gray-100);
-  --color-icon-muted: var(--gray-400);
+  --color-icon-default: #f1e6ea;
+  --color-icon-muted: #a8979f;
   --color-icon-brand: var(--rose-400);
 
-  --color-status-success-bg: var(--green-700);
-  --color-status-success-fg: var(--green-100);
-  --color-status-warning-bg: var(--amber-700);
-  --color-status-warning-fg: var(--amber-100);
-  --color-status-error-bg: var(--red-700);
-  --color-status-error-fg: var(--red-100);
-  --color-status-info-bg: var(--blue-700);
-  --color-status-info-fg: var(--blue-100);
-  --color-status-premium-bg: var(--gold-900);
-  --color-status-premium-fg: var(--gold-100);
+  /* Status: soft tints + light text (solid 700 fills were loud blocks on dark) */
+  --color-status-success-bg: rgba(18, 183, 106, 0.16);
+  --color-status-success-fg: #6ce9a6;
+  --color-status-warning-bg: rgba(247, 144, 9, 0.16);
+  --color-status-warning-fg: #fec84b;
+  --color-status-error-bg: rgba(240, 68, 56, 0.16);
+  --color-status-error-fg: #fda29b;
+  --color-status-info-bg: rgba(46, 144, 250, 0.16);
+  --color-status-info-fg: #84caff;
+  --color-status-premium-bg: rgba(217, 154, 11, 0.18);
+  --color-status-premium-fg: var(--gold-300);
+  --color-border-premium: rgba(245, 196, 81, 0.45); /* gold-300 at full strength glared on dark */
 
-  --gradient-page: linear-gradient(175deg, #1a0a10 0%, #0e1013 30%, #140b0f 60%, #0e1013 100%);
-  --gradient-brand-soft: linear-gradient(180deg, var(--rose-950) 0%, var(--gray-950) 100%);
+  /* Focus: the light-mode rose-100 halo was a bright pink glow on dark — use a soft
+     translucent rose ring + rose-400 border so the field reads "active" without glare. */
+  --focus-ring-brand: 0 0 0 4px rgba(240, 42, 98, 0.35);
+  --focus-ring-error: 0 0 0 4px rgba(240, 68, 56, 0.28);
+
+  --gradient-page: linear-gradient(175deg, #1c0e14 0%, #110b0e 35%, #160c11 65%, #110b0e 100%);
+  --gradient-brand-soft: linear-gradient(180deg, #43182a 0%, #110b0e 100%);
+  /* Pinned notes + Gold member band: deep tinted surfaces instead of bright paper / bright gold */
+  --gradient-note-rose: linear-gradient(180deg, #3d1626 0%, #2a1019 100%);
+  --gradient-note-gold: linear-gradient(180deg, #3a2a0c 0%, #271c07 100%);
+  --gradient-premium-band: linear-gradient(120deg, #2e2005 0%, #4d360a 55%, #6e4d0f 100%);
 }

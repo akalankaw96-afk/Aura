@@ -298,7 +298,7 @@ export const MemberDashboard: React.FC = () => {
     setReceivedRequests((prev) => prev.filter((r) => r.id !== item.id));
     setActiveMatch(updated);
     setActiveTab('chat');
-    showToast(`Accepted! "It's a Match!" — Chat and contact requests unlocked with ${item.senderName}!`);
+    showToast(`Accepted! "It's a Match!" Chat and contact requests unlocked with ${item.senderName}!`);
   };
 
   const handleDeclineRequest = async (item: MatchItem) => {
@@ -1072,26 +1072,26 @@ export const MemberDashboard: React.FC = () => {
                     </tr>
                     <tr>
                       <td className="py-3 pr-4 font-medium text-gray-800">Direct Chat & Unlimited Messaging</td>
-                      <td className="py-3 px-4 text-center text-gray-300">—</td>
+                      <td className="py-3 px-4 text-center text-gray-300">-</td>
                       <td className="py-3 px-4 text-center text-emerald-600 font-bold">✓</td>
                       <td className="py-3 pl-4 text-center text-emerald-600 font-bold">✓</td>
                     </tr>
                     <tr>
                       <td className="py-3 pr-4 font-medium text-gray-800">View Verified Phone & Family Numbers</td>
-                      <td className="py-3 px-4 text-center text-gray-300">—</td>
+                      <td className="py-3 px-4 text-center text-gray-300">-</td>
                       <td className="py-3 px-4 text-center text-emerald-600 font-bold">✓</td>
                       <td className="py-3 pl-4 text-center text-emerald-600 font-bold">✓</td>
                     </tr>
                     <tr>
                       <td className="py-3 pr-4 font-medium text-gray-800">Horoscope Matching (Porondam)</td>
-                      <td className="py-3 px-4 text-center text-gray-300">—</td>
+                      <td className="py-3 px-4 text-center text-gray-300">-</td>
                       <td className="py-3 px-4 text-center text-emerald-600 font-bold">✓</td>
                       <td className="py-3 pl-4 text-center text-emerald-600 font-bold">✓</td>
                     </tr>
                     <tr>
                       <td className="py-3 pr-4 font-medium text-gray-800">Personal Matrimonial Matchmaker Advisor</td>
-                      <td className="py-3 px-4 text-center text-gray-300">—</td>
-                      <td className="py-3 px-4 text-center text-gray-300">—</td>
+                      <td className="py-3 px-4 text-center text-gray-300">-</td>
+                      <td className="py-3 px-4 text-center text-gray-300">-</td>
                       <td className="py-3 pl-4 text-center text-amber-600 font-bold">✓ Dedicated</td>
                     </tr>
                   </tbody>

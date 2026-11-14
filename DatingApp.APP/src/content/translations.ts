@@ -295,7 +295,7 @@ export const TRANSLATIONS: Record<Language, Translations> = {
     stories: {
       eyebrow: "Success stories",
       title: "Trusted by 100+ happy couples",
-      description: "Real families, real weddings — from Colombo to Melbourne.",
+      description: "Real families, real weddings, from Colombo to Melbourne.",
       watchStory: "Watch their story",
       items: [
         {
@@ -424,7 +424,7 @@ export const TRANSLATIONS: Record<Language, Translations> = {
           a: "Yes. Upload your horoscope and Gold members can view and compare horoscopes before sending interest.",
         },
         {
-          q: "I live overseas — can I join?",
+          q: "I live overseas, can I join?",
           a: "Absolutely. Sri Lankans in Australia, the UK, Canada, the Middle East and beyond can register and pay by card.",
         },
       ],
@@ -432,7 +432,7 @@ export const TRANSLATIONS: Record<Language, Translations> = {
     signUp: {
       eyebrow: "Join free today",
       title: "Ready to meet your life partner?",
-      body: "Create your profile in two minutes — for yourself or for your family. Your details stay private until you choose to share them.",
+      body: "Create your profile in two minutes, for yourself or for your family. Your details stay private until you choose to share them.",
       benefits: [
         "Verified, genuine members only",
         "Photo-verified profiles you can trust",
@@ -497,7 +497,7 @@ export const TRANSLATIONS: Record<Language, Translations> = {
       connectedJustNow: "Connected just now",
       onlineNow: "Online now",
       noFriendsTitle: "No friends yet",
-      noFriendsBody: "When you accept an interest — or someone accepts yours — they’ll appear here so you can message them or view their profile.",
+      noFriendsBody: "When you accept an interest, or someone accepts yours, they’ll appear here so you can message them or view their profile.",
       noRequestsTitle: "No new requests",
       noRequestsBody: "When someone sends you an interest, you’ll see it here.",
       noMessagesTitle: "No messages yet",
@@ -541,7 +541,7 @@ export const TRANSLATIONS: Record<Language, Translations> = {
       blockTitle: (n) => `Block ${n}?`,
       blockPoint1: "They can't message you or see your profile",
       blockPoint2: "You won't appear in their search results",
-      blockPoint3: "They aren't told — you can unblock anytime",
+      blockPoint3: "They aren't told. You can unblock anytime",
       reasonLabel: "Reason (optional)",
       reasonPlaceholder: "Choose a reason",
       reasons: ["Asked for money or bank details", "Rude or inappropriate messages", "Fake or misleading profile", "Not interested anymore", "Other"],
@@ -552,8 +552,8 @@ export const TRANSLATIONS: Record<Language, Translations> = {
       cantReply: "You can't reply to a blocked member. Unblock to chat again.",
       blockedStatus: "Blocked · can't contact you",
       blockedToast: (n) => `${n} is blocked`,
-      unblockedToast: (n) => `${n} is unblocked — you can chat again`,
-      reportedToast: "Thanks — our safety team will review this member.",
+      unblockedToast: (n) => `${n} is unblocked, you can chat again`,
+      reportedToast: "Thanks, our safety team will review this member.",
       mutedToast: "Notifications muted for this chat",
       unmutedToast: "Notifications turned back on",
       noBlockedTitle: "No blocked members",
@@ -628,7 +628,7 @@ export const TRANSLATIONS: Record<Language, Translations> = {
     stories: {
       eyebrow: "සාර්ථක කතා",
       title: "සතුටුදායක යුවළ 100+ කට වැඩි පිරිසකගේ විශ්වාසය",
-      description: "සැබෑ පවුල්, සැබෑ මංගල්‍යයන් — කොළඹ සිට මෙල්බර්න් දක්වා.",
+      description: "සැබෑ පවුල්, සැබෑ මංගල්‍යයන්, කොළඹ සිට මෙල්බර්න් දක්වා.",
       watchStory: "ඔවුන්ගේ කතාව බලන්න",
       items: [
         {
@@ -757,7 +757,7 @@ export const TRANSLATIONS: Record<Language, Translations> = {
           a: "ඔව්. ඔබගේ කේන්දර සටහන එක් කරන්න. රන් (Gold) සාමාජිකයින්ට කැමැත්ත යැවීමට පෙර කේන්දර සටහන් බැලීමට සහ සංසන්දනය කිරීමට හැකියාව ඇත.",
         },
         {
-          q: "මම ජීවත් වන්නේ විදේශයකයි — මටත් සම්බන්ධ විය හැකිද?",
+          q: "මම ජීවත් වන්නේ විදේශයකයි, මටත් සම්බන්ධ විය හැකිද?",
           a: "නියත වශයෙන්ම. ඕස්ට්‍රේලියාව, එක්සත් රාජධානිය, කැනඩාව, මැදපෙරදිග ඇතුළු ලොව පුරා වෙසෙන ශ්‍රී ලාංකිකයන්ට ලියාපදිංචි වී කාඩ්පත් මගින් ගෙවීම් සිදු කළ හැක.",
         },
       ],
@@ -765,7 +765,7 @@ export const TRANSLATIONS: Record<Language, Translations> = {
     signUp: {
       eyebrow: "අදම නොමිලේ එක්වන්න",
       title: "ඔබේ ජීවිත සහකරු හමුවීමට සූදානම්ද?",
-      body: "මිනිත්තු දෙකකින් ඔබගේ පැතිකඩ සාදන්න — ඔබ වෙනුවෙන් හෝ ඔබේ පවුලේ අය වෙනුවෙන්. ඔබ බෙදාගැනීමට තීරණය කරන තුරු ඔබේ තොරතුරු රහසිගතව පවතී.",
+      body: "මිනිත්තු දෙකකින් ඔබගේ පැතිකඩ සාදන්න, ඔබ වෙනුවෙන් හෝ ඔබේ පවුලේ අය වෙනුවෙන්. ඔබ බෙදාගැනීමට තීරණය කරන තුරු ඔබේ තොරතුරු රහසිගතව පවතී.",
       benefits: [
         "සත්‍යාපිත, සැබෑ සාමාජිකයින් පමණි",
         "විශ්වාසවන්ත ඡායාරූප සත්‍යාපිත පැතිකඩ",
@@ -830,7 +830,7 @@ export const TRANSLATIONS: Record<Language, Translations> = {
       connectedJustNow: "දැන් සම්බන්ධ විය",
       onlineNow: "දැන් සබැඳිව",
       noFriendsTitle: "තවම මිතුරන් නැත",
-      noFriendsBody: "ඔබ කැමැත්තක් පිළිගත් විට — හෝ කෙනෙක් ඔබේ කැමැත්ත පිළිගත් විට — ඔවුන් මෙහි පෙන්වයි.",
+      noFriendsBody: "ඔබ කැමැත්තක් පිළිගත් විට, හෝ කෙනෙක් ඔබේ කැමැත්ත පිළිගත් විට, ඔවුන් මෙහි පෙන්වයි.",
       noRequestsTitle: "නව යෝජනා නැත",
       noRequestsBody: "කෙනෙක් ඔබට කැමැත්තක් එවූ විට එය මෙහි පෙන්වයි.",
       noMessagesTitle: "තවම පණිවිඩ නැත",
@@ -874,7 +874,7 @@ export const TRANSLATIONS: Record<Language, Translations> = {
       blockTitle: (n) => `${n} අවහිර කරන්නද?`,
       blockPoint1: "ඔවුන්ට ඔබට පණිවිඩ යැවීමට හෝ ඔබේ පැතිකඩ බැලීමට නොහැක",
       blockPoint2: "ඔවුන්ගේ සෙවුම් ප්‍රතිඵලවල ඔබ නොපෙන්වයි",
-      blockPoint3: "ඔවුන්ට දැනුම් නොදේ — ඕනෑම වේලාවක අවහිරය ඉවත් කළ හැක",
+      blockPoint3: "ඔවුන්ට දැනුම් නොදේ, ඕනෑම වේලාවක අවහිරය ඉවත් කළ හැක",
       reasonLabel: "හේතුව (අත්‍යවශ්‍ය නොවේ)",
       reasonPlaceholder: "හේතුවක් තෝරන්න",
       reasons: ["මුදල් හෝ බැංකු තොරතුරු ඉල්ලුවා", "අශිෂ්ට හෝ නුසුදුසු පණිවිඩ", "ව්‍යාජ හෝ නොමඟ යවන පැතිකඩ", "තවදුරටත් උනන්දුවක් නැත", "වෙනත්"],
@@ -885,8 +885,8 @@ export const TRANSLATIONS: Record<Language, Translations> = {
       cantReply: "අවහිර කළ සාමාජිකයෙකුට පිළිතුරු දිය නොහැක. නැවත කතාබස් කිරීමට අවහිරය ඉවත් කරන්න.",
       blockedStatus: "අවහිර කළා · ඔබව සම්බන්ධ කළ නොහැක",
       blockedToast: (n) => `${n} අවහිර කළා`,
-      unblockedToast: (n) => `${n} ගේ අවහිරය ඉවත් කළා — නැවත කතාබස් කළ හැක`,
-      reportedToast: "ස්තූතියි — අපගේ ආරක්ෂක කණ්ඩායම මෙම සාමාජිකයා පරීක්ෂා කරනු ඇත.",
+      unblockedToast: (n) => `${n} ගේ අවහිරය ඉවත් කළා, නැවත කතාබස් කළ හැක`,
+      reportedToast: "ස්තූතියි, අපගේ ආරක්ෂක කණ්ඩායම මෙම සාමාජිකයා පරීක්ෂා කරනු ඇත.",
       mutedToast: "මෙම කතාබහේ දැනුම්දීම් නිහඬ කළා",
       unmutedToast: "දැනුම්දීම් නැවත සක්‍රියයි",
       noBlockedTitle: "අවහිර කළ සාමාජිකයන් නැත",

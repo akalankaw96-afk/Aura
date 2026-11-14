@@ -135,10 +135,10 @@ export const ContactShareCard = React.forwardRef<
               {status === "declined-by-me" && "You chose not to share for now"}
             </p>
             <p className="mt-0.5 text-body-sm text-ink-secondary">
-              {status === "received" && `If you accept, you’ll swap mobile and WhatsApp numbers with ${first} — only with ${first}.`}
+              {status === "received" && `If you accept, you’ll swap mobile and WhatsApp numbers with ${first}, only with ${first}.`}
               {status === "sent" && `We’ll show both numbers here as soon as ${first} accepts. Keep chatting meanwhile.`}
               {status === "accepted" && `You and ${first} can now call or WhatsApp each other.`}
-              {status === "declined-by-them" && "No worries — keep getting to know each other here. You can ask again later."}
+              {status === "declined-by-them" && "No worries, keep getting to know each other here. You can ask again later."}
               {status === "declined-by-me" && `${first} won’t see your number. You can share any time from the chat header.`}
             </p>
           </div>
@@ -200,7 +200,7 @@ export const ContactShareCard = React.forwardRef<
         {status !== "accepted" && (
           <p className="flex items-center gap-1.5 text-caption text-ink-tertiary">
             <ShieldTick size={14} color="currentColor" className="shrink-0" />
-            Only mobile &amp; WhatsApp numbers are shared — never your email or address.
+            Only mobile &amp; WhatsApp numbers are shared, never your email or address.
           </p>
         )}
       </div>

@@ -11,7 +11,7 @@ export function HeartPattern({ className }: { className?: string }) {
   return (
     <div
       aria-hidden
-      className={cn("pointer-events-none absolute inset-0 bg-[url('/images/decor/heart-pattern.png')] bg-[length:1440px_1200px] bg-top bg-repeat-y max-md:bg-[length:720px_600px]", className)}
+      className={cn("pointer-events-none absolute inset-0 bg-[url('/images/decor/heart-pattern.png')] bg-[length:1440px_1200px] bg-top bg-repeat-y max-md:bg-[length:720px_600px] [[data-theme=dark]_&]:opacity-35", className)}
     />
   );
 }

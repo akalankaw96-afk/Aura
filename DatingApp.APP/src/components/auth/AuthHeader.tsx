@@ -57,7 +57,7 @@ function MemberAvatar() {
   return (
     <Link
       href="/dashboard"
-      aria-label={`${name} — profile`}
+      aria-label={`${name}, profile`}
       className="flex shrink-0 items-center gap-2 rounded-full border border-line bg-surface-card py-1 pl-1 pr-3 text-label-md text-ink transition-shadow hover:shadow-md"
     >
       {/* eslint-disable-next-line @next/next/no-img-element */}

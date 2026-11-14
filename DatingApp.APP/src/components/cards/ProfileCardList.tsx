@@ -23,13 +23,13 @@ import { requireMember } from "@/lib/session";
 import { Flag } from "@/components/ui/Flag";
 import { Button } from "@/components/ui/Button";
 import type { FeaturedProfile } from "@/content/home";
-import { matchLabel, type ProfileExtras } from "@/content/search";
+import type { ProfileExtras } from "@/content/search";
 
 /**
  * Figma: Profile Card List (89:19962 · State = Default / Hover / Promoted).
  * 952 wide · padding 12/20/12/12 · gap 20 · radius 16. Photo 196 × 259 (radius 12)
  * with badge + "n photos"; title row, location + activity, 3 × 2 detail grid,
- * one-line bio, divider, tags + actions. Top right: Match ring + shortlist heart.
+ * "About me" (2 lines, from the KYC "About you" field), divider, tags + actions. Top right: shortlist heart.
  * Hover: brand border + Shadow/LG, heart fills. Promoted: gold-50 surface.
  */
 export function ProfileCardList({
@@ -122,7 +122,6 @@ export function ProfileCardList({
               </span>
             </p>
           </div>
-          <MatchPill pct={extras.match} />
           <button
             type="button"
             aria-pressed={saved}
@@ -145,10 +144,16 @@ export function ProfileCardList({
           <Detail icon={<Book1 size={18} color="currentColor" />} label="Religion" value={profile.religion} />
           <Detail icon={<People size={18} color="currentColor" />} label="Ethnicity" value={extras.ethnicity} />
           <Detail icon={<Lovely size={18} color="currentColor" />} label="Civil status" value={extras.civil} />
-          <Detail icon={<Profile size={18} color="currentColor" />} label="Posted by" value={extras.postedBy} />
+          <Detail icon={<Profile size={18} color="currentColor" />} label="Created by" value={extras.postedBy} />
         </dl>
 
-        {bio && <p className="truncate text-body-sm text-ink-secondary">“{bio}”</p>}
+        {/* "About me" — the short description from the KYC form ("About you"); hidden when empty */}
+        {bio?.trim() && (
+          <div className="flex flex-col gap-0.5">
+            <p className="text-label-sm text-ink-tertiary">About me</p>
+            <p className="line-clamp-2 text-body-sm text-ink-secondary">{bio.trim()}</p>
+          </div>
+        )}
 
         <div className="mt-auto flex flex-wrap items-center gap-2 border-t border-line pt-3">
           {profile.horoscope && (
@@ -195,38 +200,6 @@ function Detail({ icon, label, value }: { icon: React.ReactNode; label: string; 
         <dt className="text-caption text-ink-tertiary">{label}</dt>
         <dd className="truncate text-label-md text-ink">{value}</dd>
       </div>
-    </div>
-  );
-}
-
-/** Figma: Match pill — ring with % + label + "n of 10 preferences" */
-export function MatchPill({ pct }: { pct: number }) {
-  const r = 15;
-  const c = 2 * Math.PI * r;
-  return (
-    <div className="hidden shrink-0 items-center gap-2 rounded-full bg-brand-subtle py-1.5 pl-1.5 pr-4 lg:flex">
-      <span className="relative flex h-10 w-10 items-center justify-center rounded-full bg-surface-card">
-        <svg viewBox="0 0 36 36" className="absolute inset-0 -rotate-90">
-          <circle cx="18" cy="18" r={r} fill="none" stroke="currentColor" strokeWidth="3" className="text-brand-ring" />
-          <circle
-            cx="18"
-            cy="18"
-            r={r}
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="3"
-            strokeLinecap="round"
-            strokeDasharray={c}
-            className="match-ring text-brand"
-            style={{ ["--ring-from" as string]: c, ["--ring-to" as string]: c * (1 - pct / 100) } as React.CSSProperties}
-          />
-        </svg>
-        <span className="relative text-label-sm font-bold text-ink">{pct}%</span>
-      </span>
-      <span className="leading-tight">
-        <span className="block text-label-md text-brand-text">{matchLabel(pct)}</span>
-        <span className="block text-caption text-ink-tertiary">{Math.round(pct / 10)} of 10 preferences</span>
-      </span>
     </div>
   );
 }

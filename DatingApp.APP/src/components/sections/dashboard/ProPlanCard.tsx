@@ -98,7 +98,7 @@ export function ProPlanCard() {
   return (
     <section aria-label={`${name} membership`} className="kyc-in overflow-hidden rounded-xl border border-premium-line bg-surface-card shadow-sm">
       {/* Header — premium band */}
-      <div className="relative isolate flex flex-col gap-4 overflow-hidden bg-[linear-gradient(120deg,var(--gold-900)_0%,var(--gold-700)_55%,var(--gold-500)_100%)] p-4 text-white sm:px-6 sm:py-5 lg:flex-row lg:items-center lg:gap-5">
+      <div className="relative isolate flex flex-col gap-4 overflow-hidden bg-[linear-gradient(120deg,var(--gold-900)_0%,var(--gold-700)_55%,var(--gold-500)_100%)] dark:bg-[image:var(--gradient-premium-band)] p-4 text-white sm:px-6 sm:py-5 lg:flex-row lg:items-center lg:gap-5">
         <Crown1 aria-hidden size={180} color="currentColor" className="pointer-events-none absolute -right-6 -top-10 -z-10 text-white opacity-10" />
 
         <div className="flex min-w-0 flex-1 items-center gap-4">

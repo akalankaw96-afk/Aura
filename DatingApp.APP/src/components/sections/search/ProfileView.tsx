@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import { markSafetyEvent } from "@/lib/feedback";
 import {
   ArrowLeft,
   ArrowRight2,
@@ -8,6 +9,7 @@ import {
   Book1,
   Briefcase,
   Calendar,
+  Call,
   CloseCircle,
   Flag as FlagIcon,
   Gallery,
@@ -20,17 +22,20 @@ import {
   Profile,
   Ruler,
   SearchNormal1,
+  Sms,
   Star1,
   Teacher,
   TickCircle,
   Verify,
+  Wallet2,
 } from "iconsax-react";
 import { createPortal } from "react-dom";
 import { Share2 } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { ShareProfileDialog } from "@/components/profile/ShareProfileDialog";
 import { ProfileActions } from "@/components/profile/ProfileActions";
-import { favouriteProfile, useFavourites, useSentInterests } from "@/lib/connections";
+import { favouriteProfile, useFavourites, useIsConnected, useSentInterests } from "@/lib/connections";
+import { useRouter } from "next/navigation";
 import { requireMember, useSignedIn } from "@/lib/session";
 import { Badge } from "@/components/ui/Badge";
 import { BackButton } from "@/components/ui/BackButton";
@@ -41,7 +46,7 @@ import { Flag, type CountryCode } from "@/components/ui/Flag";
 import { COUNTRIES } from "@/components/ui/PhoneField";
 import type { ProfileKycDetails } from "@/types";
 import { useToast } from "@/components/ui/Toast";
-import { matchLabel, type ProfileExtras } from "@/content/search";
+import { type ProfileExtras } from "@/content/search";
 
 export interface ViewProfile {
   id: string;
@@ -67,7 +72,7 @@ export interface ViewProfile {
 const fallbackPhoto = (g: ViewProfile["gender"]) => (g === "groom" ? "/brand/groom.png" : "/brand/bride.png");
 
 /**
- * Full-page profile view — same structure as Requests (Figma: Requests — Desktop 1440):
+ * Full-page profile view — same structure as Friends (Figma: Requests — Desktop 1440):
  * left: the search results list (400 wide, sticky, scrolls on its own),
  * right: the selected profile in full. Mobile: detail only, with "Back to results".
  */
@@ -123,7 +128,7 @@ export function ProfileView({
             </nav>
             <BackButton label={backTo === "home" ? "Back to home" : backTo === "dashboard" ? "Back to dashboard" : "Back to results"} onClick={onBack} />
             <h1 className="text-h3 text-ink md:text-h2">Profile details</h1>
-            <p className="col-start-2 text-body-md text-ink-secondary">{backTo === "results" ? "Browse your search results on the left" : "More profiles on the left"} — the full profile opens on the right.</p>
+            <p className="col-start-2 hidden text-body-md text-ink-secondary lg:block">{backTo === "results" ? "Browse your search results on the left" : "More profiles on the left"}. The full profile opens on the right.</p>
           </div>
           <div className="flex items-center gap-2">
             <span className="text-body-sm text-ink-tertiary">
@@ -221,6 +226,61 @@ function Photo({ p, className }: { p: ViewProfile; className?: string }) {
   );
 }
 
+/** login = unlocks after login · contact = only after both members accept a contact share */
+type LockKind = "login" | "contact";
+type DetailItem = { icon: React.ElementType; label: string; value?: string | null; lock?: LockKind; placeholder?: string };
+type DetailSection = { id: string; title: string; items: DetailItem[] };
+
+/** One detail — icon tile + label + value (the profile-detail row style used across the app). */
+function DetailRow({ icon: Icon, label, value }: { icon: React.ElementType; label: string; value: string }) {
+  return (
+    <div className="flex min-w-0 items-start gap-3">
+      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[12px] bg-brand-subtle text-icon-brand">
+        <Icon size={20} color="currentColor" />
+      </span>
+      <span className="flex min-w-0 flex-col">
+        <dt className="text-caption text-ink-tertiary">{label}</dt>
+        <dd className="break-words text-body-md font-semibold text-ink">{value}</dd>
+      </span>
+    </div>
+  );
+}
+
+/**
+ * Hidden detail — same row, lock badge on the icon and a blurred PLACEHOLDER value
+ * (real data is never rendered for people who can't see it). Tap → login popup / explanation.
+ */
+function LockedRow({ icon: Icon, label, placeholder, hint, onOpen }: { icon: React.ElementType; label: string; placeholder: string; hint: string; onOpen: () => void }) {
+  return (
+    <div className="min-w-0">
+      <dt className="sr-only">{label}</dt>
+      <dd>
+        <button
+          type="button"
+          onClick={onOpen}
+          aria-label={`${label}: hidden. ${hint}`}
+          className="group -m-1.5 flex w-[calc(100%+12px)] min-w-0 items-start gap-3 rounded-[14px] p-1.5 text-left transition-colors hover:bg-brand-subtle focus-visible:shadow-ring-brand"
+        >
+          <span className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-[12px] bg-brand-subtle text-icon-brand">
+            <Icon size={20} color="currentColor" />
+            <span className="absolute -bottom-1 -right-1 flex h-[18px] w-[18px] items-center justify-center rounded-full bg-brand-gradient text-ink-on-brand ring-2 ring-surface-card">
+              <Lock1 size={10} color="currentColor" variant="Bold" />
+            </span>
+          </span>
+          <span className="flex min-w-0 flex-col" aria-hidden>
+            <span className="text-caption text-ink-tertiary">{label}</span>
+            <span className="select-none truncate text-body-md font-semibold text-ink blur-[5px]">{placeholder}</span>
+            <span className="mt-0.5 text-caption font-semibold text-brand-text opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100">{hint}</span>
+          </span>
+        </button>
+      </dd>
+    </div>
+  );
+}
+
+const iconButton =
+  "flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-line bg-surface-card text-brand shadow-xs transition-colors hover:border-brand hover:bg-brand-subtle focus-visible:shadow-ring-brand active:scale-95";
+
 function Detail({ p, x, onInterest }: { p: ViewProfile; x?: ProfileExtras; onInterest: (p: ViewProfile) => boolean }) {
   const toast = useToast();
   const signedIn = useSignedIn();
@@ -234,81 +294,147 @@ function Detail({ p, x, onInterest }: { p: ViewProfile; x?: ProfileExtras; onInt
   // Demo gallery: the API will return each member’s photos; for now the main photo is shown in a few framings
   const photos = useMemo(() => galleryOf(p, x?.photos ?? 1), [p, x?.photos]);
   const [reported, setReported] = useState(false);
+  const connected = useIsConnected(p.id);
+  const router = useRouter();
+  const country = p.countryName || COUNTRIES.find((c) => c.iso === p.country)?.name;
 
-  const details: { icon: React.ElementType; label: string; value: string }[] = [
-    { icon: Profile, label: "Profile ID", value: p.id },
-    { icon: Calendar, label: "Age", value: `${p.age} years` },
-    { icon: People, label: "Gender", value: p.gender === "groom" ? "Male" : "Female" },
-    { icon: Ruler, label: "Height", value: p.height },
-    { icon: Ruler, label: "Weight", value: signedIn ? p.details?.weightKg ? `${p.details.weightKg} kg` : "—" : "Unlock with login" },
-    { icon: Book1, label: "Religion", value: p.religion },
-    { icon: People, label: "Ethnicity", value: x?.ethnicity ?? "—" },
-    { icon: People, label: "Caste", value: p.details?.caste || "—" },
-    { icon: Briefcase, label: "Profession", value: p.profession },
-    { icon: Briefcase, label: "Monthly salary range", value: signedIn ? p.details?.monthlySalaryRange || "—" : "Unlock with login" },
-    { icon: Teacher, label: "Education", value: p.education || x?.education || "—" },
-    { icon: Heart, label: "Civil status", value: x?.civil ?? "Never married" },
-    { icon: Location, label: "Lives in", value: p.location },
-    { icon: Location, label: "Resident country", value: p.countryName || COUNTRIES.find((country) => country.iso === p.country)?.name || "—" },
-    { icon: Location, label: "District", value: p.details?.district || x?.district || "—" },
-    { icon: Profile, label: "Posted by", value: x?.postedBy ?? "Self" },
-    { icon: Star1, label: "Horoscope", value: p.horoscope ? "Available" : "On request" },
-    { icon: Star1, label: "Zodiac sign", value: signedIn ? p.details?.zodiacSign || "—" : "Unlock with login" },
+  // Sections — empty values are hidden; guest-only fields are collected into one "unlock" box
+  const sections: DetailSection[] = [
+    {
+      id: "basic",
+      title: "Basic details",
+      items: [
+        { icon: Profile, label: "Profile ID", value: p.id },
+        { icon: Calendar, label: "Age", value: `${p.age} years` },
+        { icon: People, label: "Gender", value: p.gender === "groom" ? "Male" : "Female" },
+        { icon: Ruler, label: "Height", value: p.height },
+        { icon: Ruler, label: "Weight", value: p.details?.weightKg ? `${p.details.weightKg} kg` : null, lock: "login", placeholder: "62 kg" },
+        { icon: Heart, label: "Civil status", value: x?.civil ?? "Never married" },
+        { icon: Profile, label: "Created by", value: x?.postedBy ?? "Self" },
+      ],
+    },
+    {
+      id: "background",
+      title: "Religion and background",
+      items: [
+        { icon: Book1, label: "Religion", value: p.religion },
+        { icon: People, label: "Ethnicity", value: x?.ethnicity },
+        { icon: People, label: "Caste", value: p.details?.caste },
+      ],
+    },
+    {
+      id: "career",
+      title: "Education and career",
+      items: [
+        { icon: Teacher, label: "Education", value: p.education || x?.education },
+        { icon: Briefcase, label: "Profession", value: p.profession },
+        { icon: Wallet2, label: "Monthly income", value: p.details?.monthlySalaryRange, lock: "login", placeholder: "LKR 250,000+" },
+      ],
+    },
+    {
+      id: "location",
+      title: "Location",
+      items: [
+        { icon: Location, label: "Lives in", value: p.location },
+        { icon: Location, label: "Resident country", value: country },
+        { icon: Location, label: "District", value: p.details?.district || x?.district },
+      ],
+    },
+    {
+      id: "horoscope",
+      title: "Horoscope",
+      items: [
+        { icon: Star1, label: "Horoscope", value: p.horoscope ? "Available" : "On request" },
+        { icon: Star1, label: "Rasi", value: p.rasi },
+        { icon: Star1, label: "Nakshatra", value: p.nakshatra },
+        { icon: Star1, label: "Zodiac sign", value: p.details?.zodiacSign, lock: "login", placeholder: "Kanya (Virgo)" },
+      ],
+    },
+    {
+      id: "contact",
+      title: "Contact details",
+      items: [
+        { icon: Call, label: "Mobile", lock: "contact", placeholder: "+94 77 123 4567" },
+        { icon: Sms, label: "Email", lock: "contact", placeholder: "name@gmail.com" },
+      ],
+    },
   ];
-
+  // hidden: guests can't see "login" fields; nobody sees contact details until both accept a contact share
+  const isHidden = (i: DetailItem) => i.lock === "contact" || (i.lock === "login" && !signedIn);
+  const visible = sections
+    .map((s) => ({ ...s, items: s.items.filter((i) => isHidden(i) || (i.value && i.value !== "—")) }))
+    .filter((s) => s.items.length > 0);
+  const lockHint = (i: DetailItem) => (!signedIn ? "Log in to view" : connected ? "Share contacts in chat" : "Shared after you both agree");
+  const openLocked = (i: DetailItem) => {
+    if (!requireMember(i.lock === "contact" ? "see contact details" : `see ${i.label.toLowerCase()}`)) return;
+    if (connected) router.push("/messages");
+    else toast.info("Contact details are private", `Send an interest. When ${p.id} accepts, you can both agree to share mobile and WhatsApp numbers in chat.`);
+  };
   const share = () => {
     if (!requireMember("share profiles")) return;
     const url = new URL("/search", window.location.origin);
     url.searchParams.set("id", p.id);
     setShareUrl(url.toString());
   };
+  const favourite = () => {
+    if (!requireMember("shortlist profiles")) return;
+    if (save(favouriteProfile({ ...p, photo: p.photo || fallbackPhoto(p.gender) }))) {
+      toast.success("Added to favourites", `${p.id} is saved to your favourites.`);
+    }
+  };
   const send = () => {
     if (!requireMember("send an interest")) return;
     if (sent) return;
     onInterest(p);
   };
+  const openPhoto = (i: number) => requireMember("view photos") && setViewer(i);
+
+  const thumbs = photos.slice(1, 5);
+  const extra = photos.length - 5;
 
   return (
-    <article aria-label={`${p.id} profile`} className="flex min-w-0 animate-fade-up flex-col gap-6 rounded-xl border border-line bg-surface-card p-4 shadow-sm sm:p-6">
-
-      <div className="flex flex-col gap-6 md:flex-row">
-        {/* Photo 280 × 340 — tap to open the full-screen photo viewer */}
-        <div className="group relative aspect-[280/340] w-full shrink-0 overflow-hidden rounded-lg bg-surface-muted md:w-[280px]">
-          <button type="button" aria-label={`View ${p.id} photos`} onClick={() => requireMember("view photos") && setViewer(0)} className="absolute inset-0 cursor-zoom-in">
-            <Photo p={p} className="absolute inset-0 h-full w-full transition-transform duration-500 group-hover:scale-105" />
-            <span className="absolute inset-0 flex items-center justify-center bg-[rgba(0,0,0,0.25)] opacity-0 transition-opacity duration-200 group-hover:opacity-100">
-              <span className="flex items-center gap-2 rounded-full bg-surface-card px-4 py-2 text-label-md text-ink shadow-md">
-                <Maximize4 size={16} color="currentColor" /> View photos
+    <article aria-label={`${p.id} profile`} className="flex min-w-0 animate-fade-up flex-col gap-8 rounded-xl border border-line bg-surface-card p-4 shadow-sm sm:p-6 lg:p-8">
+      {/* ── Top: square photo + thumbnails | summary ───────────────── */}
+      <div className="grid gap-6 md:grid-cols-[minmax(0,300px)_minmax(0,1fr)] lg:gap-8">
+        <div className="flex flex-col gap-2">
+          <div className="group relative aspect-square w-full overflow-hidden rounded-lg bg-surface-muted">
+            <button type="button" aria-label={`View ${p.id} photos`} onClick={() => openPhoto(0)} className="absolute inset-0 cursor-zoom-in">
+              <Photo p={p} className="absolute inset-0 h-full w-full transition-transform duration-500 group-hover:scale-105" />
+              <span className="absolute inset-0 flex items-center justify-center bg-[rgba(0,0,0,0.25)] opacity-0 transition-opacity duration-200 group-hover:opacity-100">
+                <span className="flex items-center gap-2 rounded-full bg-surface-card px-4 py-2 text-label-md text-ink shadow-md">
+                  <Maximize4 size={16} color="currentColor" /> View photos
+                </span>
               </span>
+            </button>
+            <span className="pointer-events-none absolute left-3 top-3">
+              <Badge tone="success">Photo verified</Badge>
             </span>
-          </button>
-          <button
-            type="button"
-            aria-pressed={saved}
-            aria-label={saved ? "Remove from favourites" : "Add to favourites"}
-            onClick={() => {
-              if (!requireMember("shortlist profiles")) return;
-              if (save(favouriteProfile({ ...p, photo: p.photo || fallbackPhoto(p.gender) }))) {
-                toast.success("Added to favourites", `${p.id} is saved to your favourites.`);
-              }
-            }}
-            className="absolute right-3 top-3 z-10 flex h-10 w-10 items-center justify-center rounded-full bg-surface-glass-strong text-brand transition-transform hover:scale-105 focus-visible:shadow-ring-brand active:scale-95"
-          >
-            <Heart size={20} color="currentColor" variant={saved ? "Bold" : "Linear"} />
-          </button>
-          <span className="pointer-events-none absolute left-3 top-3">
-            <Badge tone="success">Photo verified</Badge>
-          </span>
-          <button
-            type="button"
-            onClick={() => requireMember("view photos") && setViewer(0)}
-            className="absolute bottom-3 left-3 inline-flex h-[26px] items-center gap-1 rounded-full bg-surface-scrim px-2.5 text-label-sm text-ink-on-brand backdrop-blur-[8px] transition-colors hover:bg-black"
-          >
-            <Gallery size={14} color="currentColor" /> {photos.length} photos
-          </button>
+          </div>
+          {thumbs.length > 0 && (
+            <div className="grid grid-cols-4 gap-2">
+              {thumbs.map((ph, i) => {
+                const n = i + 1;
+                const more = i === thumbs.length - 1 && extra > 0;
+                return (
+                  <button
+                    key={n}
+                    type="button"
+                    aria-label={more ? `View all ${photos.length} photos` : `View photo ${n + 1}`}
+                    onClick={() => openPhoto(n)}
+                    className="relative aspect-square overflow-hidden rounded-[12px] bg-surface-muted ring-brand transition-shadow hover:ring-2 focus-visible:ring-2"
+                  >
+                    <GalleryImg photo={ph} />
+                    {more && (
+                      <span className="absolute inset-0 flex items-center justify-center bg-surface-scrim text-label-lg text-ink-on-brand">+{extra}</span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          )}
         </div>
 
-        <div className="flex min-w-0 flex-1 flex-col gap-4">
+        <div className="flex min-w-0 flex-col gap-5">
           <div className="flex items-start gap-3">
             <div className="flex min-w-0 flex-1 flex-col gap-1.5">
               <h1 className="flex items-center gap-2 text-h4 text-ink md:text-h3">
@@ -327,92 +453,49 @@ function Detail({ p, x, onInterest }: { p: ViewProfile; x?: ProfileExtras; onInt
               </p>
               <div className="flex flex-wrap gap-2 pt-1">
                 <Badge tone="success">ID verified</Badge>
+                {/* who manages the profile — families care whether a parent or the member posted it */}
+                <Badge tone="neutral">Created by {(x?.postedBy ?? "Self") === "Self" ? "self" : x?.postedBy}</Badge>
                 {p.horoscope && <Badge tone="info">Horoscope</Badge>}
-                {x && <Badge tone="neutral">{x.posted}</Badge>}
+                {x && <Badge tone="neutral" icon={false}>{x.posted}</Badge>}
               </div>
             </div>
-            <div className="flex shrink-0 items-start gap-2">
-              {x && (
-                <div className="flex flex-col items-center gap-0.5 rounded-[16px] bg-success-bg px-3 py-2 text-success-fg">
-                  <span className="text-h5">{x.match}%</span>
-                  <span className="text-caption">{matchLabel(x.match)}</span>
-                </div>
-              )}
-              {/* Share — design-system Button / Secondary, size sm */}
-              <Button variant="secondary" size="sm" className="rounded-full" aria-haspopup="dialog" leftIcon={<Share2 size={18} strokeWidth={2} />} onClick={share}>
-                Share
-              </Button>
+            <div className="flex shrink-0 gap-2">
+              <button type="button" aria-haspopup="dialog" aria-label="Share profile" onClick={share} className={iconButton}>
+                <Share2 size={18} strokeWidth={2} />
+              </button>
+              <button
+                type="button"
+                aria-pressed={saved}
+                aria-label={saved ? "Saved to favourites" : "Add to favourites"}
+                onClick={favourite}
+                className={cn(iconButton, saved && "border-brand bg-brand-subtle")}
+              >
+                <Heart size={20} color="currentColor" variant={saved ? "Bold" : "Linear"} />
+              </button>
             </div>
           </div>
 
-          <dl className="grid gap-x-3 gap-y-4 sm:grid-cols-2">
-            {details.map((d) => {
-              const Icon = d.icon;
-              return (
-                <div key={d.label} className="flex items-center gap-2.5">
-                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[10px] bg-brand-subtle text-icon-brand">
-                    <Icon size={18} color="currentColor" />
-                  </span>
-                  <span className="flex min-w-0 flex-col">
-                    <dt className="text-caption text-ink-tertiary">{d.label}</dt>
-                    <dd className="truncate text-body-sm font-semibold text-ink">{d.value}</dd>
-                  </span>
-                </div>
-              );
-            })}
+          {/* key facts families look at first */}
+          <dl className="grid grid-cols-2 gap-x-4 gap-y-4">
+            <DetailRow icon={Calendar} label="Age" value={`${p.age} years`} />
+            <DetailRow icon={Ruler} label="Height" value={p.height} />
+            <DetailRow icon={Book1} label="Religion" value={p.religion} />
+            <DetailRow icon={Briefcase} label="Profession" value={p.profession} />
           </dl>
+
+          <div className="flex flex-col gap-1.5">
+            <h2 className="text-label-md text-ink-tertiary">About {p.name || p.id}</h2>
+            <p className="line-clamp-4 text-body-md text-ink-secondary">{p.bio?.trim() || "No bio provided"}</p>
+          </div>
+
+          <div className="mt-auto">
+            <ProfileActions profileId={p.id} sent={sent} onSend={send} />
+          </div>
         </div>
       </div>
 
-      <section className="flex flex-col gap-2">
-        <h2 className="text-h6 text-ink">About</h2>
-        <p className="text-body-md text-ink-secondary">{p.bio?.trim() || "No bio provided"}</p>
-      </section>
-
-      {p.aboutFamily && (
-        <section className="flex flex-col gap-2">
-          <h2 className="flex items-center gap-2 text-h6 text-ink">
-            <Home2 size={18} color="currentColor" className="text-icon-brand" /> Family background
-          </h2>
-          <p className="text-body-md text-ink-secondary">{p.aboutFamily}</p>
-        </section>
-      )}
-
-      {p.horoscope && (p.rasi || p.nakshatra) && (
-        <section className="flex flex-col gap-3 rounded-[16px] border border-premium-line bg-premium-bg p-4">
-          <h2 className="flex items-center gap-2 text-h6 text-premium-fg">
-            <Star1 size={18} color="currentColor" /> Horoscope
-          </h2>
-          <div className="flex flex-wrap gap-x-8 gap-y-2 text-body-sm">
-            {p.rasi && (
-              <span>
-                <span className="text-ink-tertiary">Rasi </span>
-                <span className="font-semibold text-ink">{p.rasi}</span>
-              </span>
-            )}
-            {p.nakshatra && (
-              <span>
-                <span className="text-ink-tertiary">Nakshatra </span>
-                <span className="font-semibold text-ink">{p.nakshatra}</span>
-              </span>
-            )}
-          </div>
-        </section>
-      )}
-
-      {/* Contact — unlocked after both accept */}
-      <section className="flex items-center gap-3 rounded-[16px] bg-surface-subtle p-4">
-        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-surface-card text-icon-brand">
-          <Lock1 size={20} color="currentColor" />
-        </span>
-        <p className="flex-1 text-body-sm text-ink-secondary">
-          <span className="block font-semibold text-ink">Contact details & chat are private</span>
-          Phone, WhatsApp and messages unlock when {p.id} accepts your interest.
-        </p>
-      </section>
-
       {sent && (
-        <div className="flex animate-fade-up items-center gap-3 rounded-[16px] bg-success-bg p-4 text-success-fg">
+        <div className="-mt-2 flex animate-fade-up items-center gap-3 rounded-[16px] bg-success-bg p-4 text-success-fg">
           <TickCircle size={22} color="currentColor" variant="Bold" />
           <p className="text-body-sm">
             <span className="block font-semibold">Interest sent</span>
@@ -421,9 +504,36 @@ function Detail({ p, x, onInterest }: { p: ViewProfile; x?: ProfileExtras; onInt
         </div>
       )}
 
-      <div className="h-px bg-line" />
+      {/* ── Sections ───────────────────────────────────────────────── */}
+      {visible.map((s) => (
+        <section key={s.id} id={`pv-${s.id}`} aria-labelledby={`pv-${s.id}-title`} className="flex scroll-mt-28 flex-col gap-4">
+          <h2 id={`pv-${s.id}-title`} className="flex items-center gap-2.5 text-h5 text-ink">
+            <span aria-hidden className="h-5 w-1 rounded-full bg-brand-gradient" />
+            {s.title}
+          </h2>
+          <dl className="grid grid-cols-2 gap-x-4 gap-y-5 sm:gap-x-6 xl:grid-cols-3">
+            {s.items.map((d) =>
+              isHidden(d) ? (
+                <LockedRow key={d.label} icon={d.icon} label={d.label} placeholder={d.placeholder ?? "Hidden"} hint={lockHint(d)} onOpen={() => openLocked(d)} />
+              ) : (
+                <DetailRow key={d.label} icon={d.icon} label={d.label} value={d.value as string} />
+              ),
+            )}
+          </dl>
+        </section>
+      ))}
 
-      <div className="flex flex-wrap items-center gap-3">
+      {p.aboutFamily && (
+        <section id="pv-family" aria-labelledby="pv-family-title" className="flex scroll-mt-28 flex-col gap-3">
+          <h2 id="pv-family-title" className="flex items-center gap-2.5 text-h5 text-ink">
+            <span aria-hidden className="h-5 w-1 rounded-full bg-brand-gradient" />
+            Family background
+          </h2>
+          <p className="text-body-md text-ink-secondary">{p.aboutFamily}</p>
+        </section>
+      )}
+
+      <div className="-mt-2 flex justify-end">
         <button
           type="button"
           disabled={reported}
@@ -433,8 +543,6 @@ function Detail({ p, x, onInterest }: { p: ViewProfile; x?: ProfileExtras; onInt
           {reported ? <TickCircle size={16} color="currentColor" /> : <FlagIcon size={16} color="currentColor" />}
           {reported ? "Reported" : "Report profile"}
         </button>
-        <div className="flex-1" />
-        <ProfileActions profileId={p.id} sent={sent} onSend={send} />
       </div>
 
       {shareUrl && <ShareProfileDialog url={shareUrl} onClose={() => setShareUrl(null)} />}
@@ -450,7 +558,8 @@ function Detail({ p, x, onInterest }: { p: ViewProfile; x?: ProfileExtras; onInt
           setReportOpen(false);
           if (!requireMember("report a profile")) return;
           setReported(true);
-          toast.success("Report submitted", `Thank you — our safety team will review ${p.id} within 24 hours.`);
+          markSafetyEvent();
+          toast.success("Report submitted", `Thank you, our safety team will review ${p.id} within 24 hours.`);
         }}
       />, document.body)}
     </article>
@@ -528,7 +637,7 @@ function ReportModal({ id, open, onCancel, onSubmit }: { id: string; open: boole
             <h2 id="report-title" className="text-h5 text-ink">
               Report {id}
             </h2>
-            <p className="text-body-sm text-ink-secondary">Reports are private — the member won’t know it was you.</p>
+            <p className="text-body-sm text-ink-secondary">Reports are private. The member won’t know it was you.</p>
           </div>
         </div>
 

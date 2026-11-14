@@ -125,6 +125,8 @@ export function setPlan(plan: Plan, months = 3) {
       localStorage.removeItem(PLAN_KEY);
       localStorage.removeItem(MEMBERSHIP_KEY);
     } else {
+      // renewing / extending an active paid plan counts as a "happy moment" for the feedback popup
+      if (readPlan() !== "free") localStorage.setItem("vk-plan-renewed-at", JSON.stringify(new Date().toISOString()));
       localStorage.setItem(PLAN_KEY, plan);
       const m: Membership = { plan, startedAt: new Date().toISOString(), months };
       localStorage.setItem(MEMBERSHIP_KEY, JSON.stringify(m));

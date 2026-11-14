@@ -6,6 +6,7 @@ import { useToast } from "@/components/ui/Toast";
 import { useAccess } from "@/lib/verification";
 import { FREE_LIMITS, resetUsage } from "@/lib/usage";
 import { setBoostRecord, useBoost } from "@/lib/promotion";
+import { openFeedback, resetFeedbackDemo } from "@/lib/feedback";
 
 /**
  * Dashboard demo switcher (no API): jump between the four member states.
@@ -49,15 +50,15 @@ export function DashboardDemo() {
         { label: "Free limits", value: `${FREE_LIMITS.searches} searches/mo · ${FREE_LIMITS.profileViews} views/mo` },
       ]}
       actions={[
-        { label: "1 · KYC pending", active: status === "pending" || status === "resubmitted", onClick: () => go("pending", false, "KYC pending", "Profile under review — features are locked.") },
-        { label: "2 · KYC rejected", active: status === "changes", onClick: () => go("changes", false, "KYC rejected", "3 fields need changes — tap Edit & resubmit.") },
+        { label: "1 · KYC pending", active: status === "pending" || status === "resubmitted", onClick: () => go("pending", false, "KYC pending", "Profile under review, features are locked.") },
+        { label: "2 · KYC rejected", active: status === "changes", onClick: () => go("changes", false, "KYC rejected", "3 fields need changes, tap Edit & resubmit.") },
         { label: "3 · Approved · Free", active: status === "live" && !paid, onClick: () => go("live", false, "Approved · Free plan", "Includes monthly searches and profile views. Gold unlocks messages and requests.") },
         { label: "4 · Approved · Pro", active: status === "live" && plan === "gold", onClick: () => go("live", true, "Approved · Gold", "Every feature is unlocked.") },
         { label: "Pro · Platinum", active: status === "live" && plan === "platinum", onClick: () => go("live", "platinum", "Approved · Platinum", "Gold + matchmaker features.") },
         {
           label: "Pro · expiring soon",
           onClick: () => {
-            go("live", true, "Gold · expiring soon", "Plan ends in 4 days — the renew banner shows.");
+            go("live", true, "Gold · expiring soon", "Plan ends in 4 days, the renew banner shows.");
             // a 1-month plan that started 26 days ago → 4 days left
             const d = new Date();
             d.setMonth(d.getMonth() - 1);
@@ -73,6 +74,14 @@ export function DashboardDemo() {
           onClick: () => {
             if (!paid || status !== "live") go("live", true, "Approved · Gold", "Promotion needs KYC approval + Pro.");
             setBoostRecord(boost.active ? null : { startedAt: new Date(Date.now() - 3 * 86_400_000).toISOString(), days: 7 });
+          },
+        },
+        {
+          label: "Feedback popup",
+          onClick: () => {
+            if (!paid || status !== "live") go("live", true, "Approved · Gold", "The feedback popup is for paid members.");
+            resetFeedbackDemo();
+            window.setTimeout(() => openFeedback(), paid && status === "live" ? 0 : 400);
           },
         },
         { label: "Reset usage", onClick: () => { resetUsage(); toast.success("Usage reset", "This month’s free allowance is back to full."); } },

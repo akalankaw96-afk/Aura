@@ -3,7 +3,7 @@
 **Status values:** Not Started · In Progress · Testing · Completed · Blocked · Deferred.
 "Completed" only when acceptance criteria pass and tests/manual checks are recorded (`TESTING_GUIDELINES.md` §6).
 
-_Last updated: 2026-11-11 — forgot password journey (front end)._
+_Last updated: 2026-11-14 — dark mode colour pass + input focus fix._
 
 ## Overall
 | Area | State |
@@ -48,7 +48,16 @@ _Last updated: 2026-11-11 — forgot password journey (front end)._
 | Sinhala home title −8 px | Completed | Checked 1440/390 SI + EN unchanged; build passes |
 | How to use page `/how-to-use` + menu links (journey 50/50 list + phone, pinned-note tour, 2 screens per feature, 31 screens) | Completed | Tested 1440/390, EN/SI, light/dark, no overflow, member menu → page; build passes. SI tour details + screenshots in SI pending |
 | Contact-share card buttons on phones | Completed | Fixed squashed buttons; checked 390 |
+| Profile details redesign (square photo + thumbs, sections, blurred locked fields) | Completed | Tested 1440/390, member + guest, no overflow; build passes |
 | Forgot password back button (all 3 steps) | Completed | Tested 1440/390: each step goes back one step, step 1 → /login; build passes |
+| Feedback popup for paid members (rating, review, private feedback, success story) | Completed (front end) | Tested 1440 light/dark + 390: all 5 steps, validation, auto-open rules (free, day 2, shown 5 d ago, report 2 d ago → no popup; clean → popup; Not now → none), Free toast; `tsc` clean. API pending |
+| Dashboard: active promotion card under hero | Completed | Checked 1440 dark, Gold + active boost; `tsc` clean |
+| Dashboard: Promote + plan cards moved above Best matches (paid states) | Completed | Checked 1440 dark, Gold state |
+| Remove em dashes from all UI text | Completed | 0 left outside code comments; `tsc` clean; 8 main pages load (200). How to use screenshots need re-capture |
+| Search list card: match pill removed | Completed | Checked 1440 dark; `tsc` clean |
+| Search list card: About me (KYC) + Created by | Completed | Checked 1440 light/dark + 390; `tsc` clean. Real API must return the KYC `about` text as `bio` |
+| Chat header ⋯ button styled as round outline button | Completed | Checked 1440 light + dark, default + hover |
+| Dark mode colour pass (tokens, focus ring, photo badges, pinned notes, gold band) + focus/hover fix | Testing | Checked in dark at 1440: home, login focus, dashboard, search, profile, friends, How to use; light unchanged; `tsc` clean. Needs 390 px + real-device review |
 
 ## Documentation
 | Item | Status |

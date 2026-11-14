@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useMemo, useRef, useState, useEffect, useCallback } from "react";
+import { markContactAccepted, markSafetyEvent } from "@/lib/feedback";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -93,7 +94,10 @@ export default function MessagesPage() {
   const [shareByConv, setShareByConv] = useState<Record<string, ContactShareStatus>>({});
   const [partnerPhones, setPartnerPhones] = useState<Record<string, string>>({});
   const shareCardRef = useRef<HTMLDivElement>(null);
-  const setShare = useCallback((convId: string, status: ContactShareStatus) => setShareByConv((s) => ({ ...s, [convId]: status })), []);
+  const setShare = useCallback((convId: string, status: ContactShareStatus) => {
+    if (status === "accepted") markContactAccepted(); // feedback popup: happy moment
+    setShareByConv((s) => ({ ...s, [convId]: status }));
+  }, []);
   const MY_PHONE = "+94 77 123 4567"; // TODO(api): from the member's verified profile
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -437,6 +441,7 @@ export default function MessagesPage() {
     const target = blockTarget;
     setBlockTargetId(null);
     if (!target) return;
+    markSafetyEvent(); // no feedback popup for 7 days
     setBlocked((b) => ({ ...b, [target.conversationId]: { date: todayLabel(), reason: opts.reason } }));
     setActiveConvId(target.conversationId);
     toast.success(t.messages.blockedToast(target.partnerName), opts.report ? t.messages.reportedToast : undefined);
@@ -459,7 +464,10 @@ export default function MessagesPage() {
     } else done();
   };
 
-  const reportMember = () => toast.info(t.messages.reportedToast);
+  const reportMember = () => {
+    markSafetyEvent();
+    toast.info(t.messages.reportedToast);
+  };
 
   const toggleMute = (id: string) => {
     const next = !muted[id];
@@ -734,8 +742,9 @@ export default function MessagesPage() {
                         aria-expanded={open}
                         onClick={toggle}
                         className={cn(
-                          "flex h-9 w-9 items-center justify-center rounded-full text-ink-tertiary transition-all hover:bg-surface-subtle",
-                          open && "bg-brand-subtle text-brand rotate-90"
+                          // matches the outline sm buttons beside it (40px, same ring) so the row reads as one set
+                          "flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-surface-card text-ink-secondary ring-1 ring-inset ring-line-strong transition-all hover:bg-brand-subtle hover:text-brand hover:ring-brand focus-visible:outline-none focus-visible:shadow-ring-brand active:scale-95",
+                          open && "bg-brand-subtle text-brand ring-brand"
                         )}
                       >
                         <More size={20} color="currentColor" />
@@ -904,7 +913,7 @@ export default function MessagesPage() {
         <DemoTips
           tips={[
             { label: "Share contact: request → accept / decline" },
-            { label: `2nd chat (${DEMO_CONVERSATIONS[1]?.partnerName ?? "—"}) has an incoming request` },
+            { label: `2nd chat (${DEMO_CONVERSATIONS[1]?.partnerName ?? "-"}) has an incoming request` },
           ]}
           actions={[
             { label: `Simulate ${activeConv.partnerName.split(" ")[0]} accepts`, onClick: () => setShare(activeConv.conversationId, "accepted"), active: shareStatus === "accepted" },

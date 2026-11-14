@@ -49,7 +49,7 @@ export function controlShell(state: { error?: boolean; disabled?: boolean; succe
     "focus-within:border-brand-focus focus-within:shadow-ring-brand",
     state.error
       ? "border-error-line focus-within:border-error-line focus-within:shadow-ring-error"
-      : "border-line-strong hover:border-ink-tertiary",
+      : "border-line-strong [&:not(:focus-within)]:hover:border-ink-tertiary",
     state.disabled && "pointer-events-none border-line bg-surface-muted text-ink-disabled"
   );
 }

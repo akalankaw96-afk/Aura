@@ -65,7 +65,7 @@ export function VerificationPanel() {
           </span>
           <div className="min-w-0 flex-1">
             <h2 className="text-h5 text-ink">You’re live! 🎉</h2>
-            <p className="text-body-sm text-ink-secondary">Your profile was approved — send interests, chat and search are all unlocked.</p>
+            <p className="text-body-sm text-ink-secondary">Your profile was approved. Send interests, chat and search are all unlocked.</p>
           </div>
           <button type="button" onClick={() => setJustLive(false)} aria-label="Dismiss" className="rounded-full p-1 text-ink-tertiary hover:bg-white">
             <CloseCircle size={22} color="currentColor" />
@@ -111,7 +111,7 @@ export function VerificationPanel() {
                 {rejected
                   ? "Your profile needs a few changes"
                   : status === "resubmitted"
-                  ? "Thanks — we’re checking your changes"
+                  ? "Thanks, we’re checking your changes"
                   : !hasCompletedProfile
                   ? `Welcome ${name}, complete your candidate profile`
                   : `Your Profile Is Under Review`}
@@ -233,14 +233,14 @@ export function VerificationPanel() {
               <p className="mb-3 text-label-md text-ink">What we’re checking</p>
               <ul className="flex flex-col gap-2.5 text-body-sm">
                 <CheckItem Icon={Mobile} done label="Mobile number" note="Verified" />
-                <CheckItem Icon={Gallery} label="Photos" note={draft?.photo?.startsWith("data:image/svg") ? "Illustration — quick check" : "Clear face, recent"} />
+                <CheckItem Icon={Gallery} label="Photos" note={draft?.photo?.startsWith("data:image/svg") ? "Illustration, quick check" : "Clear face, recent"} />
                 <CheckItem Icon={Profile2User} label="Profile details" note="Age, religion, location" />
                 <CheckItem Icon={ShieldTick} label="Safety" note="No contact details in your bio" />
               </ul>
             </div>
             <div className="flex flex-col gap-3 rounded-md bg-surface-subtle p-4">
               <p className="text-label-md text-ink">While you wait</p>
-              <QuickAction href="/search" Icon={SearchNormal1} title="Browse profiles" sub="Look around — sending interest unlocks soon" />
+              <QuickAction href="/search" Icon={SearchNormal1} title="Browse profiles" sub="Look around, sending interest unlocks soon" />
               <QuickAction href="/plans" Icon={Crown1} title="Explore Gold" sub="Unlimited interests once you’re live" tone="premium" />
               <QuickAction href="/terms" Icon={ShieldTick} title="Safety tips" sub="How to connect safely on Vikasitha" />
             </div>

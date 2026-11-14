@@ -157,11 +157,11 @@ export function EditProfileModal() {
     try {
       localStorage.setItem(KEY, JSON.stringify(next));
     } catch {
-      toast.error("Couldn’t save", "Your browser storage is full — try fewer or smaller photos.");
+      toast.error("Couldn’t save", "Your browser storage is full. Try fewer or smaller photos.");
       return;
     }
     close();
-    if (newPhotos) toast.success("Changes saved", `${newPhotos} new photo${newPhotos > 1 ? "s are" : " is"} in review — usually live within 24 hours.`);
+    if (newPhotos) toast.success("Changes saved", `${newPhotos} new photo${newPhotos > 1 ? "s are" : " is"} in review, usually live within 24 hours.`);
     else toast.success("Profile updated", "Your changes are live.");
   };
 

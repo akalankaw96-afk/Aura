@@ -52,7 +52,7 @@ export const STATS: { icon: StatIcon; value: string; label: string; meta: string
 export const BEST_MATCHES = {
   eyebrow: "Best matches",
   title: "Your best matches today",
-  description: "Based on your age, religion and location preferences — updated daily.",
+  description: "Based on your age, religion and location preferences, updated daily.",
 };
 
 export interface InterestRequest {
@@ -87,7 +87,7 @@ export interface InboxMessage {
 }
 export const MESSAGES: InboxMessage[] = [
   { id: "kavindu", name: "Kavindu", preview: "Thank you for accepting! My parents would like to speak with yours this weekend.", time: "10:24", unread: 2, online: true, photo: "/images/profiles/mp-24817.jpg" },
-  { id: "rizwan", name: "Rizwan", preview: "Hi Nethmi, I saw that you also studied in Kandy — which school?", time: "09:02", unread: 1, photo: "/images/profiles/mp-24751.jpg" },
+  { id: "rizwan", name: "Rizwan", preview: "Hi Nethmi, I saw that you also studied in Kandy, which school?", time: "09:02", unread: 1, photo: "/images/profiles/mp-24751.jpg" },
   { id: "pradeep", name: "Pradeep", preview: "Shall we arrange a family call this Sunday?", time: "Mon", unread: 2, photo: "/images/profiles/mp-24671.jpg" },
   { id: "sahan", name: "Sahan", preview: "You: That sounds lovely, thank you!", time: "Sat", unread: 0, online: true, photo: "/brand/groom.png", photoHidden: true },
   { id: "kasun", name: "Kasun", preview: "New friend · Say hello 👋", time: "Now", unread: 0, photo: "/brand/groom.png", photoHidden: true, isNew: true },
@@ -171,7 +171,7 @@ export const REQUEST_PROFILES: RequestProfile[] = [
   {
     id: "MP-24671", tab: "received", name: "Pradeep", fullName: "Pradeep Fernando", age: 34, meta: "Galle · Buddhist · Engineer", time: "Yesterday", isNew: true,
     photo: "/images/profiles/mp-24671.jpg", location: "Galle, Sri Lanka", country: "lk", horoscope: true,
-    note: "Hello! I’m a civil engineer from Galle. Your profile felt very genuine — I’d be happy to share horoscopes.",
+    note: "Hello! I’m a civil engineer from Galle. Your profile felt very genuine. I’d be happy to share horoscopes.",
     about: "Civil engineer who loves the sea, music and gardening. Close to my parents and two sisters.",
     details: details(34, "5′ 9″", "Buddhist", "Sinhalese", "Civil Engineer", "University of Moratuwa", "Galle, Sri Lanka"),
   },
@@ -236,7 +236,7 @@ export const CONVERSATIONS: Conversation[] = [
     messages: [
       { id: "1", from: "them", text: "Hi Nethmi! Thank you so much for accepting my interest 😊", time: "10:12" },
       { id: "2", from: "me", text: "Hi Kavindu, happy to connect. My parents liked your profile too.", time: "10:15", seen: true },
-      { id: "3", from: "them", text: "That’s wonderful. My parents would like to speak with yours this weekend — would Saturday evening work?", time: "10:22" },
+      { id: "3", from: "them", text: "That’s wonderful. My parents would like to speak with yours this weekend, would Saturday evening work?", time: "10:22" },
       { id: "4", from: "them", text: "Thank you for accepting! We can share horoscopes before the call.", time: "10:24" },
     ],
   },
@@ -244,7 +244,7 @@ export const CONVERSATIONS: Conversation[] = [
     id: "rizwan", name: "Rizwan", fullName: "Rizwan Mohamed", age: 30, location: "Colombo, Sri Lanka", photo: "/images/profiles/mp-24751.jpg", lastSeen: "Last seen 1h ago", time: "09:02", unread: 1,
     messages: [
       { id: "1", from: "me", text: "Hi Rizwan, thank you for your interest.", time: "Yesterday", seen: true },
-      { id: "2", from: "them", text: "Hi Nethmi, I saw that you also studied in Kandy — which school?", time: "09:02" },
+      { id: "2", from: "them", text: "Hi Nethmi, I saw that you also studied in Kandy, which school?", time: "09:02" },
     ],
   },
   {
@@ -267,7 +267,7 @@ export const CONVERSATIONS: Conversation[] = [
 export const DEMO_REPLIES = [
   "That sounds great! 😊",
   "Thank you for letting me know. I’ll tell my parents.",
-  "Sure — what time suits your family?",
+  "Sure, what time suits your family?",
   "I’d like that very much.",
 ];
 

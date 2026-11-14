@@ -29,6 +29,7 @@ import {
   type SearchFilters,
 } from "@/components/sections/search/FiltersSidebar";
 import { FEATURED, MARQUEE_PROFILES, type FeaturedProfile } from "@/content/home";
+import { FEATURED_ABOUT } from "@/content/featuredAbout";
 import {
   COUNTRY_OPTIONS,
   HEIGHT_MAX,
@@ -169,7 +170,7 @@ function SearchPageContent() {
         seenIds.add(p.id);
         list.push({
           ...p,
-          bio: `Verified member (${p.id}). Dedicated professional with family values and balanced cultural lifestyle.`,
+          bio: FEATURED_ABOUT[p.id],
           education: p.profession.includes("Doctor") ? "MBBS, Colombo" : p.profession.includes("Engineer") ? "BSc Eng (Moratuwa)" : "Bachelor's Degree",
           aboutFamily: "Respected, traditional Sri Lankan family background with high social standing.",
           rasi: p.horoscope ? "Mesha" : undefined,

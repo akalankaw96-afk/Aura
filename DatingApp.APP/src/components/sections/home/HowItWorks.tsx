@@ -127,12 +127,12 @@ function Note({ step, className, style }: { step: Step; className?: string; styl
         <span className="flex h-11 w-11 items-center justify-center rounded-md bg-brand-gradient text-ink-on-brand">
           <Icon size={22} color="currentColor" />
         </span>
-        <span className={cn("text-[48px] font-bold leading-[1.2]", rose ? "text-brand" : "text-gold-700")}>{step.n}</span>
+        <span className={cn("text-[48px] font-bold leading-[1.2]", rose ? "text-brand" : "text-gold-700 dark:text-gold-300")}>{step.n}</span>
       </div>
       {/* note panels are always light (paper), so text uses fixed primitives */}
-      <BumpTitle as="h3" delay={200} stagger={60} className="text-h5 text-gray-900">{step.title}</BumpTitle>
-      <p className="text-body-sm text-gray-600">{step.text}</p>
-      <span className="w-fit rounded-full bg-white px-2.5 py-1 text-label-sm text-rose-700">{step.pill}</span>
+      <BumpTitle as="h3" delay={200} stagger={60} className="text-h5 text-gray-900 dark:text-ink">{step.title}</BumpTitle>
+      <p className="text-body-sm text-gray-600 dark:text-ink-secondary">{step.text}</p>
+      <span className="w-fit rounded-full bg-white px-2.5 py-1 text-label-sm text-rose-700 dark:bg-surface-raised dark:text-rose-300">{step.pill}</span>
     </PinNote>
   );
 }

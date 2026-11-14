@@ -20,9 +20,9 @@ import { PhotosStep, ProfileStep } from "./RegisterFlow";
  * When every flagged field is fixed → status "resubmitted" → back to the Dashboard.
  */
 export const FLAGGED = [
-  { key: "photo", label: "Main photo", reason: "Face not clearly visible — upload a clear photo", Icon: Gallery, fix: "photo" },
-  { key: "about", label: "About you", reason: "Contains a phone number — please remove it", Icon: MessageText1, fix: "details" },
-  { key: "dob", label: "Date of birth", reason: "Doesn’t match your ID — check and update", Icon: Calendar, fix: "details" },
+  { key: "photo", label: "Main photo", reason: "Face not clearly visible, upload a clear photo", Icon: Gallery, fix: "photo" },
+  { key: "about", label: "About you", reason: "Contains a phone number, please remove it", Icon: MessageText1, fix: "details" },
+  { key: "dob", label: "Date of birth", reason: "Doesn’t match your ID, check and update", Icon: Calendar, fix: "details" },
 ] as const;
 
 const ORIGINAL_KEY = "vk-fix-original";
@@ -87,12 +87,12 @@ export function ReviewStatus() {
 
   const next = (from: "details" | "photo") => {
     if (from === "details" && !photoFixed) {
-      toast.info("One more thing", "Your details are fixed — now replace your main photo.");
+      toast.info("One more thing", "Your details are fixed, now replace your main photo.");
       router.push("/register/status?fix=photo");
       return;
     }
     if (from === "photo" && !detailsFixed) {
-      toast.info("One more thing", "Your photo is updated — now fix the highlighted details.");
+      toast.info("One more thing", "Your photo is updated, now fix the highlighted details.");
       router.push("/register/status?fix=details");
       return;
     }

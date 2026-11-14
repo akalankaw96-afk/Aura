@@ -46,7 +46,7 @@ export const MORE_SECTIONS = {
   education: { title: "Education", options: ["Postgraduate", "Graduate", "Diploma", "A/L"] },
   horoscope: { title: "Horoscope", options: ["Horoscope available"] },
   lifestyle: { title: "Lifestyle (drinking, smoking)", options: ["Non-drinker", "Non-smoker"] },
-  postedBy: { title: "Posted by (self / parents)", options: ["Self", "Mother", "Father", "Relative"] },
+  postedBy: { title: "Created by (self / parents)", options: ["Self", "Mother", "Father", "Relative"] },
   caste: { title: "Caste (optional)", options: ["Govigama", "Karava", "Salagama", "Durava", "Other"] },
 } as const;
 export type MoreKey = keyof typeof MORE_SECTIONS;

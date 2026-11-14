@@ -32,7 +32,8 @@ styles/tokens.css             design tokens
 | Email / Mobile switch (auth) | `components/auth/IdentifierTabs` (preset of `SegmentedSwitch`) | Login + Forgot password; don't rebuild per screen |
 | Share contact details | `sections/member/ContactShare` (`ContactShareHeaderAction`, `ContactShareCard`) | Messages page |
 | Guide / help page | `sections/howto/HowToUseScreen` (`PhoneFrame`, `StatusFlow`); copy in `content/howToUse.ts` | Screens in `public/how-to-use/` |
-| Pinned note (paper card + push-pin, rose / gold) | `PinNote` | Home How it works, How-to-use tour — content inside uses light-paper colours (gray-900 / gray-600) |
+| Pinned note (paper card + push-pin, rose / gold) | `PinNote` | Home How it works, How-to-use tour — content uses gray-900 / gray-600 with `dark:` token counterparts (dark mode = dark rose/gold note) |
+| Feedback / rating / success story popup | `components/feedback/FeedbackDialog` (mounted once in the root layout) — open with `openFeedback()` / `openFeedback("story")` from `lib/feedback` | Paid members only; auto-open rules live in `feedbackDue()`. Call `markContactAccepted()` / `markSafetyEvent()` from new contact-share or report/block flows |
 | Brand | `Logo`, `CoupleAvatar`, `LanguageSwitch`, `ThemeToggle`, `Flag`, `HeartPattern`, `LoveScene`, `LoveSticker` | |
 
 `SegmentedTabs`, `PhotoSlot` and `ButtonLink` exist but are **not exported from `ui/index.ts`** — import by path

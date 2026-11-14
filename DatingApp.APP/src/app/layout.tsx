@@ -23,6 +23,7 @@ import { MobileTabBar } from "@/components/layout/MobileTabBar";
 import { InstallAppBanner } from "@/components/layout/InstallAppBanner";
 import { UpgradePrompt } from "@/components/layout/UpgradePrompt";
 import { LoginRequiredModal } from "@/components/layout/LoginRequiredModal";
+import { FeedbackDialog } from "@/components/feedback/FeedbackDialog";
 
 export const metadata: Metadata = {
   title: "Vikasitha | Find a life partner your whole family can trust",
@@ -65,6 +66,8 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
             {/* free-plan limit reached → upgrade prompt */}
             <UpgradePrompt />
             <LoginRequiredModal />
+            {/* paid members: rating / feedback / success story popup (rules in lib/feedback) */}
+            <FeedbackDialog />
           </ToastProvider>
         </LanguageProvider>
       </body>

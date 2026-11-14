@@ -73,9 +73,9 @@ export function ProfileDetailModal({ profile, onClose, onConnect }: ProfileDetai
     const linkRegex = /(https?:\/\/|www\.|\.com|\.lk|\.net)/i;
 
     if (phoneRegex.test(text)) {
-      setNoteWarning("Contact details blocked — Phone numbers cannot be sent in initial requests. They are unlocked after mutual acceptance.");
+      setNoteWarning("Contact details blocked. Phone numbers cannot be sent in initial requests. They are unlocked after mutual acceptance.");
     } else if (linkRegex.test(text)) {
-      setNoteWarning("Links blocked — External URLs are not allowed in introductory notes.");
+      setNoteWarning("Links blocked. External URLs are not allowed in introductory notes.");
     } else {
       setNoteWarning(null);
     }
@@ -125,7 +125,7 @@ export function ProfileDetailModal({ profile, onClose, onConnect }: ProfileDetai
 
           {/* Badges on Hero */}
           <div className="absolute top-4 left-4 flex flex-col items-start gap-1.5">
-            <span className="inline-flex items-center gap-1 rounded-full bg-success-bg px-2.5 py-0.5 text-label-sm text-success-fg font-semibold backdrop-blur-md">
+            <span className="on-photo inline-flex items-center gap-1 rounded-full bg-success-bg px-2.5 py-0.5 text-label-sm text-success-fg font-semibold backdrop-blur-md">
               <Verify size={14} color="currentColor" /> Government ID Verified
             </span>
             <span className="inline-flex items-center gap-1 rounded-full bg-surface-scrim px-2.5 py-0.5 text-label-sm text-ink-on-brand backdrop-blur-md">

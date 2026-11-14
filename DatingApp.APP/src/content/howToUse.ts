@@ -67,7 +67,7 @@ const S = (name: string, alt: string): Shot => ({ src: `/how-to-use/${name}.webp
 const en: HowToUseCopy = {
   crumb: "How to use",
   title: "How Vikasitha works",
-  subtitle: "Every step from creating your account to sharing contact details — with the real screens you’ll see.",
+  subtitle: "Every step from creating your account to sharing contact details, with the real screens you’ll see.",
   trust: ["ID-verified members", "Private by default", "Sri Lanka & abroad"],
   tourLink: "See the full tour",
   journeyEyebrow: "Your journey",
@@ -92,7 +92,7 @@ const en: HowToUseCopy = {
     {
       id: "verify",
       title: "Get verified",
-      text: "Our safety team checks your profile and ID. You’ll see the status on your dashboard — fix anything flagged and resubmit.",
+      text: "Our safety team checks your profile and ID. You’ll see the status on your dashboard. Fix anything flagged and resubmit.",
       shot: S("kyc-pending", "Profile under review on the dashboard"),
       statuses: [
         { label: "Pending review", tone: "warning" },
@@ -120,7 +120,7 @@ const en: HowToUseCopy = {
     {
       id: "chat",
       title: "Chat & share contacts",
-      text: "Message your friends safely. When you’re both ready, request to swap mobile and WhatsApp numbers — shared only if they accept.",
+      text: "Message your friends safely. When you’re both ready, request to swap mobile and WhatsApp numbers, shared only if they accept.",
       shot: S("contact-request", "Contact details request in chat"),
       statuses: [
         { label: "Request sent", tone: "warning" },
@@ -149,7 +149,7 @@ const en: HowToUseCopy = {
         {
           id: "login",
           title: "Log in & reset your password",
-          summary: "Log in with email or mobile — and get back in fast if you forget your password.",
+          summary: "Log in with email or mobile, and get back in fast if you forget your password.",
           bullets: ["Email or mobile number + password", "Continue with Google", "Forgot password: choose email or mobile → 6-digit code → new password"],
           where: "Login → Forgot password?",
           shots: [S("login", "Log in screen"), S("forgot-password", "Reset password screen")],
@@ -158,7 +158,7 @@ const en: HowToUseCopy = {
           id: "verify",
           title: "Profile verification",
           summary: "Every profile is checked by our safety team before it goes live.",
-          bullets: ["See exactly what we’re checking", "If something needs a fix, we show which fields and why", "Fix and resubmit — no need to start again"],
+          bullets: ["See exactly what we’re checking", "If something needs a fix, we show which fields and why", "Fix and resubmit, no need to start again"],
           where: "Dashboard",
           shots: [S("kyc-pending", "Profile under review"), S("kyc-changes", "Profile needs changes")],
           statuses: [
@@ -172,7 +172,7 @@ const en: HowToUseCopy = {
           id: "edit",
           title: "Edit your profile",
           summary: "Keep your profile fresh after it’s approved.",
-          bullets: ["Update your “About me” description", "Add, reorder or remove photos", "Other details are read-only — contact support to change them"],
+          bullets: ["Update your “About me” description", "Add, reorder or remove photos", "Other details are read-only. Contact support to change them"],
           where: "Dashboard → Edit profile",
           shots: [S("edit-profile", "Edit your description"), S("edit-photos", "Edit your photos")],
         },
@@ -186,7 +186,7 @@ const en: HowToUseCopy = {
         {
           id: "dashboard",
           title: "Your dashboard",
-          summary: "Your home after logging in — new matches, interests and your plan at a glance.",
+          summary: "Your home after logging in: new matches, interests and your plan at a glance.",
           bullets: ["Today’s best matches", "New interests and messages", "Profile strength and plan usage"],
           where: "Dashboard",
           shots: [S("dashboard", "Member dashboard"), S("dashboard-matches", "Plan and activity on the dashboard")],
@@ -212,7 +212,7 @@ const en: HowToUseCopy = {
     {
       id: "connect",
       title: "Connecting",
-      description: "Interests, friends, messages and contact details — always with both people’s consent.",
+      description: "Interests, friends, messages and contact details, always with both people’s consent.",
       items: [
         {
           id: "interest",
@@ -231,7 +231,7 @@ const en: HowToUseCopy = {
           id: "respond",
           title: "Accept or decline",
           summary: "Interests you receive wait for you on the Friends page.",
-          bullets: ["See who is interested and why it’s a match", "Accept to become Friends and unlock chat", "Decline politely — they won’t see a reason"],
+          bullets: ["See who is interested and why it’s a match", "Accept to become Friends and unlock chat", "Decline politely, they won’t see a reason"],
           where: "Friends → Received",
           shots: [S("interest-received", "Interest received"), S("accept-interest", "Accept or decline an interest")],
           statuses: [
@@ -281,7 +281,7 @@ const en: HowToUseCopy = {
           id: "contact",
           title: "Share contact details",
           summary: "Swap mobile and WhatsApp numbers only when you both agree.",
-          bullets: ["Tap Share contact in the chat (Gold)", "They choose Accept & share or Not now", "Only mobile & WhatsApp — never email or address"],
+          bullets: ["Tap Share contact in the chat (Gold)", "They choose Accept & share or Not now", "Only mobile & WhatsApp, never email or address"],
           where: "Messages → Share contact",
           shots: [S("contact-request", "Contact details request"), S("contact-shared", "Contact details shared")],
           statuses: [
@@ -302,7 +302,7 @@ const en: HowToUseCopy = {
           id: "report",
           title: "Report or block",
           summary: "If something doesn’t feel right, tell us. Reports are private.",
-          bullets: ["Report a profile with a reason — the member won’t know it was you", "Block from a chat: they can’t see or message you", "Our safety team reviews every report"],
+          bullets: ["Report a profile with a reason. The member won’t know it was you", "Block from a chat: they can’t see or message you", "Our safety team reviews every report"],
           where: "Profile → Report profile · Chat → ⋯ → Block",
           shots: [S("report", "Report a profile"), S("chat-menu", "Block or report from a chat")],
           statuses: [
@@ -322,7 +322,7 @@ const en: HowToUseCopy = {
           id: "gold",
           title: "Free vs Gold",
           summary: "Gold unlocks unlimited search, interests, messages and contact sharing.",
-          bullets: ["1, 3 or 6 months — save up to 25%", "Promote your profile to appear first", "Cancel anytime — no hidden fees"],
+          bullets: ["1, 3 or 6 months, save up to 25%", "Promote your profile to appear first", "Cancel anytime, no hidden fees"],
           where: "Plans",
           shots: [S("plans", "Plans page"), S("plans-gold", "The Gold plan")],
           statuses: [
@@ -359,7 +359,7 @@ const si: HowToUseCopy = {
   ...en,
   crumb: "භාවිතා කරන ආකාරය",
   title: "විකසිත භාවිතා කරන ආකාරය",
-  subtitle: "ගිණුමක් සෑදීමේ සිට සම්බන්ධතා තොරතුරු බෙදා ගැනීම දක්වා සෑම පියවරක්ම — ඔබට පෙනෙන සැබෑ තිර සමඟ.",
+  subtitle: "ගිණුමක් සෑදීමේ සිට සම්බන්ධතා තොරතුරු බෙදා ගැනීම දක්වා සෑම පියවරක්ම, ඔබට පෙනෙන සැබෑ තිර සමඟ.",
   trust: ["හැඳුනුම්පත සත්‍යාපිත සාමාජිකයින්", "පෙරනිමියෙන් පෞද්ගලිකයි", "ශ්‍රී ලංකාව සහ විදේශ"],
   tourLink: "සම්පූර්ණ මාර්ගෝපදේශය බලන්න",
   journeyEyebrow: "ඔබේ ගමන",
@@ -374,7 +374,7 @@ const si: HowToUseCopy = {
     {
       ...en.steps[2],
       title: "සත්‍යාපනය ලබා ගන්න",
-      text: "අපගේ ආරක්ෂක කණ්ඩායම ඔබේ පැතිකඩ සහ හැඳුනුම්පත පරීක්ෂා කරයි. තත්ත්වය පාලක පුවරුවේ පෙනේ — සඳහන් කළ දේ නිවැරදි කර නැවත ඉදිරිපත් කරන්න.",
+      text: "අපගේ ආරක්ෂක කණ්ඩායම ඔබේ පැතිකඩ සහ හැඳුනුම්පත පරීක්ෂා කරයි. තත්ත්වය පාලක පුවරුවේ පෙනේ, සඳහන් කළ දේ නිවැරදි කර නැවත ඉදිරිපත් කරන්න.",
       statuses: [
         { label: "සමාලෝචනය වෙමින්", tone: "warning" },
         { label: "වෙනස්කම් අවශ්‍යයි", tone: "error" },
@@ -395,7 +395,7 @@ const si: HowToUseCopy = {
     {
       ...en.steps[5],
       title: "කතාබහ සහ සම්බන්ධතා",
-      text: "ඔබේ මිතුරන් සමඟ ආරක්ෂිතව කතා කරන්න. දෙදෙනාම සූදානම් වූ විට ජංගම සහ WhatsApp අංක හුවමාරුවට ඉල්ලන්න — ඔවුන් පිළිගත්තොත් පමණි.",
+      text: "ඔබේ මිතුරන් සමඟ ආරක්ෂිතව කතා කරන්න. දෙදෙනාම සූදානම් වූ විට ජංගම සහ WhatsApp අංක හුවමාරුවට ඉල්ලන්න, ඔවුන් පිළිගත්තොත් පමණි.",
       statuses: [
         { label: "ඉල්ලීම යැව්වා", tone: "warning" },
         { label: "පිළිගෙන බෙදන්න", tone: "brand" },
