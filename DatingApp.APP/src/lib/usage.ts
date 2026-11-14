@@ -11,7 +11,7 @@ import { hasSession, requireMember } from "@/lib/session";
  *   interests → interests sent ("add friend")
  *   profileViews → different profiles opened in full (re-opening one already seen this month is free)
  * When a free member hits a limit, `consume()` returns false and opens the Upgrade prompt.
- * Demo: counts are kept in localStorage. TODO(api): enforce on the server.
+ * Counts are kept in this browser until the API meters usage (Sprint 03, BUG-011) — not demo data, but not secure yet.
  */
 export type UsageKind = "profileViews" | "chats" | "messages" | "searches" | "interests";
 
@@ -143,13 +143,6 @@ export function consumeProfileView(id: string): boolean {
   return true;
 }
 
-/** Demo helper: reset this month's counts */
-export const resetUsage = () => {
-  try {
-    localStorage.removeItem(VIEWED_KEY);
-  } catch {}
-  write(empty());
-};
 
 export function useUsage() {
   const [usage, setUsage] = useState<Usage>(empty());

@@ -1,3 +1,4 @@
+using DatingApp.Application.Common.Exceptions;
 using DatingApp.Application.DTOs;
 using DatingApp.Application.Services;
 using Microsoft.AspNetCore.Authorization;
@@ -29,10 +30,8 @@ public class ProfilesController : BaseApiController
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> GetMyProfile(CancellationToken ct)
     {
-        if (!CurrentUserId.HasValue) return Unauthorized();
-
-        var profile = await _profileService.GetProfileByUserIdAsync(CurrentUserId.Value, ct);
-        if (profile == null) return NotFound(new { message = "You have not created a candidate profile yet." });
+        var profile = await _profileService.GetProfileByUserIdAsync(RequireUserId(), ct)
+            ?? throw AppException.NotFound("You have not created a candidate profile yet.");
 
         return Ok(profile);
     }
@@ -43,7 +42,7 @@ public class ProfilesController : BaseApiController
     public async Task<IActionResult> GetProfileById(Guid id, CancellationToken ct)
     {
         var profile = await _profileService.GetProfileByIdAsync(id, ct, includeMemberDetails: CurrentUserId.HasValue);
-        if (profile == null) return NotFound(new { message = $"Profile with ID {id} was not found." });
+        if (profile == null) throw AppException.NotFound("This profile was not found.");
 
         return Ok(profile);
     }
@@ -54,9 +53,7 @@ public class ProfilesController : BaseApiController
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> CreateOrUpdateProfile([FromBody] CreateProfileDto dto, CancellationToken ct)
     {
-        if (!CurrentUserId.HasValue) return Unauthorized();
-
-        var profile = await _profileService.CreateOrUpdateProfileAsync(CurrentUserId.Value, dto, ct);
+        var profile = await _profileService.CreateOrUpdateProfileAsync(RequireUserId(), dto, ct);
         return Ok(profile);
     }
 }

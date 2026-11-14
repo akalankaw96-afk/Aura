@@ -1,8 +1,7 @@
 /**
  * Search proposals — Figma "🔍 Search Results" (87:15052).
- * Filter options for the sidebar plus small helpers that fill in the extra
- * list-card details (education, ethnicity…) for demo profiles that don't
- * carry them yet. Replace the helpers with API fields when available.
+ * Filter options for the sidebar plus helpers that build the list-card details
+ * (education, ethnicity…) from each member's real profile.
  */
 import type { CountryCode } from "@/components/ui/Flag";
 
@@ -68,52 +67,46 @@ export function parseHeight(h: string): number | null {
   return m ? Number(m[1]) * 12 + Number(m[2]) : null;
 }
 
-/* ---------- demo details for list cards ---------- */
-function hash(id: string) {
-  let h = 0;
-  for (const c of id) h = (h * 31 + c.charCodeAt(0)) >>> 0;
-  return h;
-}
-const pick = <T,>(arr: readonly T[], id: string, salt = 0) => arr[(hash(id) + salt) % arr.length];
-
+/* ---------- details for list cards ---------- */
 export interface ProfileExtras {
   education: string;
   ethnicity: string;
   civil: string;
   postedBy: string;
-  match: number;
+  /** Match score — null until there is a matching engine (no made-up numbers). */
+  match: number | null;
+  /** "Active now" etc. — empty until the API reports activity. */
   active: string;
+  /** "Posted today" etc. — empty until the API returns the posting date. */
   posted: string;
-  /** exact posting time, e.g. "8 Nov · 9:30 AM" (demo) */
   postedAt: string;
   photos: number;
   district: string;
 }
 
-const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-function postedAt(id: string, daysAgo: number) {
-  const d = new Date();
-  d.setDate(d.getDate() - daysAgo);
-  const h = hash(id + "t");
-  const hour = 7 + (h % 14); // 7 AM – 8 PM
-  const min = (h % 4) * 15;
-  const h12 = hour % 12 || 12;
-  return `${d.getDate()} ${MONTHS[d.getMonth()]} · ${h12}:${String(min).padStart(2, "0")} ${hour < 12 ? "AM" : "PM"}`;
-}
+const ETHNICITY: Record<string, string> = { sinhalese: "Sinhala", sinhala: "Sinhala", tamil: "Tamil", muslim: "Muslim", burgher: "Burgher", malay: "Malay" };
 
-export function profileExtras(id: string, location: string, religion: string): ProfileExtras {
-  const h = hash(id);
-  const district = DISTRICT_OPTIONS.find((d) => location.toLowerCase().includes(d.toLowerCase())) ?? "";
+/** List-card details taken from the member's real profile (nothing generated). */
+export function profileExtras(p: {
+  location: string;
+  education?: string;
+  community?: string;
+  district?: string | null;
+  civil?: string | null;
+  postedBy?: string | null;
+  photo?: string;
+}): ProfileExtras {
+  const district = p.district || DISTRICT_OPTIONS.find((d) => p.location.toLowerCase().includes(d.toLowerCase())) || "";
   return {
-    education: pick(["Postgraduate", "Graduate", "Postgraduate", "Diploma"], id),
-    ethnicity: /hindu/i.test(religion) ? "Tamil" : /muslim|islam/i.test(religion) ? "Muslim" : pick(["Sinhala", "Sinhala", "Sinhala", "Burgher"], id, 1),
-    civil: pick(["Never married", "Never married", "Never married", "Divorced"], id, 2),
-    postedBy: pick(["Mother", "Self", "Father", "Mother"], id, 3),
-    match: 72 + (h % 27),
-    active: pick(["Active now", "Active today", "Active 2h ago", "Active yesterday", "Active 3 days ago"], id, 4),
-    posted: pick(["Posted today", "Posted 2 days ago", "Posted 5 days ago", "Posted last week"], id, 5),
-    postedAt: postedAt(id, pick([0, 2, 5, 7], id, 5)),
-    photos: 2 + (h % 5),
+    education: p.education || "",
+    ethnicity: ETHNICITY[(p.community || "").toLowerCase()] ?? (p.community || ""),
+    civil: p.civil || "",
+    postedBy: p.postedBy || "",
+    match: null,
+    active: "",
+    posted: "",
+    postedAt: "",
+    photos: p.photo ? 1 : 0,
     district,
   };
 }

@@ -62,3 +62,17 @@ export interface FaqItem {
   answer: string;
 }
 
+
+/** An interest between two members (API MatchRequestDto). */
+export interface MatchRequest {
+  id: string;
+  senderProfileId: string;
+  senderName: string;
+  senderProfession: string;
+  senderPhotoUrl: string;
+  receiverProfileId: string;
+  receiverName: string;
+  status: 'Pending' | 'Accepted' | 'Declined';
+  note?: string | null;
+  createdAt: string;
+}

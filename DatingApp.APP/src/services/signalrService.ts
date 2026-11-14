@@ -1,6 +1,6 @@
 import * as signalR from "@microsoft/signalr";
+import { API_BASE_URL, apiJson, ensureAccessToken, refreshAccessToken } from "@/lib/http";
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
 const HUB_URL = API_BASE_URL.replace(/\/api\/?$/, "") + "/hubs/chat";
 
 export interface ChatMessageDto {
@@ -79,6 +79,9 @@ class SignalRService {
       this.setStatus("connecting");
       this.hubConnection = new signalR.HubConnectionBuilder()
         .withUrl(HUB_URL, {
+          // Signed-in members only (S01-T06): the access token rides on ?access_token= for the WebSocket.
+          // A fresh token is fetched for every (re)connect, so 15-minute tokens never strand the chat.
+          accessTokenFactory: async () => (await ensureAccessToken()) ?? (await refreshAccessToken()) ?? "",
           skipNegotiation: false,
           transport: signalR.HttpTransportType.WebSockets | signalR.HttpTransportType.LongPolling,
         })
@@ -154,7 +157,10 @@ class SignalRService {
   ): Promise<boolean> {
     if (this.hubConnection?.state === signalR.HubConnectionState.Connected) {
       try {
-        await this.hubConnection.invoke("SendMessage", senderProfileId, receiverProfileId, messageText, conversationId);
+        // The server knows who is sending from the access token; the ids here are only the receiver.
+        void senderProfileId;
+        void conversationId;
+        await this.hubConnection.invoke("SendMessage", receiverProfileId, messageText);
         return true;
       } catch (err) {
         console.error("SendMessage invoke failed:", err);
@@ -164,9 +170,10 @@ class SignalRService {
   }
 
   public async sendTyping(conversationId: string, userName: string, isTyping: boolean) {
+    void userName; // the server sends the member's own name
     if (this.hubConnection?.state === signalR.HubConnectionState.Connected) {
       try {
-        await this.hubConnection.invoke("SendTyping", conversationId, userName, isTyping);
+        await this.hubConnection.invoke("SendTyping", conversationId, isTyping);
       } catch {
         // silent fail
       }
@@ -176,7 +183,8 @@ class SignalRService {
   public async markAsRead(conversationId: string, messageId: string) {
     if (this.hubConnection?.state === signalR.HubConnectionState.Connected) {
       try {
-        await this.hubConnection.invoke("MarkAsRead", conversationId, messageId);
+        void conversationId;
+        await this.hubConnection.invoke("MarkAsRead", messageId);
       } catch {
         // silent fail
       }
@@ -190,7 +198,9 @@ class SignalRService {
   ): Promise<boolean> {
     if (this.hubConnection?.state === signalR.HubConnectionState.Connected) {
       try {
-        await this.hubConnection.invoke("RequestContactShare", conversationId, senderProfileId, receiverProfileId);
+        void conversationId;
+        void senderProfileId;
+        await this.hubConnection.invoke("RequestContactShare", receiverProfileId);
         return true;
       } catch (err) {
         console.error("RequestContactShare failed:", err);
@@ -206,7 +216,9 @@ class SignalRService {
   ): Promise<boolean> {
     if (this.hubConnection?.state === signalR.HubConnectionState.Connected) {
       try {
-        await this.hubConnection.invoke("AcceptContactShare", conversationId, accepterProfileId, partnerProfileId);
+        void conversationId;
+        void accepterProfileId;
+        await this.hubConnection.invoke("AcceptContactShare", partnerProfileId);
         return true;
       } catch (err) {
         console.error("AcceptContactShare failed:", err);
@@ -271,33 +283,19 @@ class SignalRService {
 
 export const signalrService = new SignalRService();
 
-// REST Helpers
-export async function getConversations(profileId: string = "LK-9021"): Promise<ConversationDto[]> {
+// REST helpers — signed in only; the server decides whose chats these are from the access token.
+export async function getConversations(): Promise<ConversationDto[]> {
   try {
-    const res = await fetch(`${API_BASE_URL}/chat/conversations?profileId=${encodeURIComponent(profileId)}`, {
-      cache: "no-store",
-    });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    return await res.json();
+    return await apiJson<ConversationDto[]>("/chat/conversations", { cache: "no-store" });
   } catch (err) {
-    console.warn("Failed to fetch conversations from API, using fallback:", err);
+    console.warn("Failed to fetch conversations from API:", err);
     return [];
   }
 }
 
-export async function getChatHistory(
-  conversationId: string,
-  currentProfileId: string = "LK-9021"
-): Promise<ChatMessageDto[]> {
+export async function getChatHistory(conversationId: string): Promise<ChatMessageDto[]> {
   try {
-    const res = await fetch(
-      `${API_BASE_URL}/chat/history/${encodeURIComponent(conversationId)}?currentProfileId=${encodeURIComponent(
-        currentProfileId
-      )}`,
-      { cache: "no-store" }
-    );
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    return await res.json();
+    return await apiJson<ChatMessageDto[]>(`/chat/history/${encodeURIComponent(conversationId)}`, { cache: "no-store" });
   } catch (err) {
     console.warn("Failed to fetch history from API:", err);
     return [];

@@ -8,45 +8,58 @@ using System.Text;
 
 namespace DatingApp.Infrastructure.Services;
 
+/// <summary>
+/// Issues short-lived access tokens (default 15 minutes, BUG-008). The signing key comes only from
+/// user-secrets / environment (<c>JwtSettings:Secret</c>, BUG-007) — there is no fallback key.
+/// </summary>
 public class JwtTokenGenerator : IJwtTokenGenerator
 {
-    private readonly IConfiguration _configuration;
+    public const string SessionClaim = "sid";
+    public const int MinSecretBytes = 32;
+
+    private readonly SigningCredentials _credentials;
+    private readonly string _issuer;
+    private readonly string _audience;
+    private readonly TimeSpan _lifetime;
 
     public JwtTokenGenerator(IConfiguration configuration)
     {
-        _configuration = configuration;
+        var secret = configuration["JwtSettings:Secret"];
+        if (string.IsNullOrWhiteSpace(secret) || Encoding.UTF8.GetByteCount(secret) < MinSecretBytes)
+        {
+            throw new InvalidOperationException(
+                $"JwtSettings:Secret must be set (at least {MinSecretBytes} bytes) via user-secrets or an environment variable.");
+        }
+
+        _credentials = new SigningCredentials(new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secret)), SecurityAlgorithms.HmacSha256);
+        _issuer = configuration["JwtSettings:Issuer"] ?? "AuraMatrimony";
+        _audience = configuration["JwtSettings:Audience"] ?? "AuraMatrimonyApp";
+        _lifetime = TimeSpan.FromMinutes(int.TryParse(configuration["JwtSettings:AccessTokenMinutes"], out var m) && m > 0 ? m : 15);
     }
 
-    public string GenerateToken(User user)
+    public AccessToken GenerateAccessToken(User user, Guid sessionId)
     {
-        var secret = _configuration["JwtSettings:Secret"] ?? "AntigravityDatingAppSuperSecretKeyForJwtAuthentication2026!";
-        var issuer = _configuration["JwtSettings:Issuer"] ?? "AuraMatrimony";
-        var audience = _configuration["JwtSettings:Audience"] ?? "AuraMatrimonyApp";
-
-        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secret));
-        var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
-
+        var expires = DateTime.UtcNow.Add(_lifetime);
         var claims = new List<Claim>
         {
             new(ClaimTypes.NameIdentifier, user.Id.ToString()),
             new(ClaimTypes.Email, user.Email),
             new(ClaimTypes.Name, user.FullName),
-            new(ClaimTypes.Role, user.Role)
+            new(ClaimTypes.Role, user.Role),
+            new(SessionClaim, sessionId.ToString()),
+            new(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString("N"))
         };
 
-        var tokenDescriptor = new SecurityTokenDescriptor
+        var descriptor = new SecurityTokenDescriptor
         {
             Subject = new ClaimsIdentity(claims),
-            Expires = DateTime.UtcNow.AddDays(7),
-            Issuer = issuer,
-            Audience = audience,
-            SigningCredentials = creds
+            Expires = expires,
+            Issuer = _issuer,
+            Audience = _audience,
+            SigningCredentials = _credentials
         };
 
-        var tokenHandler = new JwtSecurityTokenHandler();
-        var token = tokenHandler.CreateToken(tokenDescriptor);
-
-        return tokenHandler.WriteToken(token);
+        var handler = new JwtSecurityTokenHandler();
+        return new AccessToken(handler.WriteToken(handler.CreateToken(descriptor)), expires);
     }
 }
-

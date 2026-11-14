@@ -14,7 +14,7 @@ export type Strength = 0 | 1 | 2 | 3 | 4;
 /** 0 empty, 1 too short, 2 weak, 3 good, 4 strong */
 export function passwordStrength(pw: string): Strength {
   if (!pw) return 0;
-  if (pw.length < 6) return 1;
+  if (pw.length < PASSWORD_MIN_LENGTH) return 1;
   let score = 1;
   if (/\d/.test(pw)) score++;
   if (/[A-Z]/.test(pw) && /[a-z]/.test(pw)) score++;
@@ -22,7 +22,10 @@ export function passwordStrength(pw: string): Strength {
   return Math.min(4, score) as Strength;
 }
 
-export const isPasswordAcceptable = (pw: string) => pw.length >= 6 && /\d/.test(pw);
+/** Same rule as the API (Identifiers.EnsureStrongPassword): 8–128 characters, at least one letter and one number. */
+export const PASSWORD_MIN_LENGTH = 8;
+export const isPasswordAcceptable = (pw: string) =>
+  pw.length >= PASSWORD_MIN_LENGTH && pw.length <= 128 && /[A-Za-z]/.test(pw) && /\d/.test(pw);
 
 const strengthMeta: Record<Strength, { label: string; color: string; text: string }> = {
   0: { label: "", color: "bg-line", text: "" },

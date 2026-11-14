@@ -15,7 +15,6 @@ import {
   Messages2,
   MessageText1,
   Setting2,
-  ShieldTick,
   TextalignJustifycenter,
   User,
 } from "iconsax-react";
@@ -25,7 +24,7 @@ import { LanguageSwitch, Logo, ThemeToggle } from "@/components/ui/Brand";
 import { Toggle } from "@/components/ui/Toggle";
 import { useBackgroundAnimation } from "@/lib/backgroundAnimation";
 import { useLanguage } from "@/context/LanguageContext";
-import { MEMBER, MESSAGES, REQUESTS } from "@/content/dashboard";
+import { MESSAGES, REQUESTS } from "@/content/dashboard";
 import { useKyc } from "@/lib/verification";
 import { openFeedback } from "@/lib/feedback";
 import { apiService, type AuthSession } from "@/services/api";
@@ -262,13 +261,6 @@ export function Navbar({ variant = "light" }: { variant?: NavbarVariant }) {
                   <MessageText1 size={20} color="currentColor" className="text-icon-brand" />
                   {lang === "si" ? "අදහස් බෙදාගන්න" : "Share feedback"}
                 </button>
-                <Link
-                  href="/admin"
-                  onClick={() => setOpen(false)}
-                  className="flex h-12 items-center justify-center rounded-full border border-purple-300 bg-purple-50 text-button-md text-purple-900"
-                >
-                  Staff Admin Panel
-                </Link>
                 <button
                   type="button"
                   onClick={() => {
@@ -424,12 +416,6 @@ function AccountMenu({ session, onLogout }: { session: AuthSession | null; onLog
               <MessageText1 size={18} color="currentColor" className="text-icon-brand" />
               <span>{lang === "si" ? "අදහස් බෙදාගන්න" : "Share feedback"}</span>
             </button>
-          </li>
-          <li role="none">
-            <Link role="menuitem" href="/admin" onClick={() => setOpen(false)} className="flex items-center gap-2.5 px-3 py-2 text-body-sm text-purple-700 hover:bg-purple-50">
-              <ShieldTick size={18} color="currentColor" className="text-purple-600" />
-              <span>Staff Admin Portal</span>
-            </Link>
           </li>
 
           <div className="my-1 border-t border-line" />

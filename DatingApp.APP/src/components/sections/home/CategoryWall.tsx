@@ -121,7 +121,7 @@ function Brick({
       </span>
       <span className="flex min-w-0 flex-col gap-0.5">
         <span className="truncate text-body-md font-semibold text-ink">{displayLabel}</span>
-        <span className="text-caption text-ink-tertiary">{count} {proposalsText}</span>
+        {count && <span className="text-caption text-ink-tertiary">{count} {proposalsText}</span>}
       </span>
     </Link>
   );

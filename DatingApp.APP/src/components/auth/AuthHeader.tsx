@@ -4,7 +4,7 @@ import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { ArrowDown2 } from "iconsax-react";
 import { LanguageSwitch, Logo, ThemeToggle } from "@/components/ui/Brand";
-import { loadDraft } from "@/lib/demo";
+import { loadDraft } from "@/lib/registrationDraft";
 import { ButtonLink } from "@/components/ui/Button";
 
 /**

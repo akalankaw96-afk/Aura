@@ -67,6 +67,7 @@ export interface ViewProfile {
   aboutFamily?: string;
   rasi?: string;
   nakshatra?: string;
+  verified?: boolean;
 }
 
 const fallbackPhoto = (g: ViewProfile["gender"]) => (g === "groom" ? "/brand/groom.png" : "/brand/bride.png");
@@ -93,7 +94,7 @@ export function ProfileView({
   /** where Back leads: the search results, or Home when the profile was opened from the Home page */
   backTo?: "results" | "home" | "dashboard";
   /** false when the interest couldn’t be sent (free limit reached) */
-  onInterest: (p: ViewProfile) => boolean;
+  onInterest: (p: ViewProfile) => boolean | Promise<boolean>;
 }) {
   const [query, setQuery] = useState("");
   // keep the opened profile in the list even if the current filters exclude it
@@ -281,7 +282,7 @@ function LockedRow({ icon: Icon, label, placeholder, hint, onOpen }: { icon: Rea
 const iconButton =
   "flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-line bg-surface-card text-brand shadow-xs transition-colors hover:border-brand hover:bg-brand-subtle focus-visible:shadow-ring-brand active:scale-95";
 
-function Detail({ p, x, onInterest }: { p: ViewProfile; x?: ProfileExtras; onInterest: (p: ViewProfile) => boolean }) {
+function Detail({ p, x, onInterest }: { p: ViewProfile; x?: ProfileExtras; onInterest: (p: ViewProfile) => boolean | Promise<boolean> }) {
   const toast = useToast();
   const signedIn = useSignedIn();
   const { profiles: favourites, save } = useFavourites();
@@ -291,7 +292,7 @@ function Detail({ p, x, onInterest }: { p: ViewProfile; x?: ProfileExtras; onInt
   const [shareUrl, setShareUrl] = useState<string | null>(null);
   const [reportOpen, setReportOpen] = useState(false);
   const [viewer, setViewer] = useState<number | null>(null);
-  // Demo gallery: the API will return each member’s photos; for now the main photo is shown in a few framings
+  // Gallery: the main photo for now — the photos API (Sprint 02) will return every photo
   const photos = useMemo(() => galleryOf(p, x?.photos ?? 1), [p, x?.photos]);
   const [reported, setReported] = useState(false);
   const connected = useIsConnected(p.id);
@@ -309,8 +310,8 @@ function Detail({ p, x, onInterest }: { p: ViewProfile; x?: ProfileExtras; onInt
         { icon: People, label: "Gender", value: p.gender === "groom" ? "Male" : "Female" },
         { icon: Ruler, label: "Height", value: p.height },
         { icon: Ruler, label: "Weight", value: p.details?.weightKg ? `${p.details.weightKg} kg` : null, lock: "login", placeholder: "62 kg" },
-        { icon: Heart, label: "Civil status", value: x?.civil ?? "Never married" },
-        { icon: Profile, label: "Created by", value: x?.postedBy ?? "Self" },
+        { icon: Heart, label: "Civil status", value: x?.civil },
+        { icon: Profile, label: "Created by", value: x?.postedBy },
       ],
     },
     {
@@ -385,7 +386,7 @@ function Detail({ p, x, onInterest }: { p: ViewProfile; x?: ProfileExtras; onInt
   const send = () => {
     if (!requireMember("send an interest")) return;
     if (sent) return;
-    onInterest(p);
+    void onInterest(p);
   };
   const openPhoto = (i: number) => requireMember("view photos") && setViewer(i);
 
@@ -406,9 +407,11 @@ function Detail({ p, x, onInterest }: { p: ViewProfile; x?: ProfileExtras; onInt
                 </span>
               </span>
             </button>
-            <span className="pointer-events-none absolute left-3 top-3">
-              <Badge tone="success">Photo verified</Badge>
-            </span>
+            {p.verified !== false && (
+              <span className="pointer-events-none absolute left-3 top-3">
+                <Badge tone="success">Photo verified</Badge>
+              </span>
+            )}
           </div>
           {thumbs.length > 0 && (
             <div className="grid grid-cols-4 gap-2">
@@ -438,7 +441,7 @@ function Detail({ p, x, onInterest }: { p: ViewProfile; x?: ProfileExtras; onInt
           <div className="flex items-start gap-3">
             <div className="flex min-w-0 flex-1 flex-col gap-1.5">
               <h1 className="flex items-center gap-2 text-h4 text-ink md:text-h3">
-                {p.name || p.id} <Verify size={22} color="currentColor" variant="Bold" className="shrink-0 text-gold-500" />
+                {p.name || p.id} {p.verified !== false && <Verify size={22} color="currentColor" variant="Bold" className="shrink-0 text-gold-500" />}
               </h1>
               <p className="flex flex-wrap items-center gap-1.5 text-body-md text-ink-secondary">
                 <Flag country={p.country} /> {p.location}
@@ -452,11 +455,11 @@ function Detail({ p, x, onInterest }: { p: ViewProfile; x?: ProfileExtras; onInt
                 )}
               </p>
               <div className="flex flex-wrap gap-2 pt-1">
-                <Badge tone="success">ID verified</Badge>
+                {p.verified !== false && <Badge tone="success">ID verified</Badge>}
                 {/* who manages the profile — families care whether a parent or the member posted it */}
-                <Badge tone="neutral">Created by {(x?.postedBy ?? "Self") === "Self" ? "self" : x?.postedBy}</Badge>
+                {x?.postedBy && <Badge tone="neutral">Created by {x.postedBy === "Self" ? "self" : x.postedBy}</Badge>}
                 {p.horoscope && <Badge tone="info">Horoscope</Badge>}
-                {x && <Badge tone="neutral" icon={false}>{x.posted}</Badge>}
+                {x?.posted && <Badge tone="neutral" icon={false}>{x.posted}</Badge>}
               </div>
             </div>
             <div className="flex shrink-0 gap-2">
@@ -676,7 +679,7 @@ function ReportModal({ id, open, onCancel, onSubmit }: { id: string; open: boole
 interface GalleryPhoto {
   src: string;
   fallback: string;
-  /** demo framing of the same photo */
+  /** framing of the photo in the gallery */
   zoom: number;
   origin: string;
 }

@@ -5,7 +5,71 @@ Sections: Added · Changed · Fixed · Security · Removed · Breaking.
 
 ## [Unreleased]
 
+### Security
+- 2026-11-14 — **Sprint 01 completion (S01-T05/06/08/09/11/12/14/15).**
+  - Chat (BUG-004/005, TD-03): `ChatController` and `ChatHub` require login; the member comes from the JWT (WebSocket
+    token via `?access_token=`), never from arguments. New `Application/Services/ChatService.cs`: only members with an
+    accepted interest can chat, outsiders get 404, contact share needs the other member's accept and each side receives
+    the other's number, 2,000-char limit, one conversation id per pair, real presence (`WebApi/Hubs/PresenceTracker.cs`).
+    Web `services/signalrService.ts` sends the token; `app/messages/page.tsx` swaps optimistic messages for saved ones.
+  - Tokens (BUG-017, TD-14): access token in memory only, restored from the refresh cookie (`lib/http.ts`); `aura_token`
+    / `aura_auth_user` removed. One fetch helper with timeout used by `services/api.ts`, `services/passwordReset.ts` and
+    chat REST (TD-04).
+  - Guards (BUG-010/012): `components/auth/RequireMember.tsx` on Dashboard, Friends, Messages, Admin (Admin/Moderator);
+    API policies `Admin` / `Staff` (`WebApi/Auth/Policies.cs`).
+  - Errors (S01-T11): match-request, profile and content endpoints use `AppException` (400 / 403 `PROFILE_REQUIRED` /
+    404 / 409 `ALREADY_EXISTS`); `AppException.Forbidden/Conflict`, codes `FORBIDDEN`, `PROFILE_REQUIRED`, `NOT_MATCHED`.
+  - Tooling: `DatingApp.Tests` (xUnit + EF InMemory, 17 tests), `eslint.config.mjs` + ESLint devDeps,
+    `.github/workflows/ci.yml` (to be added by the owner), ui index exports, root README rewritten.
+- 2026-11-14 — **Merged `main` into `S01-api-auth`.** Kept main's feedback popup, promote placement and styling; kept this
+  branch's real-data versions where main restored sample stories, "100+ couples", sample requests / conversations,
+  Demo tips, staff links, a hard-coded phone number and client-side plan / KYC switching. Retired demo files are stubs again.
+
+### Removed
+- 2026-11-14 — **All demo data removed from the web app (owner request: "remove all demo data").** Screens now show
+  only what the API returns, with empty states when there is nothing yet.
+  - Demo tools: Demo tips panels (login, register, forgot password, plans, messages), dashboard state switcher,
+    fake credentials/codes (`DEMO` in `lib/demo.ts`), "Demo OTP" banner, fake support numbers.
+  - Sample people: hero marquee, featured profiles, search pool (`data/mockData.ts`, Figma sample profiles),
+    best matches, dashboard requests/inbox/friends, conversations (`content/demoChat.ts`), fake member identity in
+    Messages ("Dr. Kavinda Perera"), sample success stories (EN + SI) and fake counts ("100+ couples",
+    "12,000+ profiles", category counts, dashboard stats, boost results).
+  - Fake behaviour: payment and boost "succeed" without a gateway → now "Online payment is coming soon"; interests
+    are sent with `POST /api/match-requests` and show "sent" only after the API accepts; saved search says "coming
+    soon"; generated match %, "active now", "posted" labels, horoscope values and education/civil defaults removed.
+  - Member status: verification + plan read only from the server session (`lib/verification.ts`, refreshed from
+    `GET /auth/me` on load) — the `?kyc=` / `?plan=` previews and localStorage overrides are gone (BUG-011 part, BUG-012).
+  - Admin: mock panel (any password, sample members) replaced by a placeholder; staff links removed from the menu (BUG-010).
+  - API: `ProfileService` fallback sample profiles and stock photos, `ContentService` fallback stories and fake
+    totals, sample success-story seed and demo member seed removed. Home shows approved members only.
+  - New: `lib/profiles.ts` (API → card adapters, `useMemberProfiles`, `sendInterest`), `lib/registrationDraft.ts`
+    (draft helpers moved out of `lib/demo.ts`), `MatchRequest` type, `apiService.getStories/refreshSession`.
+  - Retired files (now empty stubs — delete them): `lib/demo.ts`, `data/mockData.ts`, `content/demoChat.ts`,
+    `components/auth/DemoTips.tsx`, `components/sections/dashboard/DashboardDemo.tsx`, `components/MemberDashboard.tsx`,
+    `components/CheckoutModal.tsx`, `components/FoundMatchModal.tsx`, `components/AccountClosureModal.tsx`,
+    `components/profile/ProfileDetailModal.tsx`, `components/cards/ProfileGlassCard.tsx`,
+    `components/sections/member/MessagesScreen.tsx` (TD-01).
+  - Still kept in the browser until their APIs exist (not demo data, not secure yet): free-plan usage counters,
+    favourites, edit-profile text/photos.
+
 ### Added
+- 2026-11-13 — **Auth API, endpoints #1–14 (branch `S01-api-auth`, S01-T01/02/03/04/05/10/11/13/16).** New:
+  `POST /api/auth/refresh`, `logout`, `forgot-password`, `forgot-password/verify`, `reset-password`,
+  `change-password`, `GET sessions`, `DELETE sessions/{id}`; reworked `register`, `login`, `google-login`,
+  `send-otp`, `verify-otp`, `me`. Errors are ProblemDetails with `code` (+ `attemptsLeft`, `retryAfterSeconds`).
+  Files (API): `Domain/Entities/{User,RefreshToken,OtpCode,PasswordResetToken}.cs`, `Domain/Enums/AuthEnums.cs`,
+  `Application/Common/{Exceptions/AppException,Security/AuthRules,Security/SecureTokens,Security/Identifiers}.cs`,
+  `Application/Common/Interfaces/{IApplicationDbContext,ISecurityServices}.cs`, `Application/DTOs/AuthDtos.cs`,
+  `Application/Services/{AuthService,SessionService,OtpService,PasswordService}.cs`,
+  `Infrastructure/{DependencyInjection.cs,DatingApp.Infrastructure.csproj}`,
+  `Infrastructure/Persistence/{ApplicationDbContext,ApplicationDbContextInitialiser,Configurations/AuthConfigurations}.cs`,
+  `Infrastructure/Services/{JwtTokenGenerator,PasswordHasher,GoogleTokenValidator,LoggingMessageSenders}.cs`,
+  `WebApi/{Program.cs,DatingApp.WebApi.csproj,appsettings.json,appsettings.Development.json}`,
+  `WebApi/Controllers/{AuthController,AuthController.Passwords,BaseApiController}.cs`,
+  `WebApi/Auth/{RefreshCookie,AuthCookieSettings,RateLimits}.cs`, `WebApi/Errors/AppExceptionHandler.cs`.
+  Files (web): `services/api.ts`, `services/passwordReset.ts`, `components/ui/PasswordField.tsx`,
+  `components/auth/{RegisterFlow,ForgotPasswordScreen}.tsx`. **Not yet compiled or tested** — see PROGRESS handover.
+
 - 2026-11-14 — **Feedback popup for paid members** (Gold / Platinum, KYC approved). One reusable `FeedbackDialog`
   (mounted in the root layout) with a brand illustration on top (couple + love stickers, badge per step):
   rate 1–5 stars → 4–5: quick tags, optional public review (first name + city consent), "Found your partner?" link ·
@@ -42,7 +106,27 @@ Sections: Added · Changed · Fixed · Security · Removed · Breaking.
   Files: `components/auth/ForgotPasswordScreen.tsx` (rewritten), `components/auth/IdentifierTabs.tsx` (new),
   `services/passwordReset.ts` (new), `lib/demo.ts` (`registeredEmail`).
 
+### Security
+- 2026-11-13 — BUG-001: no master OTP; codes hashed, limited, never returned. BUG-002: Google tokens verified with
+  Google. BUG-003: no fake sessions in the web client. BUG-006: CORS allow-list. BUG-007: no secrets in appsettings,
+  no fallback JWT key (rotate the old key + Google client secret). BUG-008: 15-min access token + rotating refresh
+  token with reuse detection, logout, session revoke. BUG-013/015: SQL + migrations by default, demo member only in
+  Development. BUG-018: PBKDF2 600k with upgrade on login. Per-IP rate limits on auth endpoints.
+
+### Breaking
+- 2026-11-13 — `google-login` now takes only `{ idToken }`. `send-otp` no longer returns `demoOtp`. Passwords need
+  8+ characters with a letter and a number (web + API). Startup needs `JwtSettings:Secret` (user-secrets) and an
+  `InitialCreate` migration; Swagger only in Development. Phone numbers are stored as E.164.
+
 ### Fixed
+- 2026-11-13 — **Registration now saves to the database.** The 4 steps used demo timers and the final save only reached
+  the API with a fake session (removed for BUG-002/003), so profiles stayed in the browser. Now: step 1 →
+  `POST /auth/register` (mobile + password; e-mail optional) + `POST /auth/send-otp`; step 2 → `POST /auth/verify-otp`
+  (real attempts / expiry / resend limits); finish → `POST /profiles` with the member's token, refreshed once on 401 via
+  the httpOnly cookie; a failed save shows an error and keeps the member on the step. New profiles start
+  **unverified** (BUG-009). Demo OTP banner removed. Files: `components/auth/RegisterFlow.tsx`, `services/api.ts`
+  (`ApiError`, `authFetch`, `refreshAccessToken`), `Application/DTOs/AuthDtos.cs`, `Application/Services/AuthService.cs`,
+  `Application/Services/ProfileService.cs`.
 - 2026-11-14 — **Home hero search bar (Sinhala)**: the age "25 - 32" and the "යෝජනා සොයන්න" button wrapped to two
   lines. Bar max width 600 → 760 px, segments size to their content (min 230 px), labels / values / button text no
   longer wrap. Checked SI + EN at 1440, 1024, 768, 390. `home/Hero.tsx`.

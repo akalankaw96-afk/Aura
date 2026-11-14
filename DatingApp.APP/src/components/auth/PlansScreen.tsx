@@ -2,19 +2,16 @@
 
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
-import { Add, Minus, Card as CardIcon, Crown1, Lock1, TickCircle } from "iconsax-react";
-import { Alert, Badge, Button, Card, Input, useToast } from "@/components/ui";
+import { Add, Minus, Crown1, Lock1, TickCircle } from "iconsax-react";
+import { Alert, Badge, Button, Card } from "@/components/ui";
 import { cn } from "@/lib/cn";
-import { saveDraft } from "@/lib/demo";
-import { readPlan, setPlan } from "@/lib/verification";
+import { readPlan } from "@/lib/verification";
 import { AuthShell } from "./AuthShell";
 import { BackButton } from "@/components/ui/BackButton";
-import { DemoTips } from "./DemoTips";
-import { DEMO } from "./shared";
 
 /**
- * Journey 8 · Upgrade plan (Figma 07 Plans, 07a payment failed, 07b upgraded).
- * Payment is simulated — no gateway is called.
+ * Journey 8 · Upgrade plan (Figma 07 Plans).
+ * No payment gateway yet (Sprint 04): choosing a plan explains how to upgrade instead of taking a fake payment.
  */
 type Period = 1 | 3 | 6;
 type PlanId = "free" | "gold" | "platinum";
@@ -40,7 +37,6 @@ const FAQ = [
 const lkr = (n: number) => `LKR ${n.toLocaleString("en-LK")}`;
 
 export function PlansScreen() {
-  const toast = useToast();
   const [period, setPeriod] = useState<Period>(3);
   const [current, setCurrent] = useState<PlanId>("free");
   useEffect(() => setCurrent(readPlan()), []);
@@ -179,56 +175,16 @@ export function PlansScreen() {
           period={period}
           amount={PRICES[paying][period]}
           onClose={() => setPaying(null)}
-          onPaid={() => {
-            setCurrent(paying);
-            saveDraft({ plan: paying });
-            setPlan(paying, period); // unlocks the paid features on the Dashboard (expiry = period)
-            setPaying(null);
-            toast.success(`You’re now ${paying === "gold" ? "Gold" : "Platinum"}!`, "Unlimited interests are unlocked. Happy matching!");
-            window.scrollTo({ top: 0, behavior: "smooth" });
-          }}
         />
       )}
 
-      <DemoTips tips={[{ label: "Any card number → payment works" }, { label: "Failing card", value: DEMO.failingCard }]} />
     </AuthShell>
   );
 }
 
-/* ── Payment sheet (07a payment failed) ─────────────────── */
+/* ── Upgrade sheet: no payment gateway yet (Sprint 04) ─────────────────── */
 
-function PaymentSheet({ plan, period, amount, onClose, onPaid }: { plan: "gold" | "platinum"; period: Period; amount: number; onClose: () => void; onPaid: () => void }) {
-  const toast = useToast();
-  const [method, setMethod] = useState("Card");
-  const [card, setCard] = useState("");
-  const [exp, setExp] = useState("");
-  const [cvc, setCvc] = useState("");
-  const [errors, setErrors] = useState<{ card?: string; exp?: string; cvc?: string }>({});
-  const [failed, setFailed] = useState(false);
-  const [loading, setLoading] = useState(false);
-
-  const pay = () => {
-    setFailed(false);
-    if (method === "Card") {
-      const er: typeof errors = {};
-      if (card.replace(/\s/g, "").length < 16) er.card = "Enter your 16-digit card number";
-      if (!/^\d{2}\/\d{2}$/.test(exp)) er.exp = "MM/YY";
-      if (!/^\d{3}$/.test(cvc)) er.cvc = "3 digits";
-      setErrors(er);
-      if (Object.keys(er).length) return;
-    }
-    setLoading(true);
-    window.setTimeout(() => {
-      setLoading(false);
-      if (method === "Card" && card === DEMO.failingCard) {
-        setFailed(true);
-        toast.error("Payment failed", "Your bank declined the payment. You haven’t been charged.");
-        return;
-      }
-      onPaid();
-    }, 1000);
-  };
-
+function PaymentSheet({ plan, period, amount, onClose }: { plan: "gold" | "platinum"; period: Period; amount: number; onClose: () => void }) {
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-surface-scrim p-0 sm:items-center sm:p-4" onClick={onClose}>
       <Card className="w-full max-w-[480px] animate-fade-up rounded-b-none p-6 sm:rounded-b-xl" onClick={(e) => e.stopPropagation()}>
@@ -242,69 +198,17 @@ function PaymentSheet({ plan, period, amount, onClose, onPaid }: { plan: "gold" 
           <p className="text-h5 font-extrabold text-brand">{lkr(amount)}</p>
         </div>
 
-        {failed && (
-          <Alert type="error" title="Payment failed" className="mb-4" action={<button type="button" onClick={() => setMethod("LankaQR")} className="font-bold text-brand hover:underline">Try another method</button>}>
-            Your bank declined this card. You haven’t been charged.
-          </Alert>
-        )}
+        <Alert type="info" title="Online payment is coming soon">
+          We’re connecting card, LankaQR, eZ Cash and bank transfer payments. Until then, contact our support team and
+          we’ll upgrade your plan for you.
+        </Alert>
 
-        <div className="mb-4 flex flex-wrap gap-2">
-          {["Card", "LankaQR", "eZ Cash", "Bank transfer"].map((m) => (
-            <button
-              key={m}
-              type="button"
-              onClick={() => { setMethod(m); setFailed(false); }}
-              className={cn("h-9 rounded-full border px-3.5 text-body-sm font-semibold", method === m ? "border-transparent bg-brand-gradient text-white" : "border-line-strong bg-surface-card hover:border-brand")}
-            >
-              {m}
-            </button>
-          ))}
-        </div>
-
-        {method === "Card" ? (
-          <div className="space-y-4">
-            <Input
-              label="Card number"
-              inputMode="numeric"
-              placeholder="1234 5678 9012 3456"
-              icon={<CardIcon size={20} color="currentColor" />}
-              value={card}
-              onChange={(e) => {
-                setCard(e.target.value.replace(/\D/g, "").slice(0, 16).replace(/(\d{4})(?=\d)/g, "$1 "));
-                setErrors((x) => ({ ...x, card: undefined }));
-                setFailed(false);
-              }}
-              error={errors.card}
-            />
-            <div className="grid grid-cols-2 gap-4">
-              <Input
-                label="Expiry"
-                placeholder="MM/YY"
-                inputMode="numeric"
-                value={exp}
-                onChange={(e) => {
-                  const d = e.target.value.replace(/\D/g, "").slice(0, 4);
-                  setExp(d.length > 2 ? `${d.slice(0, 2)}/${d.slice(2)}` : d);
-                  setErrors((x) => ({ ...x, exp: undefined }));
-                }}
-                error={errors.exp}
-              />
-              <Input label="CVC" placeholder="123" inputMode="numeric" value={cvc} onChange={(e) => { setCvc(e.target.value.replace(/\D/g, "").slice(0, 3)); setErrors((x) => ({ ...x, cvc: undefined })); }} error={errors.cvc} />
-            </div>
-          </div>
-        ) : (
-          <Alert type="info" title={`Pay with ${method}`}>
-            {method === "Bank transfer" ? "We’ll show our bank details and activate your plan once the receipt is checked (usually 2 hours)." : "You’ll be redirected to complete the payment. (Simulated in this prototype.)"}
-          </Alert>
-        )}
-
-        <Button fullWidth className="mt-6" loading={loading} leftIcon={<Lock1 size={18} color="currentColor" />} onClick={pay}>
-          Pay {lkr(amount)}
-        </Button>
+        <Link href="/support" className="mt-6 block">
+          <Button fullWidth leftIcon={<Lock1 size={18} color="currentColor" />}>Contact support to upgrade</Button>
+        </Link>
         <button type="button" onClick={onClose} className="mt-3 w-full text-center text-body-sm font-semibold text-ink-secondary hover:text-ink">
-          Cancel
+          Close
         </button>
-        <p className="mt-3 text-center text-body-xs text-ink-tertiary">Demo: use {DEMO.failingCard} to see a failed payment.</p>
       </Card>
     </div>
   );

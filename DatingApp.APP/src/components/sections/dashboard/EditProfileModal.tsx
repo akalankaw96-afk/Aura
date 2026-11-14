@@ -8,12 +8,11 @@ import { cn } from "@/lib/cn";
 import { Button } from "@/components/ui/Button";
 import { SegmentedTabs } from "@/components/ui/SegmentedTabs";
 import { PhotoSlot } from "@/components/ui/PhotoSlot";
-import { ageFrom, containsContactDetails } from "@/lib/demo";
+import { ageFrom, containsContactDetails, loadDraft } from "@/lib/registrationDraft";
 import { readSubmittedKycDetails } from "@/lib/kycDetails";
 import { COUNTRIES } from "@/components/ui/PhoneField";
 import { Textarea } from "@/components/ui/Textarea";
 import { useToast } from "@/components/ui/Toast";
-import { MEMBER } from "@/content/dashboard";
 import { useKyc } from "@/lib/verification";
 import { useAuthSession } from "@/lib/session";
 
@@ -21,7 +20,7 @@ import { useAuthSession } from "@/lib/session";
  * Edit profile — approved members can change ONLY their description and photos.
  * Everything else (name, birth date, religion, location, contact…) is KYC-verified
  * and locked; changes go through support. New photos go to a quick review.
- * Demo storage: localStorage "vk-profile".
+ * Saved in this browser (localStorage "vk-profile") until the edit-profile API exists (#19 PATCH /profiles/me/about, #21 photos).
  */
 type Tab = "about" | "photos" | "details";
 const OPEN_EVENT = "vk-edit-profile";
@@ -38,18 +37,18 @@ interface Stored {
   photos: Photo[];
 }
 
-const DEFAULT: Stored = {
-  about:
-    "I’m a software engineer living in Colombo, close to my parents and younger brother. I enjoy travelling, cooking Sri Lankan food and weekend hikes. Looking for a kind, family-minded partner who values honesty and growth.",
-  photos: [{ src: MEMBER.photo }],
-};
+/** Before the first edit: what the member submitted at registration (no demo text). */
+function fromRegistration(): Stored {
+  const d = loadDraft();
+  return { about: d.about || "", photos: d.photo ? [{ src: d.photo }] : [] };
+}
 
 function load(): Stored {
   try {
     const s = JSON.parse(localStorage.getItem(KEY) || "null");
     if (s?.about !== undefined && Array.isArray(s.photos)) return s;
   } catch {}
-  return DEFAULT;
+  return fromRegistration();
 }
 
 /** Opens the editor from anywhere (hero button, profile-strength todos). */
@@ -63,7 +62,7 @@ export function EditProfileModal() {
   const [open, setOpen] = useState(false);
   const [closing, setClosing] = useState(false);
   const [tab, setTab] = useState<Tab>("about");
-  const [saved, setSaved] = useState<Stored>(DEFAULT);
+  const [saved, setSaved] = useState<Stored>({ about: "", photos: [] });
   const [about, setAbout] = useState("");
   const [photos, setPhotos] = useState<Photo[]>([]);
   const [tried, setTried] = useState(false);
@@ -122,7 +121,7 @@ export function EditProfileModal() {
       })
       .slice(0, room);
     if (targetRef.current === null && files.length > room) toast.info("Photo limit", `You can have up to ${MAX_PHOTOS} photos.`);
-    // demo: data URLs so the preview survives a reload
+    // data URLs so the preview survives a reload (photo upload API: Sprint 02)
     const target = targetRef.current;
     if (target !== null && files[0]) {
       const f = Array.from(files).find((x) => x.type.startsWith("image/") && x.size <= 5 * 1024 * 1024);

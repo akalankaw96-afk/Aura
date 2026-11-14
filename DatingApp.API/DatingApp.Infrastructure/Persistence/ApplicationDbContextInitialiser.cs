@@ -2,6 +2,7 @@ using DatingApp.Application.Common.Interfaces;
 using DatingApp.Domain.Entities;
 using DatingApp.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using System.Text.Json;
 
 namespace DatingApp.Infrastructure.Persistence;
@@ -9,57 +10,33 @@ namespace DatingApp.Infrastructure.Persistence;
 public class ApplicationDbContextInitialiser
 {
     private readonly ApplicationDbContext _context;
-    private readonly IPasswordHasher _passwordHasher;
+    private readonly ILogger<ApplicationDbContextInitialiser> _logger;
 
-    public ApplicationDbContextInitialiser(ApplicationDbContext context, IPasswordHasher passwordHasher)
+    public ApplicationDbContextInitialiser(
+        ApplicationDbContext context,
+        ILogger<ApplicationDbContextInitialiser> logger)
     {
         _context = context;
-        _passwordHasher = passwordHasher;
+        _logger = logger;
     }
 
+    /// <summary>
+    /// SQL Server: applies EF migrations (create them with `dotnet ef migrations add`, see DATABASE_GUIDELINES.md).
+    /// InMemory (tests / explicit opt-in only): creates the schema directly.
+    /// </summary>
     public async Task InitialiseAsync()
     {
-        try
+        if (_context.Database.IsRelational())
+        {
+            await _context.Database.MigrateAsync();
+        }
+        else
         {
             await _context.Database.EnsureCreatedAsync();
-
-            if (_context.Database.IsSqlServer())
-            {
-                await _context.Database.ExecuteSqlRawAsync(@"
-                IF COL_LENGTH('dbo.CandidateProfiles', 'SubmittedDetailsJson') IS NULL
-                    ALTER TABLE [dbo].[CandidateProfiles] ADD [SubmittedDetailsJson] NVARCHAR(MAX) NULL;
-
-                IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'ChatMessages')
-                BEGIN
-                    CREATE TABLE [dbo].[ChatMessages] (
-                        [Id] UNIQUEIDENTIFIER NOT NULL PRIMARY KEY,
-                        [SenderProfileId] UNIQUEIDENTIFIER NOT NULL,
-                        [ReceiverProfileId] UNIQUEIDENTIFIER NOT NULL,
-                        [ConversationId] NVARCHAR(450) NOT NULL,
-                        [MessageText] NVARCHAR(MAX) NOT NULL,
-                        [IsRead] BIT NOT NULL DEFAULT 0,
-                        [ReadAt] DATETIME2 NULL,
-                        [IsFlaggedBySafety] BIT NOT NULL DEFAULT 0,
-                        [SafetyFlagReason] NVARCHAR(MAX) NULL,
-                        [IsContactShareRequest] BIT NOT NULL DEFAULT 0,
-                        [IsContactShareAccepted] BIT NOT NULL DEFAULT 0,
-                        [CreatedAt] DATETIME2 NOT NULL DEFAULT GETUTCDATE(),
-                        [UpdatedAt] DATETIME2 NULL,
-                        CONSTRAINT [FK_ChatMessages_CandidateProfiles_SenderProfileId] FOREIGN KEY ([SenderProfileId]) REFERENCES [dbo].[CandidateProfiles] ([Id]),
-                        CONSTRAINT [FK_ChatMessages_CandidateProfiles_ReceiverProfileId] FOREIGN KEY ([ReceiverProfileId]) REFERENCES [dbo].[CandidateProfiles] ([Id])
-                    );
-                    CREATE INDEX [IX_ChatMessages_ConversationId] ON [dbo].[ChatMessages] ([ConversationId]);
-                END
-            ");
-            }
-        }
-        catch (Exception ex)
-        {
-            // Log or fallback
-            Console.WriteLine($"Database initialization notice: {ex.Message}");
         }
     }
 
+    /// <summary>Seeds site content only. No demo members (removed 2026-11-14).</summary>
     public async Task SeedAsync()
     {
         try
@@ -68,73 +45,13 @@ public class ApplicationDbContextInitialiser
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error occurred while seeding database: {ex.Message}");
+            _logger.LogError(ex, "Error occurred while seeding the database");
         }
     }
 
-    public async Task TrySeedAsync()
+    /// <summary>Content seed (plans, FAQs) — safe in every environment. No sample members or success stories.</summary>
+    private async Task TrySeedAsync()
     {
-        // 1. Seed Demo User
-        var demoUser = await _context.Users.FirstOrDefaultAsync(u => u.Email == "demo@auramatrimony.lk");
-        if (demoUser == null)
-        {
-            demoUser = new User
-            {
-                Email = "demo@auramatrimony.lk",
-                PasswordHash = _passwordHasher.HashPassword("AuraDemo123!"),
-                FullName = "Aura Demo Member",
-                PhoneNumber = "+94 77 123 4567",
-                Role = "Member",
-                IsActive = true
-            };
-            _context.Users.Add(demoUser);
-            await _context.SaveChangesAsync();
-        }
-
-        // 2. Static Platform Data: Seed Success Stories
-        var stories = new List<SuccessStory>
-        {
-            new()
-            {
-                CoupleNames = "Dr. Ashan & Dr. Tharushi",
-                Title = "Our hearts are full of love & mutual respect",
-                Quote = "\"Being medical doctors with round-the-clock emergency shifts, finding someone who genuinely understands the sacrifices of our profession seemed nearly impossible. Through this platform, our families connected respectfully, we matched our values, and today we are happily married for over a year.\"",
-                Story = "Matched in March 2024, married in Colombo with family blessings.",
-                WeddingDate = "December 2024",
-                Location = "Colombo, Sri Lanka",
-                PhotoUrl = "https://images.unsplash.com/photo-1519741497674-611481863552?q=80&w=800&auto=format&fit=crop",
-                ProfessionInfo = "Consultant Physician & Pediatric Surgeon"
-            },
-            new()
-            {
-                CoupleNames = "Eng. Dilshan & Shenali",
-                Title = "Two engineers across continents united",
-                Quote = "\"I was living in Sydney while Shenali was working as a Cloud Architect in Colombo. The verified background and family involvement gave both our parents tremendous peace of mind. We are now building our dream life in Melbourne!\"",
-                Story = "Long-distance courtship supported by verified identity and sincere family communication.",
-                WeddingDate = "September 2025",
-                Location = "Melbourne, Australia",
-                PhotoUrl = "https://images.unsplash.com/photo-1511285560929-80b456fea0bc?q=80&w=800&auto=format&fit=crop",
-                ProfessionInfo = "Civil Engineer & Cloud Architect"
-            },
-            new()
-            {
-                CoupleNames = "Malik & Dr. Zainab",
-                Title = "A blessed partnership founded on shared faith & career goals",
-                Quote = "\"The privacy filters gave us complete dignity. We loved the detailed criteria matching education and religious values. It was seamless from our first verified greeting to our Nikah.\"",
-                Story = "Matched with matching cultural expectations and verified professional credentials.",
-                WeddingDate = "November 2025",
-                Location = "Kandy, Sri Lanka",
-                PhotoUrl = "https://images.unsplash.com/photo-1606800052052-a08af7148866?q=80&w=800&auto=format&fit=crop",
-                ProfessionInfo = "Corporate Banker & Medical Registrar"
-            }
-        };
-
-        if (!await _context.SuccessStories.AnyAsync())
-        {
-            _context.SuccessStories.AddRange(stories);
-            await _context.SaveChangesAsync();
-        }
-
         // 4. Seed Pricing Plans
         var plans = new List<PricingPlan>
         {

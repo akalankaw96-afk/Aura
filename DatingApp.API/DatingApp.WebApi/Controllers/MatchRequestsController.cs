@@ -1,3 +1,4 @@
+using DatingApp.Application.Common.Exceptions;
 using DatingApp.Application.DTOs;
 using DatingApp.Application.Services;
 using Microsoft.AspNetCore.Authorization;
@@ -5,6 +6,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace DatingApp.WebApi.Controllers;
 
+/// <summary>Interests between members. Errors are AppExceptions → ProblemDetails (S01-T11).</summary>
 [Authorize]
 [Route("api/[controller]")]
 [Route("api/match-requests")]
@@ -23,25 +25,15 @@ public class MatchRequestsController : BaseApiController
     [ProducesResponseType(typeof(MatchRequestDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
     public async Task<IActionResult> SendRequest([FromBody] CreateMatchRequestDto dto, CancellationToken ct)
     {
-        if (!CurrentUserId.HasValue) return Unauthorized();
+        var profileId = await RequireProfileIdAsync(ct)
+            ?? throw AppException.Forbidden("Create your profile before you send interests.", ErrorCodes.ProfileRequired);
 
-        var currentUser = await _authService.GetCurrentUserAsync(CurrentUserId.Value, ct);
-        if (currentUser?.ProfileId == null)
-        {
-            return BadRequest(new { message = "You must have a candidate profile to send connection requests." });
-        }
-
-        try
-        {
-            var result = await _matchRequestService.SendRequestAsync(currentUser.ProfileId.Value, dto, ct);
-            return Ok(result);
-        }
-        catch (InvalidOperationException ex)
-        {
-            return BadRequest(new { message = ex.Message });
-        }
+        return Ok(await _matchRequestService.SendRequestAsync(profileId, dto, ct));
     }
 
     [HttpGet("my")]
@@ -49,35 +41,32 @@ public class MatchRequestsController : BaseApiController
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> GetMyRequests(CancellationToken ct)
     {
-        if (!CurrentUserId.HasValue) return Unauthorized();
+        var profileId = await RequireProfileIdAsync(ct);
+        if (profileId == null) return Ok(new List<MatchRequestDto>());
 
-        var currentUser = await _authService.GetCurrentUserAsync(CurrentUserId.Value, ct);
-        if (currentUser?.ProfileId == null)
-        {
-            return Ok(new List<MatchRequestDto>());
-        }
-
-        var list = await _matchRequestService.GetMyRequestsAsync(currentUser.ProfileId.Value, ct);
-        return Ok(list);
+        return Ok(await _matchRequestService.GetMyRequestsAsync(profileId.Value, ct));
     }
 
     [HttpPut("{id:guid}/respond")]
     [ProducesResponseType(StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
     public async Task<IActionResult> Respond(Guid id, [FromBody] RespondMatchRequestDto dto, CancellationToken ct)
     {
-        if (!CurrentUserId.HasValue) return Unauthorized();
+        var profileId = await RequireProfileIdAsync(ct)
+            ?? throw AppException.Forbidden("Create your profile first.", ErrorCodes.ProfileRequired);
 
-        var currentUser = await _authService.GetCurrentUserAsync(CurrentUserId.Value, ct);
-        if (currentUser?.ProfileId == null)
-        {
-            return BadRequest(new { message = "Profile not found." });
-        }
-
-        var success = await _matchRequestService.RespondRequestAsync(id, currentUser.ProfileId.Value, dto.Accept, ct);
-        if (!success) return NotFound(new { message = "Request not found or not addressed to you." });
-
+        await _matchRequestService.RespondRequestAsync(id, profileId, dto.Accept, ct);
         return Ok(new { message = dto.Accept ? "Request accepted!" : "Request declined." });
     }
-}
 
+    /// <summary>The caller's profile id, or null when they have not created one yet.</summary>
+    private async Task<Guid?> RequireProfileIdAsync(CancellationToken ct)
+    {
+        var currentUser = await _authService.GetCurrentUserAsync(RequireUserId(), ct)
+            ?? throw AppException.Unauthenticated();
+        return currentUser.ProfileId;
+    }
+}

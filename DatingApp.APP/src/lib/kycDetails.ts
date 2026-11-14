@@ -1,6 +1,6 @@
 "use client";
 
-import { loadDraft, type RegistrationDraft } from "@/lib/demo";
+import { loadDraft, type RegistrationDraft } from "@/lib/registrationDraft";
 import { SESSION_KEY } from "@/lib/session";
 import type { AuthSession } from "@/services/api";
 import type { ProfileKycDetails } from "@/types";

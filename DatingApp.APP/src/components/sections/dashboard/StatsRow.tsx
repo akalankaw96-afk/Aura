@@ -15,39 +15,13 @@ const ICONS: Record<StatIcon, typeof Eye> = { eye: Eye, heart: Heart, star: Star
 export function StatsRow() {
   const { t, lang } = useLanguage();
 
-  const stats = [
-    {
-      icon: "eye" as StatIcon,
-      value: "142",
-      label: t.dashboard.profileViews,
-      meta: lang === "si" ? "පසුගිය දින 7 තුළ" : "Last 7 days",
-      delta: "+18%",
-      tone: "success" as const,
-    },
-    {
-      icon: "heart" as StatIcon,
-      value: "24",
-      label: t.dashboard.interestsReceived,
-      meta: lang === "si" ? "මෙම සතියේ නව 4ක්" : "4 new this week",
-      delta: "+4",
-      tone: "brand" as const,
-    },
-    {
-      icon: "star" as StatIcon,
-      value: "38",
-      label: t.dashboard.shortlistedYou,
-      meta: lang === "si" ? "මෙම සතියේ නව 2ක්" : "2 new this week",
-      delta: "+2",
-      tone: "success" as const,
-    },
-    {
-      icon: "message" as StatIcon,
-      value: "5",
-      label: t.dashboard.unreadMessages,
-      meta: lang === "si" ? "සාමාජිකයින් 3 දෙනෙකුගෙන්" : "From 3 members",
-      delta: lang === "si" ? "නව" : "New",
-      tone: "brand" as const,
-    },
+  // Profile insights need the API (Sprint 03). No made-up numbers: show "—" until real counts exist.
+  const soon = lang === "si" ? "ඉක්මනින්" : "Coming soon";
+  const stats: { icon: StatIcon; value: string; label: string; meta: string; delta: string; tone: "success" | "brand" }[] = [
+    { icon: "eye", value: "—", label: t.dashboard.profileViews, meta: soon, delta: "", tone: "brand" },
+    { icon: "heart", value: "—", label: t.dashboard.interestsReceived, meta: soon, delta: "", tone: "brand" },
+    { icon: "star", value: "—", label: t.dashboard.shortlistedYou, meta: soon, delta: "", tone: "brand" },
+    { icon: "message", value: "—", label: t.dashboard.unreadMessages, meta: soon, delta: "", tone: "brand" },
   ];
 
   return (
@@ -60,7 +34,7 @@ export function StatsRow() {
               <span className="flex h-11 w-11 items-center justify-center rounded-[12px] bg-brand-subtle text-icon-brand">
                 <Icon size={22} color="currentColor" />
               </span>
-              <Badge tone={s.tone}>{s.delta}</Badge>
+              {s.delta && <Badge tone={s.tone}>{s.delta}</Badge>}
             </div>
             <div className="flex flex-col gap-0.5">
               <p className="text-h3 text-ink md:text-h2">{s.value}</p>

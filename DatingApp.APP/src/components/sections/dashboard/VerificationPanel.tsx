@@ -28,7 +28,7 @@ import { Button } from "@/components/ui/Button";
 import { useFlashToast } from "@/components/ui";
 import { FLAGGED } from "@/components/auth/ReviewStatus";
 import { formatPhone } from "@/components/auth/shared";
-import { loadDraft, type RegistrationDraft } from "@/lib/demo";
+import { loadDraft, type RegistrationDraft } from "@/lib/registrationDraft";
 import { useKyc, type KycStatus } from "@/lib/verification";
 import { useAuthSession } from "@/lib/session";
 

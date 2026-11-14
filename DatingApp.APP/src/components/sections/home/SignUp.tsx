@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { ArrowRight2, Heart, TickCircle } from "iconsax-react";
 import { Input } from "@/components/ui/Input";
 import { flashToast } from "@/components/ui/Toast";
-import { saveDraft } from "@/lib/demo";
+import { saveDraft } from "@/lib/registrationDraft";
 import { useLanguage } from "@/context/LanguageContext";
 import { SIGN_UP } from "@/content/home";
 import { BumpTitle } from "@/components/motion/BumpTitle";

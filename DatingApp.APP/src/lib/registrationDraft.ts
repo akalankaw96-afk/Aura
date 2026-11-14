@@ -1,27 +1,7 @@
 /**
- * Front-end only demo data. There is NO API in this build — every check below
- * is a mock so the prototype is fully clickable. Swap these for real API calls
- * (src/services/api.ts) when the backend is connected.
+ * Registration draft: what the member has typed so far in the sign-up steps, kept in sessionStorage so a
+ * refresh doesn't lose it. Submitted to the API on the last step (POST /api/profiles).
  */
-export const DEMO = {
-  /** Already has an account — log in works with DEMO.password */
-  registeredMobile: "771234567",
-  /** Same demo account by e-mail (login + password reset) */
-  registeredEmail: "demo@auramatrimony.lk",
-  password: "Vikasitha1",
-  /** Logs in but the account is suspended */
-  suspendedMobile: "770000000",
-  /** Registering with this number simulates "no internet / server error" */
-  serverErrorMobile: "779999999",
-  /** Correct verification code */
-  otp: "482913",
-  /** Entering this code simulates an expired code */
-  expiredOtp: "000000",
-  /** Card number that fails payment */
-  failingCard: "4000 0000 0000 0002",
-  maxLoginAttempts: 5,
-  maxOtpAttempts: 3,
-};
 
 export interface RegistrationDraft {
   mobile: string;
