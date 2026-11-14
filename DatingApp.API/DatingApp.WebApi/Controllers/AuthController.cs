@@ -27,14 +27,31 @@ public partial class AuthController : BaseApiController
         _cookie = cookie;
     }
 
-    /// <summary>#1 Create an account with e-mail + password (mobile optional).</summary>
+    /// <summary>
+    /// #1 Create an account with mobile and/or e-mail + password.
+    /// With a mobile number: 201 + <see cref="RegistrationPendingDto"/> — no session until POST /auth/verify-otp.
+    /// E-mail only: 200 + signed in.
+    /// </summary>
     [HttpPost("register")]
     [EnableRateLimiting(RateLimits.Auth)]
     [ProducesResponseType(typeof(AuthResponseDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(RegistrationPendingDto), StatusCodes.Status201Created)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
-    public async Task<ActionResult<AuthResponseDto>> Register([FromBody] RegisterDto dto, CancellationToken ct) =>
-        SignedIn(await _auth.RegisterAsync(dto, Client, ct));
+    public async Task<ActionResult> Register([FromBody] RegisterDto dto, CancellationToken ct)
+    {
+        var outcome = await _auth.RegisterAsync(dto, Client, ct);
+        if (outcome.Session != null)
+        {
+            RefreshCookie.Write(Response, outcome.Session.RefreshToken, outcome.Session.RefreshTokenExpiresAt, _cookie.SameSite);
+            return Ok(outcome.Session.Response);
+        }
+        return StatusCode(StatusCodes.Status201Created, new RegistrationPendingDto
+        {
+            UserId = outcome.UserId,
+            PhoneNumber = outcome.PhoneNumber
+        });
+    }
 
     /// <summary>#2 Log in with e-mail or mobile number + password. 5 wrong tries lock the account for 15 minutes.</summary>
     [HttpPost("login")]

@@ -58,4 +58,5 @@ public static class ErrorCodes
     public const string Forbidden = "FORBIDDEN";
     public const string ProfileRequired = "PROFILE_REQUIRED";
     public const string NotMatched = "NOT_MATCHED";
+    public const string PhoneNotVerified = "PHONE_NOT_VERIFIED";
 }

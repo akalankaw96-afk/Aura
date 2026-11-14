@@ -7,6 +7,8 @@ public class ProfileDto
     public string Name { get; set; } = string.Empty;
     public string Gender { get; set; } = string.Empty; // "female" | "male"
     public int Age { get; set; }
+    /// <summary>"yyyy-MM-dd" — only in the member's own profile (GET /profiles/me), never shown to others.</summary>
+    public string? DateOfBirth { get; set; }
     public string Height { get; set; } = string.Empty;
     public string Profession { get; set; } = string.Empty;
     public string ProfessionCategory { get; set; } = string.Empty; // "Doctor", "Engineer", "IT", etc.
@@ -36,6 +38,10 @@ public class ProfileDetailsDto
     public string? ZodiacSign { get; set; }
     public string? MonthlySalaryRange { get; set; }
     public string? WeightKg { get; set; }
+    /// <summary>Who the profile is for (Myself, Son, Daughter …), from the sign-up step.</summary>
+    public string? ProfileFor { get; set; }
+    /// <summary>Private: only in the member's own profile; shared later through the chat contact-share.</summary>
+    public string? WhatsApp { get; set; }
 }
 
 public class ProfileFilterDto
@@ -51,7 +57,12 @@ public class ProfileFilterDto
 public class CreateProfileDto
 {
     public string FullName { get; set; } = string.Empty;
-    public string Gender { get; set; } = "female"; // "female" or "male"
+    /// <summary>Optional; saved to the account (must not belong to another member).</summary>
+    public string? Email { get; set; }
+    public string Gender { get; set; } = string.Empty; // "female" or "male"
+    /// <summary>Birth date ("yyyy-MM-dd"). Required for new profiles; the age is worked out from it.</summary>
+    public DateOnly? DateOfBirth { get; set; }
+    /// <summary>Only used by old clients that don't send <see cref="DateOfBirth"/>.</summary>
     public int Age { get; set; }
     public string Height { get; set; } = string.Empty;
     public string Profession { get; set; } = string.Empty;
@@ -59,12 +70,13 @@ public class CreateProfileDto
     public string Education { get; set; } = string.Empty;
     public string University { get; set; } = string.Empty;
     public string Location { get; set; } = string.Empty;
-    public string Country { get; set; } = "Sri Lanka";
+    public string Country { get; set; } = string.Empty;
     public string Religion { get; set; } = string.Empty;
     public string Community { get; set; } = string.Empty;
     public string Bio { get; set; } = string.Empty;
     public string AboutFamily { get; set; } = string.Empty;
-    public bool HoroscopeAvailable { get; set; } = true;
+    public bool HoroscopeAvailable { get; set; }
+    /// <summary>"" (none yet), "avatar:&lt;id&gt;" (illustrated avatar) or an https / site-relative photo URL. Never a data: URI.</summary>
     public string PhotoUrl { get; set; } = string.Empty;
     public List<string> Interests { get; set; } = new();
     public ProfileDetailsDto? Details { get; set; }

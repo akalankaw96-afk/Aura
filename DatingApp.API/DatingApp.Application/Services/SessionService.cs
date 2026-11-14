@@ -152,7 +152,7 @@ public class SessionService : ISessionService
             TokenExpiresAt = accessToken?.ExpiresAt ?? default,
             UserId = user.Id,
             FullName = user.FullName,
-            Email = user.Email,
+            Email = user.Email ?? string.Empty,
             PhoneNumber = user.PhoneNumber,
             PhoneVerified = user.PhoneVerified,
             Role = user.Role,

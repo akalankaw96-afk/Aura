@@ -66,7 +66,8 @@ public class ApplicationDbContext : DbContext, IApplicationDbContext
         // Indexes
         modelBuilder.Entity<User>()
             .HasIndex(u => u.Email)
-            .IsUnique();
+            .IsUnique()
+            .HasFilter("[Email] IS NOT NULL");
 
         modelBuilder.Entity<CandidateProfile>()
             .HasIndex(p => p.Code)

@@ -8,7 +8,7 @@ public class UserSecurityConfiguration : IEntityTypeConfiguration<User>
 {
     public void Configure(EntityTypeBuilder<User> builder)
     {
-        builder.Property(u => u.Email).HasMaxLength(256).IsRequired();
+        builder.Property(u => u.Email).HasMaxLength(256); // null for mobile-only accounts
         builder.Property(u => u.PhoneNumber).HasMaxLength(20);
         builder.Property(u => u.Role).HasMaxLength(20).IsRequired();
         builder.Property(u => u.SecurityStamp).HasMaxLength(64).IsRequired();

@@ -44,11 +44,10 @@ import { formatPhone } from "./shared";
 /** Same as the API (AuthRules.CodeMaxAttempts). */
 const CODE_MAX_ATTEMPTS = 5;
 import { setKyc } from "@/lib/verification";
-import { AVATARS, avatarDataUri, isIllustration, type AvatarGender } from "@/content/avatars";
+import { AVATARS, avatarDataUri, avatarRef, isIllustration, type AvatarGender } from "@/content/avatars";
 import { DISTRICT_OPTIONS } from "@/content/search";
 import type { CountryCode } from "@/components/ui/Flag";
-import { ApiError, apiService } from "@/services/api";
-import { hasSession } from "@/lib/session";
+import { ApiError, apiService, type CreateProfilePayload } from "@/services/api";
 import { PhotoSlot } from "@/components/ui/PhotoSlot";
 import { SegmentedSwitch } from "@/components/ui/SegmentedSwitch";
 
@@ -92,26 +91,27 @@ export function RegisterFlow({ initialStep = 1, embedded, onComplete }: Register
     }
     // Save the profile in the database (POST /api/profiles). Stay on this step if it fails.
     try {
-      const fullName = d.fullName || `${d.firstName || ""} ${d.lastName || ""}`.trim() || "New Member";
-      const calculatedAge = d.dob ? ageFrom(d.dob) : 28;
-
+      // Only what the member entered — the API refuses missing required values instead of us inventing them.
+      const fullName = [d.firstName.trim(), d.lastName.trim()].filter(Boolean).join(" ");
       await apiService.createOrUpdateProfile({
         fullName,
+        email: d.email.trim() || undefined,
         gender: d.gender.toLowerCase() === "female" ? "female" : "male",
-        age: calculatedAge ?? 28,
-        height: d.height || "5' 8\"",
-        profession: "Professional",
-        professionCategory: "Other",
-        education: "Bachelor's Degree",
+        dateOfBirth: d.dob,
+        age: ageFrom(d.dob) ?? 0,
+        height: d.height,
+        profession: d.profession.trim(),
+        professionCategory: (PROFESSION_CATEGORY[d.professionCategory] ?? "Other") as CreateProfilePayload["professionCategory"],
+        education: d.education,
         university: "",
         location: d.district,
-        country: d.country || "Sri Lanka",
-        religion: d.religion || "Buddhist",
-        community: d.ethnicity || "Sinhalese",
-        bio: d.about || "",
+        country: d.country,
+        religion: d.religion,
+        community: d.ethnicity,
+        bio: d.about.trim(),
         aboutFamily: "",
         horoscopeAvailable: false,
-        photoUrl: d.photo || "",
+        photoUrl: avatarRef(d.photo), // avatars as "avatar:<id>", never the image itself
         interests: [],
         details: profileDetailsFromKyc(d),
       });
@@ -204,11 +204,9 @@ function AccountStep({
 
     setLoading(true);
     try {
-      // Back from step 2 with the same number: the account already exists — just send a new code.
-      const sameAccount = draft.mobile === mobile && hasSession();
-      if (!sameAccount) {
-        await apiService.register({ phoneNumber: mobile, password: pw }); // POST /api/auth/register
-      }
+      // Creates the account (or takes over an unconfirmed sign-up with this number). No session yet:
+      // the member is signed in once the SMS code is confirmed on the next step.
+      await apiService.register({ phoneNumber: mobile, password: pw }); // POST /api/auth/register
       update({ mobile });
       try {
         await apiService.sendOtp(mobile); // POST /api/auth/send-otp
@@ -482,10 +480,23 @@ const OPTIONS = {
   religion: ["Buddhist", "Hindu", "Christian", "Catholic", "Islam", "Other"],
   ethnicity: ["Sinhalese", "Tamil", "Muslim", "Burgher", "Malay", "Other"],
   country: ["Sri Lanka", "Australia", "United Kingdom", "Canada", "USA", "Qatar", "UAE", "Italy", "New Zealand", "Other"],
+  professionCategory: ["Medical / Doctor", "Engineering", "IT / Software", "Finance / Accounting", "Legal", "Business / Management", "Other"],
+  education: ["O/L or below", "A/L", "Diploma / Certificate", "Bachelor's degree", "Master's degree", "Doctorate (PhD)", "Professional qualification"],
 };
 
-type ProfileKey = "firstName" | "lastName" | "displayNameFormat" | "createdBy" | "email" | "whatsapp" | "height" | "dob" | "gender" | "civilStatus" | "religion" | "ethnicity" | "caste" | "country" | "district" | "zodiacSign" | "monthlySalaryRange" | "weightKg";
-const REQUIRED: ProfileKey[] = ["firstName", "lastName", "displayNameFormat", "createdBy", "height", "dob", "gender", "civilStatus", "religion", "ethnicity", "country"];
+/** Field-of-work label → the API's ProfessionCategory value (also used by search filters). */
+const PROFESSION_CATEGORY: Record<string, string> = {
+  "Medical / Doctor": "Doctor",
+  Engineering: "Engineer",
+  "IT / Software": "IT",
+  "Finance / Accounting": "Finance",
+  Legal: "Legal",
+  "Business / Management": "Business",
+  Other: "Other",
+};
+
+type ProfileKey = "firstName" | "lastName" | "displayNameFormat" | "createdBy" | "email" | "whatsapp" | "height" | "dob" | "gender" | "civilStatus" | "religion" | "ethnicity" | "caste" | "country" | "district" | "profession" | "professionCategory" | "education" | "zodiacSign" | "monthlySalaryRange" | "weightKg";
+const REQUIRED: ProfileKey[] = ["firstName", "lastName", "displayNameFormat", "createdBy", "height", "dob", "gender", "civilStatus", "religion", "ethnicity", "country", "profession", "professionCategory", "education"];
 
 /** Review mode (Figma 06d · Edit profile — fix rejected fields): flagged fields + their values when rejected */
 export interface ProfileReview {
@@ -649,6 +660,9 @@ export function ProfileStep({
         <Input label="Caste" placeholder="e.g. Govigama" value={draft.caste} onChange={set("caste")} />
         <Select label="Country of residence" options={OPTIONS.country} value={draft.country} onChange={pick("country")} error={errors.country} />
         {draft.country === "Sri Lanka" && <Select label="District" hint="Optional" options={OPTIONS.district} value={draft.district} onChange={pick("district")} />}
+        <Input label="Profession" placeholder="e.g. Software engineer" value={draft.profession} onChange={set("profession")} error={errors.profession} autoComplete="organization-title" />
+        <Select label="Field of work" options={OPTIONS.professionCategory} value={draft.professionCategory} onChange={pick("professionCategory")} error={errors.professionCategory} />
+        <Select label="Highest education" options={OPTIONS.education} value={draft.education} onChange={pick("education")} error={errors.education} />
         <Select label="Zodiac sign" hint="Optional" options={OPTIONS.zodiacSign} value={draft.zodiacSign} onChange={pick("zodiacSign")} />
         <Select label="Monthly salary range" hint="Optional" options={OPTIONS.monthlySalaryRange} value={draft.monthlySalaryRange} onChange={pick("monthlySalaryRange")} helper="Choose your monthly income in LKR or its equivalent." />
         <Input label="Weight (kg)" hint="Optional" type="number" min={1} step="any" value={draft.weightKg} onChange={set("weightKg")} error={errors.weightKg} />

@@ -145,3 +145,14 @@ public class SessionDto
 
 /// <summary>Internal: what the service hands the controller after a successful sign-in or refresh.</summary>
 public record AuthResult(AuthResponseDto Response, string RefreshToken, DateTime RefreshTokenExpiresAt);
+
+/// <summary>Sign-up result: a session for e-mail sign-ups; for mobile sign-ups only the account (session after verify-otp).</summary>
+public record RegisterOutcome(AuthResult? Session, Guid UserId, string PhoneNumber);
+
+/// <summary>201 from register when the mobile number still has to be confirmed with POST /auth/verify-otp.</summary>
+public class RegistrationPendingDto
+{
+    public Guid UserId { get; set; }
+    public string PhoneNumber { get; set; } = string.Empty;
+    public bool PhoneVerificationRequired { get; set; } = true;
+}

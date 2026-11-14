@@ -41,11 +41,59 @@ public class ApplicationDbContextInitialiser
     {
         try
         {
+            await CleanUpRegistrationDataAsync();
             await TrySeedAsync();
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error occurred while seeding the database");
+        }
+    }
+
+    /// <summary>Profiles saved before this date may hold the old made-up registration values.</summary>
+    private static readonly DateTime LegacyCutoffUtc = new(2026, 11, 15, 0, 0, 0, DateTimeKind.Utc);
+
+    /// <summary>
+    /// One-off repair of accounts created before the 2026-11-14 registration fix. Safe to run on every start:
+    /// each step only matches rows that still have the old values.
+    ///  - made-up "phone_…@auramatrimony.lk" e-mails → null
+    ///  - account name "New member" / "Phone Member" → the name from the member's profile
+    ///  - avatar images stored as data: URIs → empty (the app shows the bride / groom illustration)
+    ///  - values the old form invented ("Professional", "Bachelor's Degree") → empty; stray spaces trimmed
+    /// </summary>
+    private async Task CleanUpRegistrationDataAsync()
+    {
+        var changed = 0;
+
+        var fakeEmails = await _context.Users
+            .Where(u => u.Email != null && u.Email.StartsWith("phone_") && u.Email.EndsWith("@auramatrimony.lk"))
+            .ToListAsync();
+        foreach (var u in fakeEmails) { u.Email = null; changed++; }
+
+        var placeholderNames = await _context.Users.Include(u => u.Profile)
+            .Where(u => (u.FullName == "New member" || u.FullName == "Phone Member") && u.Profile != null && u.Profile.FullName != "")
+            .ToListAsync();
+        foreach (var u in placeholderNames) { u.FullName = u.Profile!.FullName.Trim(); changed++; }
+
+        var legacyProfiles = await _context.CandidateProfiles
+            .Where(p => p.CreatedAt < LegacyCutoffUtc &&
+                        (p.PhotoUrl.StartsWith("data:") || p.Profession == "Professional" ||
+                         p.Education == "Bachelor's Degree" || p.Bio.EndsWith(" ") || p.Bio.StartsWith(" ")))
+            .ToListAsync();
+        foreach (var p in legacyProfiles)
+        {
+            if (p.PhotoUrl.StartsWith("data:")) p.PhotoUrl = string.Empty;
+            if (p.Profession == "Professional") p.Profession = string.Empty;
+            if (p.Education == "Bachelor's Degree") p.Education = string.Empty;
+            p.Bio = p.Bio.Trim();
+            p.FullName = p.FullName.Trim();
+            changed++;
+        }
+
+        if (changed > 0)
+        {
+            await _context.SaveChangesAsync();
+            _logger.LogInformation("Registration data clean-up: {Count} account / profile rows repaired", changed);
         }
     }
 

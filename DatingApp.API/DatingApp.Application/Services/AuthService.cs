@@ -10,7 +10,7 @@ namespace DatingApp.Application.Services;
 
 public interface IAuthService
 {
-    Task<AuthResult> RegisterAsync(RegisterDto dto, ClientInfo client, CancellationToken ct = default);
+    Task<RegisterOutcome> RegisterAsync(RegisterDto dto, ClientInfo client, CancellationToken ct = default);
     Task<AuthResult> LoginAsync(LoginDto dto, ClientInfo client, CancellationToken ct = default);
     Task<AuthResult> GoogleLoginAsync(GoogleLoginDto dto, ClientInfo client, CancellationToken ct = default);
     Task<OtpResponseDto> SendOtpAsync(SendOtpDto dto, CancellationToken ct = default);
@@ -43,42 +43,70 @@ public class AuthService : IAuthService
         _sessions = sessions;
     }
 
-    public async Task<AuthResult> RegisterAsync(RegisterDto dto, ClientInfo client, CancellationToken ct = default)
+    /// <summary>Name shown until the member saves their profile (ProfileService copies the real name over).</summary>
+    public const string PlaceholderName = "New member";
+
+    public async Task<RegisterOutcome> RegisterAsync(RegisterDto dto, ClientInfo client, CancellationToken ct = default)
     {
         var phone = string.IsNullOrWhiteSpace(dto.PhoneNumber) ? string.Empty : Identifiers.RequirePhone(dto.PhoneNumber);
         if (phone.Length == 0 && string.IsNullOrWhiteSpace(dto.Email))
         {
             throw AppException.Validation("Enter your mobile number or email address.", "phoneNumber");
         }
-        // Mobile-only sign-up gets a placeholder e-mail (same pattern as SMS sign-in); the member can add a real one later.
-        var email = string.IsNullOrWhiteSpace(dto.Email) ? PhoneEmail(phone) : Identifiers.RequireEmail(dto.Email);
+        // Mobile-only sign-up has no e-mail (null) — never a made-up address. The member can add one on the profile step.
+        string? email = string.IsNullOrWhiteSpace(dto.Email) ? null : Identifiers.RequireEmail(dto.Email);
         Identifiers.EnsureStrongPassword(dto.Password);
+        var name = string.IsNullOrWhiteSpace(dto.FullName) ? PlaceholderName : dto.FullName.Trim();
 
-        if (await _context.Users.AnyAsync(u => u.Email == email, ct))
+        if (email != null && await _context.Users.AnyAsync(u => u.Email == email, ct))
         {
             throw new AppException(409, ErrorCodes.AlreadyExists,
                 "An account with this email address already exists. Please log in instead.");
         }
-        if (phone.Length > 0 && await _context.Users.AnyAsync(u => u.PhoneNumber == phone, ct))
+
+        User? user = null;
+        if (phone.Length > 0)
         {
-            throw new AppException(409, ErrorCodes.AlreadyExists,
-                "An account with this mobile number already exists. Please log in instead.");
+            user = await _context.Users.FirstOrDefaultAsync(u => u.PhoneNumber == phone, ct);
+            if (user != null && (user.PhoneVerified || user.GoogleSubject != null))
+            {
+                throw new AppException(409, ErrorCodes.AlreadyExists,
+                    "An account with this mobile number already exists. Please log in instead.");
+            }
         }
 
-        var user = new User
+        if (user != null)
         {
-            Email = email,
-            PasswordHash = _passwordHasher.HashPassword(dto.Password),
-            FullName = string.IsNullOrWhiteSpace(dto.FullName) ? "New member" : dto.FullName.Trim(),
-            PhoneNumber = phone,
-            PhoneVerified = false, // set by verify-otp
-            Role = Roles.Member
-        };
+            // Someone started signing up with this number but never confirmed the code: nobody owns it yet,
+            // so the new sign-up takes it over (otherwise an abandoned sign-up would block the number for ever).
+            user.PasswordHash = _passwordHasher.HashPassword(dto.Password);
+            user.Email = email;
+            user.FullName = name;
+            user.SecurityStamp = Guid.NewGuid().ToString("N");
+            user.FailedLoginCount = 0;
+            user.LockoutEndsAt = null;
+            user.UpdatedAt = DateTime.UtcNow;
+        }
+        else
+        {
+            user = new User
+            {
+                Email = email,
+                PasswordHash = _passwordHasher.HashPassword(dto.Password),
+                FullName = name,
+                PhoneNumber = phone,
+                PhoneVerified = false, // set by verify-otp
+                Role = Roles.Member
+            };
+            _context.Users.Add(user);
+        }
 
-        _context.Users.Add(user);
         await _context.SaveChangesAsync(ct);
 
-        return await _sessions.StartAsync(user, client, ct);
+        // A mobile number must be confirmed by SMS before the account can be used: no session until verify-otp.
+        if (phone.Length > 0) return new RegisterOutcome(null, user.Id, phone);
+
+        return new RegisterOutcome(await _sessions.StartAsync(user, client, ct), user.Id, phone);
     }
 
     public async Task<AuthResult> LoginAsync(LoginDto dto, ClientInfo client, CancellationToken ct = default)
@@ -114,6 +142,13 @@ public class AuthService : IAuthService
 
         // Only reveal suspension to someone who knows the password.
         if (!user.IsActive) throw Suspended();
+
+        // Sign-up isn't finished until the mobile number is confirmed by SMS.
+        if (!user.PhoneVerified && user.GoogleSubject == null && user.PhoneNumber.Length > 0)
+        {
+            throw new AppException(403, ErrorCodes.PhoneNotVerified,
+                "Your mobile number isn't verified yet. Sign up again with the same number to get a new code.");
+        }
 
         user.FailedLoginCount = 0;
         user.LockoutEndsAt = null;
@@ -184,8 +219,8 @@ public class AuthService : IAuthService
             user = new User
             {
                 PhoneNumber = phone,
-                Email = PhoneEmail(phone),
-                FullName = string.IsNullOrWhiteSpace(dto.FullName) ? "Phone Member" : dto.FullName.Trim(),
+                Email = null, // mobile-only account
+                FullName = string.IsNullOrWhiteSpace(dto.FullName) ? PlaceholderName : dto.FullName.Trim(),
                 PasswordHash = _passwordHasher.HashPassword(SecureTokens.NewToken()),
                 Role = Roles.Member
             };
@@ -223,8 +258,6 @@ public class AuthService : IAuthService
             ? null
             : await _context.Users.Include(u => u.Profile).FirstOrDefaultAsync(u => u.PhoneNumber == phone, ct);
     }
-
-    private static string PhoneEmail(string phone) => $"phone_{phone.TrimStart('+')}@auramatrimony.lk";
 
     private static AppException InvalidCredentials() =>
         new(401, ErrorCodes.InvalidCredentials, "Invalid email, mobile number or password.");
