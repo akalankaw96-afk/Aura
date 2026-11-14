@@ -1,6 +1,19 @@
 import { MatchRequest, Profile, ProfileKycDetails, SuccessStory, PricingPlan, FaqItem } from '../types';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+import {
+  API_BASE_URL,
+  ApiError,
+  NETWORK_ERROR,
+  SESSION_KEY,
+  apiRequest,
+  hasStoredSession,
+  onSessionExpired,
+  onTokenRefreshed,
+  setAccessToken,
+  toApiError,
+} from '../lib/http';
+
+export { ApiError } from '../lib/http';
 
 /** Reads the message from an RFC 7807 ProblemDetails error (`title`), falling back to older `{ message }` bodies. */
 async function problemMessage(res: Response, fallback: string): Promise<string> {
@@ -8,71 +21,63 @@ async function problemMessage(res: Response, fallback: string): Promise<string> 
   return body.title || body.message || fallback;
 }
 
-/** Keeps the signed-in session in localStorage (TODO S01-T05 web part: access token in memory only, BUG-017). */
-function storeSession(session: AuthSession): void {
-  if (typeof window === 'undefined' || !session.token) return;
-  localStorage.setItem('aura_token', session.token);
-  localStorage.setItem('aura_session', JSON.stringify(session));
-  localStorage.setItem('aura_auth_user', JSON.stringify(session));
-  window.dispatchEvent(new Event('aura_auth_change'));
-}
-
-/** An API failure with the ProblemDetails `code` (e.g. CODE_INVALID) and extras such as `attemptsLeft`. */
-export class ApiError extends Error {
-  constructor(
-    message: string,
-    public readonly status: number,
-    public readonly code?: string,
-    public readonly extras: { attemptsLeft?: number; retryAfterSeconds?: number } = {},
-  ) {
-    super(message);
-    this.name = 'ApiError';
-  }
-}
-
-const NETWORK_ERROR = 'We couldn’t reach Vikasitha. Check your connection and try again.';
-
-async function toApiError(res: Response, fallback: string): Promise<ApiError> {
-  const body: { title?: string; message?: string; code?: string; attemptsLeft?: number; retryAfterSeconds?: number } =
-    await res.json().catch(() => ({}));
-  return new ApiError(body.title || body.message || fallback, res.status, body.code, {
-    attemptsLeft: body.attemptsLeft,
-    retryAfterSeconds: body.retryAfterSeconds,
-  });
-}
-
-/** Gets a new access token from the httpOnly refresh cookie. Returns null when the session has ended. */
-async function refreshAccessToken(): Promise<string | null> {
+function readStoredSession(): AuthSession | null {
+  if (typeof window === 'undefined') return null;
   try {
-    const res = await fetch(`${API_BASE_URL}/auth/refresh`, { method: 'POST', credentials: 'include' });
-    if (!res.ok) return null;
-    const session: AuthSession = await res.json();
-    if (typeof window !== 'undefined') {
-      // keep the profile fields the app already stored; replace only the token
-      const raw = localStorage.getItem('aura_session');
-      const current = raw ? (JSON.parse(raw) as AuthSession) : session;
-      storeSession({ ...current, token: session.token });
-    }
-    return session.token;
+    const raw = localStorage.getItem(SESSION_KEY);
+    return raw ? (JSON.parse(raw) as AuthSession) : null;
   } catch {
     return null;
   }
 }
 
-/** fetch with the access token; on 401 refreshes once and retries (access tokens last 15 minutes). */
-async function authFetch(path: string, init: RequestInit = {}): Promise<Response> {
-  const send = (token: string | null) =>
-    fetch(`${API_BASE_URL}${path}`, {
-      ...init,
-      headers: { ...(init.headers || {}), ...(token ? { Authorization: `Bearer ${token}` } : {}) },
-    });
-  const token = typeof window !== 'undefined' ? localStorage.getItem('aura_token') : null;
-  let res = await send(token);
-  if (res.status === 401) {
-    const fresh = await refreshAccessToken();
-    if (fresh) res = await send(fresh);
+/**
+ * Signs the member in on this browser. The access token goes to memory only (BUG-017, S01-T05);
+ * localStorage keeps the member details without any token. The long-lived refresh token is an
+ * httpOnly cookie the browser sends to /api/auth/refresh.
+ */
+function storeSession(session: AuthSession): void {
+  if (typeof window === 'undefined') return;
+  if (session.token) setAccessToken(session.token);
+  localStorage.setItem(SESSION_KEY, JSON.stringify({ ...session, token: '' }));
+  localStorage.removeItem('aura_token'); // older builds kept the token here
+  localStorage.removeItem('aura_auth_user');
+  window.dispatchEvent(new Event('aura_auth_change'));
+}
+
+function clearLocalSession(): void {
+  if (typeof window === 'undefined') return;
+  setAccessToken(null);
+  localStorage.removeItem('aura_token');
+  localStorage.removeItem(SESSION_KEY);
+  localStorage.removeItem('aura_auth_user');
+  localStorage.removeItem('aura_review_status');
+  localStorage.removeItem('vk-kyc');
+  localStorage.removeItem('vk-plan');
+  window.dispatchEvent(new Event('aura_auth_change'));
+  window.dispatchEvent(new Event('vk-kyc-change'));
+  window.dispatchEvent(new Event('vk-plan-change'));
+}
+
+// Keep the stored member details in step with each refresh; end the local session when the server has.
+onTokenRefreshed((fresh) => {
+  const current = readStoredSession();
+  storeSession({ ...(current ?? (fresh as unknown as AuthSession)), ...(fresh as unknown as AuthSession) });
+});
+onSessionExpired(() => clearLocalSession());
+
+// Older builds stored the access token in localStorage — remove it on load (BUG-017).
+if (typeof window !== 'undefined') {
+  try {
+    localStorage.removeItem('aura_token');
+  } catch {
+    /* storage blocked */
   }
-  return res;
+}
+
+/** fetch with the access token (restored from the refresh cookie after a reload); refreshes once on 401. */
+function authFetch(path: string, init: RequestInit = {}): Promise<Response> {
+  return apiRequest(path, init);
 }
 
 export interface HomeContentResponse {
@@ -128,7 +133,7 @@ export const apiService = {
   // Home feed (featured profiles, stories, plans, FAQs) — from the database only. Null when the API can't be reached.
   async getHomeContent(): Promise<HomeContentResponse | null> {
     try {
-      const res = await fetch(`${API_BASE_URL}/content/home`, { cache: 'no-store' });
+      const res = await apiRequest('/content/home', { cache: 'no-store', auth: false });
       return res.ok ? await res.json() : null;
     } catch {
       return null;
@@ -138,7 +143,7 @@ export const apiService = {
   // Success stories shared by real couples (GET /api/content/stories).
   async getStories(): Promise<SuccessStory[]> {
     try {
-      const res = await fetch(`${API_BASE_URL}/content/stories`, { cache: 'no-store' });
+      const res = await apiRequest('/content/stories', { cache: 'no-store', auth: false });
       return res.ok ? await res.json() : [];
     } catch {
       return [];
@@ -187,7 +192,7 @@ export const apiService = {
 
   // The signed-in member's own profile (null when not created yet or not signed in).
   async getMyProfile(): Promise<Profile | null> {
-    if (typeof window === 'undefined' || !localStorage.getItem('aura_token')) return null;
+    if (!hasStoredSession()) return null;
     try {
       const res = await authFetch('/profiles/me');
       return res.ok ? await res.json() : null;
@@ -201,14 +206,12 @@ export const apiService = {
    * (e.g. after the safety team approves the profile). Keeps the cached token.
    */
   async refreshSession(): Promise<void> {
-    if (typeof window === 'undefined' || !localStorage.getItem('aura_token')) return;
+    if (!hasStoredSession()) return;
     try {
       const res = await authFetch('/auth/me');
       if (!res.ok) return;
       const me: AuthSession = await res.json();
-      const raw = localStorage.getItem('aura_session');
-      const current = raw ? (JSON.parse(raw) as AuthSession) : me;
-      storeSession({ ...current, ...me, token: localStorage.getItem('aura_token') || current.token });
+      storeSession({ ...(readStoredSession() ?? me), ...me, token: '' });
       window.dispatchEvent(new Event('vk-kyc-change'));
       window.dispatchEvent(new Event('vk-plan-change'));
     } catch {
@@ -227,7 +230,8 @@ export const apiService = {
   }): Promise<AuthSession> {
     let res: Response;
     try {
-      res = await fetch(`${API_BASE_URL}/auth/register`, {
+      res = await apiRequest('/auth/register', {
+        auth: false,
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include', // receives the httpOnly refresh cookie
@@ -246,7 +250,8 @@ export const apiService = {
   async login(credentials: { email: string; password: string }): Promise<AuthSession> {
     let res: Response;
     try {
-      res = await fetch(`${API_BASE_URL}/auth/login`, {
+      res = await apiRequest('/auth/login', {
+        auth: false,
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include', // receives the httpOnly refresh cookie
@@ -260,10 +265,7 @@ export const apiService = {
     if (res.ok) {
       const json: AuthSession = await res.json();
       if (typeof window !== 'undefined' && json.token) {
-        localStorage.setItem('aura_token', json.token);
-        localStorage.setItem('aura_session', JSON.stringify(json));
-        localStorage.setItem('aura_auth_user', JSON.stringify(json));
-        window.dispatchEvent(new Event('aura_auth_change'));
+        storeSession(json);
         window.dispatchEvent(new Event('vk-kyc-change'));
         window.dispatchEvent(new Event('vk-plan-change'));
       }
@@ -279,7 +281,8 @@ export const apiService = {
     if (!data.idToken) throw new Error('Google sign-in failed. Please try again.');
     let res: Response;
     try {
-      res = await fetch(`${API_BASE_URL}/auth/google-login`, {
+      res = await apiRequest('/auth/google-login', {
+        auth: false,
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -304,7 +307,8 @@ export const apiService = {
   async sendOtp(phoneNumber: string): Promise<{ success: boolean; message: string; resendAvailableInSeconds?: number; resendsLeft?: number }> {
     let res: Response;
     try {
-      res = await fetch(`${API_BASE_URL}/auth/send-otp`, {
+      res = await apiRequest('/auth/send-otp', {
+        auth: false,
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ phoneNumber }),
@@ -320,7 +324,8 @@ export const apiService = {
   async verifyOtp(phoneNumber: string, otpCode: string, fullName?: string): Promise<AuthSession> {
     let res: Response;
     try {
-      res = await fetch(`${API_BASE_URL}/auth/verify-otp`, {
+      res = await apiRequest('/auth/verify-otp', {
+        auth: false,
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -337,41 +342,23 @@ export const apiService = {
 
   // Create or Update Candidate Profile Details (Step 2/3)
   async createOrUpdateProfile(profileData: CreateProfilePayload): Promise<Profile> {
-    const token = typeof window !== 'undefined' ? localStorage.getItem('aura_token') : null;
-
-    // Only a real session can save a profile (old builds stored placeholder tokens like "demo-…").
-    const hasRealToken = !!token && !/^(demo|otp|google)-/.test(token);
-
-    if (hasRealToken) {
-      let res: Response;
-      try {
-        res = await authFetch('/profiles', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(profileData),
-        });
-      } catch {
-        throw new ApiError(NETWORK_ERROR, 0);
-      }
-      // Signed in: a failed save is a real error — never pretend it worked (BUG-014).
-      if (!res.ok) throw await toApiError(res, 'We couldn’t save your profile. Please try again.');
-
-      const savedProfile: Profile = await res.json();
-      if (typeof window !== 'undefined') {
-        const raw = localStorage.getItem('aura_session');
-        if (raw) {
-          const sess = JSON.parse(raw);
-          sess.hasCompletedProfile = true;
-          sess.profileId = savedProfile.id;
-          sess.fullName = savedProfile.name;
-          localStorage.setItem('aura_session', JSON.stringify(sess));
-        }
-      }
-      return savedProfile;
-    }
-
     // Not signed in: never invent a local profile (BUG-014) — the member must log in first.
-    throw new ApiError('Please log in again to submit your profile.', 401, 'UNAUTHENTICATED');
+    if (!hasStoredSession()) throw new ApiError('Please log in again to submit your profile.', 401, 'UNAUTHENTICATED');
+
+    // Signed in: a failed save is a real error — never pretend it worked (BUG-014).
+    const res = await authFetch('/profiles', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(profileData),
+    });
+    if (!res.ok) throw await toApiError(res, 'We couldn’t save your profile. Please try again.');
+
+    const savedProfile: Profile = await res.json();
+    const current = readStoredSession();
+    if (current) {
+      storeSession({ ...current, hasCompletedProfile: true, profileId: savedProfile.id, fullName: savedProfile.name, token: '' });
+    }
+    return savedProfile;
   },
 
   // Match Interest Request
@@ -424,12 +411,7 @@ export const apiService = {
     if (typeof window !== 'undefined') {
       // End the session on the server and clear the httpOnly refresh cookie (fire-and-forget).
       fetch(`${API_BASE_URL}/auth/logout`, { method: 'POST', credentials: 'include', keepalive: true }).catch(() => undefined);
-      localStorage.removeItem('aura_token');
-      localStorage.removeItem('aura_session');
-      localStorage.removeItem('aura_auth_user');
-      localStorage.removeItem('aura_review_status');
-      localStorage.removeItem('vk-kyc');
-      localStorage.removeItem('vk-plan');
+      clearLocalSession();
       sessionStorage.clear();
 
       try {
@@ -438,10 +420,6 @@ export const apiService = {
       } catch (e) {
         console.warn('Google auto-select disable notice:', e);
       }
-
-      window.dispatchEvent(new Event('aura_auth_change'));
-      window.dispatchEvent(new Event('vk-kyc-change'));
-      window.dispatchEvent(new Event('vk-plan-change'));
     }
   },
 };

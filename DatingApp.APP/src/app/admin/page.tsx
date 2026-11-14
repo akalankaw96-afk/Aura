@@ -3,6 +3,7 @@ import Link from "next/link";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { Card } from "@/components/ui";
+import { RequireMember } from "@/components/auth/RequireMember";
 
 export const metadata: Metadata = { title: "Staff area | Vikasitha" };
 
@@ -14,6 +15,7 @@ export const metadata: Metadata = { title: "Staff area | Vikasitha" };
 export default function AdminPage() {
   return (
     <div className="flex min-h-screen flex-col bg-page-gradient">
+      <RequireMember role={["Admin", "Moderator"]} />
       <Navbar />
       <main className="container-page flex flex-1 items-center justify-center py-16">
         <Card className="flex max-w-[520px] flex-col gap-3 p-8 text-center">

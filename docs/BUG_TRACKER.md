@@ -17,20 +17,20 @@ Baseline: 22 issues found during the analysis on 2026-11-11 (5 critical · 6 hig
 | BUG-001 | Critical | API · Auth | OTP master code accepted for any phone; OTP returned in the response | Fixed (awaiting verification) | 01 |
 | BUG-002 | Critical | API · Auth | Google login trusts the e-mail without verifying the ID token | Fixed (awaiting verification) | 01 |
 | BUG-003 | Critical | Web · Auth | `googleLogin` creates a fake local session when the API fails | Fixed (awaiting verification) | 01 |
-| BUG-004 | Critical | API · Chat | `ChatController` has no `[Authorize]`; identity taken from the query string | Open | 01 |
-| BUG-005 | Critical | API · Chat | `ChatHub` has no auth; sender id supplied by the client | Open | 01 |
+| BUG-004 | Critical | API · Chat | `ChatController` has no `[Authorize]`; identity taken from the query string | Fixed (awaiting verification) | 01 |
+| BUG-005 | Critical | API · Chat | `ChatHub` has no auth; sender id supplied by the client | Fixed (awaiting verification) | 01 |
 | BUG-006 | High | API · Config | CORS allows any origin together with credentials | Fixed (awaiting verification) | 01 |
 | BUG-007 | High | API · Config | Secrets committed in `appsettings.json` + hard-coded JWT fallback in `Program.cs` | Fixed (awaiting verification) | 01 |
 | BUG-008 | High | API · Auth | 7-day JWT with no refresh, logout or revocation | Fixed (awaiting verification) | 01 |
 | BUG-009 | High | API · Profiles | `CreateOrUpdateProfile` sets `Verified = true` (KYC bypass) | Fixed (awaiting verification) | 01 |
-| BUG-010 | High | Web · Admin | "Staff Admin Panel" link shown to every member; `/admin` accepts any password | In Progress | 01 |
+| BUG-010 | High | Web · Admin | "Staff Admin Panel" link shown to every member; `/admin` accepts any password | Fixed (awaiting verification) | 01 |
 | BUG-011 | High | Web · Business | Plan, KYC, usage and boost state trusted from localStorage (self-upgrade) | Open | 02–04 |
-| BUG-012 | Medium | Web · Routing | `/dashboard` has no guest guard; `KycGuard` treats missing state as approved | In Progress | 01 |
+| BUG-012 | Medium | Web · Routing | `/dashboard` has no guest guard; `KycGuard` treats missing state as approved | Fixed (awaiting verification) | 01 |
 | BUG-013 | Medium | API · DB | InMemory DB is the default (config key missing); `EnsureCreated`, no migrations | Fixed (awaiting verification) | 01 |
 | BUG-014 | Medium | API + Web | Services/clients swallow errors and serve fallback or mock data | In Progress | 03 |
 | BUG-015 | Medium | API · DB | Demo user with a known password seeded in every environment | Fixed (awaiting verification) | 01 |
 | BUG-016 | Medium | API · Search | Profile search loads the whole table; no paging | Open | 03 |
-| BUG-017 | Medium | Web · Auth | JWT stored in localStorage (readable by any XSS) | In Progress | 01 |
+| BUG-017 | Medium | Web · Auth | JWT stored in localStorage (readable by any XSS) | Fixed (awaiting verification) | 01 |
 | BUG-018 | Low | API · Auth | PBKDF2 with 10,000 iterations (below current guidance) | Fixed (awaiting verification) | 01 |
 | BUG-019 | Low | Web · UI | ~380 classes from non-existent palettes + 8 opacity modifiers render unstyled | Open | 05 |
 | BUG-020 | Low | Web · Tooling | `npm run lint` unusable — no ESLint config | Open | 01 |
@@ -42,6 +42,11 @@ Baseline: 22 issues found during the analysis on 2026-11-11 (5 critical · 6 hig
 walk-through in `PROGRESS.md` pass. BUG-017: API side done (refresh token only in an httpOnly cookie); the web app
 still keeps the 15-minute access token in localStorage until the S01-T05 web part. BUG-007: the old JWT key and the
 Google client secret are still in Git history — rotate both.
+
+**2026-11-14 — Sprint 01 completion:** BUG-004/005 chat API + hub require login, take the member from the token and
+only allow matched members (`ChatService`). BUG-010 `/admin` needs an Admin/Moderator role; staff links stay out of
+the menu after merging `main`. BUG-012 guests on member pages go to `/login?next=…`. BUG-017 access token kept in
+memory only and restored from the httpOnly refresh cookie. All awaiting build + test on the owner's machine.
 
 **2026-11-14 — demo data removed:** BUG-010 admin links gone and `/admin` is a placeholder (role gate still to do with
 the back office); BUG-012 unknown/guest status is "pending", not approved (dashboard guest redirect still to do);

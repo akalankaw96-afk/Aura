@@ -20,7 +20,7 @@ export type VerifyResult =
   | { ok: true; resetToken: string }
   | { ok: false; reason: "incorrect" | "expired" | "too-many"; attemptsLeft: number };
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
+import { apiRequest } from "@/lib/http";
 
 interface Problem {
   title?: string;
@@ -28,16 +28,9 @@ interface Problem {
   attemptsLeft?: number;
 }
 
-async function post(path: string, body: unknown): Promise<Response> {
-  try {
-    return await fetch(`${API_BASE_URL}${path}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    });
-  } catch {
-    throw new Error("We couldn’t reach Vikasitha. Check your connection and try again.");
-  }
+/** POST through the shared helper (timeout + network errors as ApiError). No token: these run signed out. */
+function post(path: string, body: unknown): Promise<Response> {
+  return apiRequest(path, { method: "POST", json: body, auth: false });
 }
 
 async function fail(res: Response, fallback: string): Promise<never> {

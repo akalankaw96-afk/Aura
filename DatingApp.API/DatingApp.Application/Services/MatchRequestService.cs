@@ -1,3 +1,4 @@
+using DatingApp.Application.Common.Exceptions;
 using DatingApp.Application.Common.Interfaces;
 using DatingApp.Application.DTOs;
 using DatingApp.Domain.Entities;
@@ -26,7 +27,18 @@ public class MatchRequestService : IMatchRequestService
     {
         if (senderProfileId == dto.ReceiverProfileId)
         {
-            throw new InvalidOperationException("You cannot send a connection request to your own profile.");
+            throw AppException.Validation("You cannot send an interest to your own profile.", "receiverProfileId");
+        }
+
+        var receiverExists = await _context.CandidateProfiles.AnyAsync(p => p.Id == dto.ReceiverProfileId, ct);
+        if (!receiverExists)
+        {
+            throw AppException.NotFound("This member is no longer available.");
+        }
+
+        if (dto.Note?.Length > 500)
+        {
+            throw AppException.Validation("Notes can be up to 500 characters.", "note");
         }
 
         var existing = await _context.MatchRequests
@@ -34,7 +46,17 @@ public class MatchRequestService : IMatchRequestService
 
         if (existing != null)
         {
-            throw new InvalidOperationException("A request to this profile has already been submitted.");
+            throw AppException.Conflict("You have already sent an interest to this member.");
+        }
+
+        var reverse = await _context.MatchRequests
+            .FirstOrDefaultAsync(r => r.SenderProfileId == dto.ReceiverProfileId && r.ReceiverProfileId == senderProfileId, ct);
+
+        if (reverse != null)
+        {
+            throw AppException.Conflict(reverse.Status == MatchRequestStatus.Accepted
+                ? "You are already matched with this member."
+                : "This member has already sent you an interest. Answer it from your requests.");
         }
 
         var request = new MatchRequest
@@ -93,7 +115,15 @@ public class MatchRequestService : IMatchRequestService
     public async Task<bool> RespondRequestAsync(Guid requestId, Guid receiverProfileId, bool accept, CancellationToken ct = default)
     {
         var request = await _context.MatchRequests.FirstOrDefaultAsync(r => r.Id == requestId && r.ReceiverProfileId == receiverProfileId, ct);
-        if (request == null) return false;
+        if (request == null)
+        {
+            throw AppException.NotFound("Request not found.");
+        }
+
+        if (request.Status != MatchRequestStatus.Pending)
+        {
+            throw AppException.Conflict("You have already answered this request.");
+        }
 
         request.Status = accept ? MatchRequestStatus.Accepted : MatchRequestStatus.Declined;
         request.RespondedAt = DateTime.UtcNow;
@@ -102,4 +132,3 @@ public class MatchRequestService : IMatchRequestService
         return true;
     }
 }
-

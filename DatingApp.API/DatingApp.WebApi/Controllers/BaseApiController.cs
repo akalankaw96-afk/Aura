@@ -1,3 +1,4 @@
+using DatingApp.Application.Common.Exceptions;
 using DatingApp.Application.Common.Interfaces;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
@@ -28,6 +29,9 @@ public abstract class BaseApiController : ControllerBase
             return Guid.TryParse(sid, out var id) ? id : null;
         }
     }
+
+    /// <summary>The signed-in member's id, or a 401 ProblemDetails when there is none.</summary>
+    protected Guid RequireUserId() => CurrentUserId ?? throw AppException.Unauthenticated();
 
     protected ClientInfo Client => new(
         HttpContext.Connection.RemoteIpAddress?.ToString(),

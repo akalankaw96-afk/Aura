@@ -1,222 +1,162 @@
-using System.Text.RegularExpressions;
+using DatingApp.Application.Common.Exceptions;
 using DatingApp.Application.Common.Interfaces;
 using DatingApp.Application.DTOs;
-using DatingApp.Domain.Entities;
-using DatingApp.Domain.Enums;
+using DatingApp.Application.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
-using Microsoft.EntityFrameworkCore;
+using System.Security.Claims;
 
 namespace DatingApp.WebApi.Hubs;
 
+/// <summary>
+/// Real-time chat (S01-T06). Signed-in members only: the identity comes from the access token
+/// (sent as ?access_token=… on the WebSocket, see Program.cs), never from method arguments.
+/// Events go to users (Clients.User → the NameIdentifier claim), so nobody can listen in by
+/// joining someone else's conversation.
+/// </summary>
+[Authorize]
 public class ChatHub : Hub
 {
-    private readonly IApplicationDbContext _context;
+    private readonly IChatService _chat;
+    private readonly IPresenceTracker _presence;
 
-    public ChatHub(IApplicationDbContext context)
+    public ChatHub(IChatService chat, IPresenceTracker presence)
     {
-        _context = context;
+        _chat = chat;
+        _presence = presence;
     }
 
-    public async Task JoinConversation(string conversationId)
+    private Guid UserId =>
+        Guid.TryParse(Context.User?.FindFirstValue(ClaimTypes.NameIdentifier), out var id)
+            ? id
+            : throw new HubException("Please log in to continue.");
+
+    public override async Task OnConnectedAsync()
     {
-        await Groups.AddToGroupAsync(Context.ConnectionId, conversationId);
-        if (conversationId.StartsWith("conv_"))
-        {
-            var parts = conversationId.Split('_');
-            if (parts.Length == 3)
-            {
-                var reverseConvId = $"conv_{parts[2]}_{parts[1]}";
-                await Groups.AddToGroupAsync(Context.ConnectionId, reverseConvId);
-            }
-        }
-        await Clients.Caller.SendAsync("JoinedConversation", conversationId);
+        _presence.Connected(UserId, Context.ConnectionId);
+        await base.OnConnectedAsync();
     }
 
-    public async Task LeaveConversation(string conversationId)
+    public override async Task OnDisconnectedAsync(Exception? exception)
     {
-        await Groups.RemoveFromGroupAsync(Context.ConnectionId, conversationId);
-        if (conversationId.StartsWith("conv_"))
-        {
-            var parts = conversationId.Split('_');
-            if (parts.Length == 3)
-            {
-                var reverseConvId = $"conv_{parts[2]}_{parts[1]}";
-                await Groups.RemoveFromGroupAsync(Context.ConnectionId, reverseConvId);
-            }
-        }
+        if (Guid.TryParse(Context.User?.FindFirstValue(ClaimTypes.NameIdentifier), out var id))
+            _presence.Disconnected(id, Context.ConnectionId);
+        await base.OnDisconnectedAsync(exception);
     }
 
-    public async Task SendMessage(string senderProfileIdStr, string receiverProfileIdStr, string messageText, string? conversationId)
+    /// <summary>Checks the caller belongs to the conversation. Kept for the web client's flow; events are routed per user.</summary>
+    public Task JoinConversation(string conversationId) => Guard(async () =>
     {
-        if (string.IsNullOrWhiteSpace(messageText)) return;
+        var p = await _chat.GetParticipantsAsync(UserId, conversationId, Context.ConnectionAborted);
+        await Clients.Caller.SendAsync("JoinedConversation", p.ConversationId);
+    });
 
-        if (!Guid.TryParse(senderProfileIdStr, out var senderProfileId))
-        {
-            // Try lookup by profile Code (e.g. LK-9021)
-            var senderProf = await _context.CandidateProfiles.FirstOrDefaultAsync(p => p.Code == senderProfileIdStr);
-            if (senderProf != null) senderProfileId = senderProf.Id;
-            else senderProfileId = Guid.NewGuid();
-        }
+    public Task LeaveConversation(string conversationId) => Task.CompletedTask;
 
-        if (!Guid.TryParse(receiverProfileIdStr, out var receiverProfileId))
-        {
-            var receiverProf = await _context.CandidateProfiles.FirstOrDefaultAsync(p => p.Code == receiverProfileIdStr);
-            if (receiverProf != null) receiverProfileId = receiverProf.Id;
-            else receiverProfileId = Guid.NewGuid();
-        }
-
-        var convId = string.IsNullOrWhiteSpace(conversationId)
-            ? $"conv_{senderProfileId}_{receiverProfileId}"
-            : conversationId;
-
-        // Flow 3 Anti-Scam & Safety Scanner
-        bool isFlagged = false;
-        string? flagReason = null;
-
-        var scamMoneyRegex = new Regex(@"\b(money|transfer|bank\s*account|cash|rupees|rs\.?|lkr|emergency\s*fund|crypto|usdt|bitcoin)\b", RegexOptions.IgnoreCase);
-        var phoneRegex = new Regex(@"(\+?\d[\d\s-]{7,}\d)");
-        var linkRegex = new Regex(@"(https?:\/\/|www\.|\.com|\.lk|\.net)", RegexOptions.IgnoreCase);
-
-        if (scamMoneyRegex.IsMatch(messageText))
-        {
-            isFlagged = true;
-            flagReason = "Safety Alert: Potential financial solicitation or scam phrase detected. Never send money to individuals online.";
-        }
-        else if (phoneRegex.IsMatch(messageText) || linkRegex.IsMatch(messageText))
-        {
-            // Check if contact sharing has been mutually unlocked
-            var contactShareExists = await _context.ChatMessages.AnyAsync(m =>
-                m.ConversationId == convId && m.IsContactShareAccepted);
-
-            if (!contactShareExists)
-            {
-                isFlagged = true;
-                flagReason = "Notice: Direct contact numbers and links are hidden until mutual contact exchange is requested and accepted.";
-            }
-        }
-
-        var entity = new ChatMessage
-        {
-            SenderProfileId = senderProfileId,
-            ReceiverProfileId = receiverProfileId,
-            ConversationId = convId,
-            MessageText = messageText,
-            IsRead = false,
-            IsFlaggedBySafety = isFlagged,
-            SafetyFlagReason = flagReason,
-            CreatedAt = DateTime.UtcNow
-        };
-
-        try
-        {
-            _context.ChatMessages.Add(entity);
-            await _context.SaveChangesAsync();
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Persist message error (non-fatal): {ex.Message}");
-        }
-
-        var senderName = (await _context.CandidateProfiles.FirstOrDefaultAsync(p => p.Id == senderProfileId))?.FullName ?? "Member";
-        var senderPhoto = (await _context.CandidateProfiles.FirstOrDefaultAsync(p => p.Id == senderProfileId))?.PhotoUrl ?? "/brand/couple.png";
-        var receiverName = (await _context.CandidateProfiles.FirstOrDefaultAsync(p => p.Id == receiverProfileId))?.FullName ?? "Member";
-
-        var dto = new ChatMessageDto
-        {
-            Id = entity.Id,
-            SenderProfileId = senderProfileId,
-            SenderName = senderName,
-            SenderPhotoUrl = senderPhoto,
-            ReceiverProfileId = receiverProfileId,
-            ReceiverName = receiverName,
-            ConversationId = convId,
-            MessageText = messageText,
-            SentAt = entity.CreatedAt,
-            IsRead = false,
-            IsMe = false,
-            IsFlaggedBySafety = isFlagged,
-            SafetyFlagReason = flagReason
-        };
-
-        // Broadcast to conversation group and caller
-        await Clients.Group(convId).SendAsync("ReceiveMessage", dto);
-        await Clients.Caller.SendAsync("MessageSentConfirmation", dto);
-    }
-
-    public async Task SendTyping(string conversationId, string userName, bool isTyping)
+    public Task SendMessage(string receiverProfileId, string messageText) => Guard(async () =>
     {
-        await Clients.OthersInGroup(conversationId).SendAsync("UserTyping", new TypingIndicatorDto
+        var delivery = await _chat.SendMessageAsync(UserId, ParseId(receiverProfileId), messageText, Context.ConnectionAborted);
+        await Deliver(delivery, "ReceiveMessage");
+    });
+
+    public Task SendTyping(string conversationId, bool isTyping) => Guard(async () =>
+    {
+        var p = await _chat.GetParticipantsAsync(UserId, conversationId, Context.ConnectionAborted);
+        await Clients.User(p.PartnerUserId.ToString()).SendAsync("UserTyping", new TypingIndicatorDto
         {
-            ConversationId = conversationId,
-            UserName = userName,
+            ConversationId = p.ConversationId,
+            UserName = p.MyName,
             IsTyping = isTyping
         });
-    }
+    });
 
-    public async Task MarkAsRead(string conversationId, string messageIdStr)
+    public Task MarkAsRead(string messageId) => Guard(async () =>
     {
-        if (Guid.TryParse(messageIdStr, out var messageId))
-        {
-            var msg = await _context.ChatMessages.FirstOrDefaultAsync(m => m.Id == messageId);
-            if (msg != null && !msg.IsRead)
-            {
-                msg.IsRead = true;
-                msg.ReadAt = DateTime.UtcNow;
-                await _context.SaveChangesAsync();
-            }
-        }
+        var receipt = await _chat.MarkAsReadAsync(UserId, ParseId(messageId), Context.ConnectionAborted);
+        if (receipt == null) return;
+        await Clients.Users(receipt.SenderUserId.ToString(), UserId.ToString())
+            .SendAsync("MessageRead", receipt.ConversationId, receipt.MessageId.ToString());
+    });
 
-        await Clients.OthersInGroup(conversationId).SendAsync("MessageRead", conversationId, messageIdStr);
-    }
-
-    public async Task RequestContactShare(string conversationId, string senderProfileIdStr, string receiverProfileIdStr)
+    public Task RequestContactShare(string partnerProfileId) => Guard(async () =>
     {
-        Guid.TryParse(senderProfileIdStr, out var senderProfileId);
-        Guid.TryParse(receiverProfileIdStr, out var receiverProfileId);
+        var delivery = await _chat.RequestContactShareAsync(UserId, ParseId(partnerProfileId), Context.ConnectionAborted);
+        await Deliver(delivery, "ReceiveMessage");
+        var p = delivery.Participants;
+        await Clients.Users(p.MyUserId.ToString(), p.PartnerUserId.ToString())
+            .SendAsync("ContactShareRequested", p.ConversationId, p.MyProfileId.ToString());
+    });
 
-        var requestMsg = new ChatMessage
-        {
-            SenderProfileId = senderProfileId,
-            ReceiverProfileId = receiverProfileId,
-            ConversationId = conversationId,
-            MessageText = "📱 Request to exchange direct phone number and WhatsApp contact details.",
-            IsContactShareRequest = true,
-            CreatedAt = DateTime.UtcNow
-        };
-
-        _context.ChatMessages.Add(requestMsg);
-        await _context.SaveChangesAsync();
-
-        await Clients.Group(conversationId).SendAsync("ContactShareRequested", conversationId, senderProfileIdStr);
-    }
-
-    public async Task AcceptContactShare(string conversationId, string accepterProfileIdStr, string partnerProfileIdStr)
+    public Task AcceptContactShare(string partnerProfileId) => Guard(async () =>
     {
-        Guid.TryParse(accepterProfileIdStr, out var accepterProfileId);
-        Guid.TryParse(partnerProfileIdStr, out var partnerProfileId);
+        var unlock = await _chat.AcceptContactShareAsync(UserId, ParseId(partnerProfileId), Context.ConnectionAborted);
+        await Deliver(new ChatDelivery(unlock.Participants, unlock.Message), "ReceiveMessage");
 
-        var accepterProf = await _context.CandidateProfiles.Include(p => p.User).FirstOrDefaultAsync(p => p.Id == accepterProfileId);
-        var partnerProf = await _context.CandidateProfiles.Include(p => p.User).FirstOrDefaultAsync(p => p.Id == partnerProfileId);
-
-        var unlockMsg = new ChatMessage
+        // Each side receives the OTHER person's number
+        var p = unlock.Participants;
+        await Clients.User(p.MyUserId.ToString()).SendAsync("ContactUnlocked", new
         {
-            SenderProfileId = accepterProfileId,
-            ReceiverProfileId = partnerProfileId,
-            ConversationId = conversationId,
-            MessageText = $"🎉 Mutual contact details unlocked! {accepterProf?.FullName}'s Contact: {accepterProf?.User?.PhoneNumber ?? "+94 77 123 4567"}",
-            IsContactShareAccepted = true,
-            CreatedAt = DateTime.UtcNow
-        };
-
-        _context.ChatMessages.Add(unlockMsg);
-        await _context.SaveChangesAsync();
-
-        await Clients.Group(conversationId).SendAsync("ContactUnlocked", new
-        {
-            conversationId,
-            unlockedBy = accepterProfileIdStr,
-            phoneNumber = accepterProf?.User?.PhoneNumber ?? "+94 77 123 4567",
-            partnerPhoneNumber = partnerProf?.User?.PhoneNumber ?? "+94 71 987 6543"
+            conversationId = p.ConversationId,
+            unlockedBy = p.MyProfileId.ToString(),
+            phoneNumber = unlock.PartnerPhone,
+            partnerPhoneNumber = unlock.PartnerPhone
         });
+        await Clients.User(p.PartnerUserId.ToString()).SendAsync("ContactUnlocked", new
+        {
+            conversationId = p.ConversationId,
+            unlockedBy = p.MyProfileId.ToString(),
+            phoneNumber = unlock.MyPhone,
+            partnerPhoneNumber = unlock.MyPhone
+        });
+    });
+
+    // ---- helpers ----
+
+    /// <summary>Sender gets the message as "mine" (MessageSentConfirmation), the receiver as theirs.</summary>
+    private async Task Deliver(ChatDelivery delivery, string receiverEvent)
+    {
+        var p = delivery.Participants;
+        var mine = delivery.Message;
+        mine.IsMe = true;
+        await Clients.User(p.MyUserId.ToString()).SendAsync("MessageSentConfirmation", mine);
+
+        var theirs = Clone(mine);
+        theirs.IsMe = false;
+        await Clients.User(p.PartnerUserId.ToString()).SendAsync(receiverEvent, theirs);
+    }
+
+    private static ChatMessageDto Clone(ChatMessageDto m) => new()
+    {
+        Id = m.Id,
+        SenderProfileId = m.SenderProfileId,
+        SenderName = m.SenderName,
+        SenderPhotoUrl = m.SenderPhotoUrl,
+        ReceiverProfileId = m.ReceiverProfileId,
+        ReceiverName = m.ReceiverName,
+        ConversationId = m.ConversationId,
+        MessageText = m.MessageText,
+        SentAt = m.SentAt,
+        IsRead = m.IsRead,
+        IsMe = m.IsMe,
+        IsFlaggedBySafety = m.IsFlaggedBySafety,
+        SafetyFlagReason = m.SafetyFlagReason,
+        IsContactShareRequest = m.IsContactShareRequest,
+        IsContactShareAccepted = m.IsContactShareAccepted
+    };
+
+    private static Guid ParseId(string value) =>
+        Guid.TryParse(value, out var id) ? id : throw new HubException("Member not found.");
+
+    /// <summary>Expected failures reach the client as a HubException with a safe message.</summary>
+    private static async Task Guard(Func<Task> action)
+    {
+        try
+        {
+            await action();
+        }
+        catch (AppException ex)
+        {
+            throw new HubException($"{ex.Code}: {ex.Message}");
+        }
     }
 }

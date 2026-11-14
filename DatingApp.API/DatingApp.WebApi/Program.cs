@@ -1,3 +1,4 @@
+using DatingApp.Domain.Entities;
 using DatingApp.Infrastructure;
 using DatingApp.Infrastructure.Persistence;
 using DatingApp.Infrastructure.Services;
@@ -25,6 +26,7 @@ var jwtAudience = builder.Configuration["JwtSettings:Audience"] ?? "AuraMatrimon
 // 1. Infrastructure & application services
 builder.Services.AddInfrastructureServices(builder.Configuration);
 builder.Services.AddSingleton<AuthCookieSettings>();
+builder.Services.AddSingleton<DatingApp.Application.Common.Interfaces.IPresenceTracker, PresenceTracker>();
 
 // 2. Controllers, SignalR, errors as ProblemDetails (API_GUIDELINES.md §4)
 builder.Services.AddControllers();
@@ -83,9 +85,28 @@ builder.Services.AddAuthentication(options =>
         IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSecret)),
         ClockSkew = TimeSpan.Zero
     };
+
+    // Browsers cannot set headers on a WebSocket, so the chat hub takes the token from ?access_token= (S01-T06)
+    options.Events = new JwtBearerEvents
+    {
+        OnMessageReceived = context =>
+        {
+            var accessToken = context.Request.Query["access_token"];
+            if (!string.IsNullOrEmpty(accessToken) && context.HttpContext.Request.Path.StartsWithSegments("/hubs"))
+            {
+                context.Token = accessToken;
+            }
+            return Task.CompletedTask;
+        }
+    };
 });
 
-builder.Services.AddAuthorization();
+// Role policies (S01-T09). Use [Authorize(Policy = Policies.Admin)] on admin endpoints.
+builder.Services.AddAuthorization(options =>
+{
+    options.AddPolicy(Policies.Admin, policy => policy.RequireRole(Roles.Admin));
+    options.AddPolicy(Policies.Staff, policy => policy.RequireRole(Roles.Admin, Roles.Moderator));
+});
 
 // 5. Swagger / OpenAPI
 builder.Services.AddEndpointsApiExplorer();

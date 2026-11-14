@@ -2,19 +2,16 @@
 
 import { useEffect, useState } from "react";
 import { apiService, AuthSession } from "@/services/api";
+import { SESSION_KEY, hasStoredSession } from "@/lib/http";
 import { Profile } from "@/types";
 import { readKyc, type KycStatus } from "@/lib/verification";
 
-/** Same key the API service writes on login (services/api.ts). */
-export const SESSION_KEY = "aura_session";
+/** Same key the API service writes on login (services/api.ts). Holds member details, never the token. */
+export { SESSION_KEY } from "@/lib/http";
 
+/** True when a member is signed in on this browser. */
 export function hasSession(): boolean {
-  if (typeof window === "undefined") return false;
-  try {
-    return !!window.localStorage.getItem(SESSION_KEY);
-  } catch {
-    return false;
-  }
+  return hasStoredSession();
 }
 
 /** true once we know a member is signed in (false on the server / first paint). */
@@ -74,9 +71,9 @@ export function useAuthSession() {
     };
   }, []);
 
-  // Fetch candidate profile from backend if session has token
+  // Fetch the member's profile once we know who is signed in (the token itself lives in memory — lib/http.ts)
   useEffect(() => {
-    if (!session?.token) {
+    if (!session?.userId) {
       setProfile(null);
       return;
     }
@@ -89,7 +86,7 @@ export function useAuthSession() {
     return () => {
       cancelled = true;
     };
-  }, [session?.token]);
+  }, [session?.userId]);
 
   const fullName = profile?.name || session?.fullName || "";
   const firstName = fullName ? fullName.trim().split(" ")[0] : "Member";

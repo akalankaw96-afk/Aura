@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { flashToast } from "@/components/ui/Toast";
 import { readKyc } from "@/lib/verification";
+import { hasStoredSession } from "@/lib/http";
 
 /**
  * Member pages that need an approved profile (Friends, Messages):
@@ -13,7 +14,8 @@ import { readKyc } from "@/lib/verification";
 export function KycGuard() {
   const router = useRouter();
   useEffect(() => {
-    if (readKyc() !== "live") {
+    // guests are handled by <RequireMember /> (sent to log in, not to the dashboard)
+    if (hasStoredSession() && readKyc() !== "live") {
       flashToast("info", "Available after approval", "We’re still reviewing your profile. This unlocks once you’re approved.");
       router.replace("/dashboard");
     }

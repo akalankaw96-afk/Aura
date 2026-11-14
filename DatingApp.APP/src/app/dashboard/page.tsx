@@ -9,6 +9,7 @@ import { PlanUsageCard } from "@/components/sections/dashboard/PlanUsageCard";
 import { ProPlanCard } from "@/components/sections/dashboard/ProPlanCard";
 import { PromoteCard, PromoteModal } from "@/components/sections/promote/PromoteFlow";
 import { EditProfileModal } from "@/components/sections/dashboard/EditProfileModal";
+import { RequireMember } from "@/components/auth/RequireMember";
 
 export const metadata: Metadata = { title: "Dashboard | Aura Matrimony" };
 
@@ -24,6 +25,7 @@ const SHOW_QUICK_SEARCH = false;
 export default function DashboardPage() {
   return (
     <div className="relative isolate bg-page-gradient">
+      <RequireMember />
       <HeartPattern className="-z-10" />
       <Navbar variant="member" />
       <main>

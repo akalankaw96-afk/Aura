@@ -3,7 +3,7 @@
  * (Figma file "AI-Learning-2", page 🧩 Components).
  * Preview them all at /components.
  */
-export { Button, TextLink } from "./Button";
+export { Button, ButtonLink, TextLink } from "./Button";
 export type { ButtonProps, ButtonVariant, ButtonSize } from "./Button";
 export { Field, controlShell } from "./Field";
 export { Input } from "./Input";
@@ -46,4 +46,8 @@ export { SegmentedSwitch } from "./SegmentedSwitch";
 export { PinNote } from "./PinNote";
 export type { PinNoteTone } from "./PinNote";
 export type { SegmentedSwitchOption, SegmentedSwitchProps } from "./SegmentedSwitch";
+export { SegmentedTabs } from "./SegmentedTabs";
+export type { SegmentedTabItem } from "./SegmentedTabs";
+export { PhotoSlot } from "./PhotoSlot";
+export type { PhotoSlotProps } from "./PhotoSlot";
 export type { ResultsView } from "./ViewToggle";

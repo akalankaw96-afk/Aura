@@ -49,6 +49,7 @@ public static class DependencyInjection
         services.AddScoped<IPasswordService, PasswordService>();
         services.AddScoped<IMatchRequestService, MatchRequestService>();
         services.AddScoped<IContentService, ContentService>();
+        services.AddScoped<IChatService, ChatService>();
 
         return services;
     }

@@ -27,6 +27,12 @@ public class AppException : Exception
     public static AppException Unauthenticated(string message = "Please log in to continue.") =>
         new(401, ErrorCodes.Unauthenticated, message);
 
+    public static AppException Forbidden(string message = "You do not have access to this.", string code = ErrorCodes.Forbidden) =>
+        new(403, code, message);
+
+    public static AppException Conflict(string message, string code = ErrorCodes.AlreadyExists) =>
+        new(409, code, message);
+
     public static AppException NotFound(string message = "Not found.") =>
         new(404, ErrorCodes.NotFound, message);
 
@@ -49,4 +55,7 @@ public static class ErrorCodes
     public const string TooManyAttempts = "TOO_MANY_ATTEMPTS";
     public const string ResetTokenInvalid = "RESET_TOKEN_INVALID";
     public const string GoogleTokenInvalid = "GOOGLE_TOKEN_INVALID";
+    public const string Forbidden = "FORBIDDEN";
+    public const string ProfileRequired = "PROFILE_REQUIRED";
+    public const string NotMatched = "NOT_MATCHED";
 }

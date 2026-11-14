@@ -63,7 +63,7 @@ public class ContentService : IContentService
 
     public async Task<List<PricingPlanDto>> GetPlansAsync(CancellationToken ct = default)
     {
-        try
+        // DB errors surface as a 500 ProblemDetails (S01-T11) instead of being swallowed
         {
             var list = await _context.PricingPlans.AsNoTracking().OrderBy(p => p.DisplayOrder).ToListAsync(ct);
             if (list.Any())
@@ -82,10 +82,6 @@ public class ContentService : IContentService
                     CtaText = p.CtaText
                 }).ToList();
             }
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"SQL Server plans query notice: {ex.Message}");
         }
 
         return new List<PricingPlanDto>
@@ -151,7 +147,7 @@ public class ContentService : IContentService
 
     public async Task<List<FaqDto>> GetFaqsAsync(CancellationToken ct = default)
     {
-        try
+        // DB errors surface as a 500 ProblemDetails (S01-T11) instead of being swallowed
         {
             var list = await _context.FaqItems.AsNoTracking().OrderBy(f => f.DisplayOrder).ToListAsync(ct);
             if (list.Any())
@@ -163,10 +159,6 @@ public class ContentService : IContentService
                     Answer = f.Answer
                 }).ToList();
             }
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"SQL Server faqs query notice: {ex.Message}");
         }
 
         return new List<FaqDto>
