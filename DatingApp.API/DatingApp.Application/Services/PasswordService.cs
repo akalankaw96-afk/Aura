@@ -154,8 +154,7 @@ public class PasswordService : IPasswordService
         const string text = "Your Vikasitha password was just changed and other devices were signed out. " +
                             "If this wasn't you, reset your password now and contact support.";
 
-        var hasRealEmail = !user.Email.StartsWith("phone_", StringComparison.Ordinal);
-        if (hasRealEmail) return _email.SendAsync(user.Email, "Your password was changed", text, ct);
+        if (!string.IsNullOrEmpty(user.Email)) return _email.SendAsync(user.Email, "Your password was changed", text, ct);
         return string.IsNullOrEmpty(user.PhoneNumber) ? Task.CompletedTask : _sms.SendAsync(user.PhoneNumber, text, ct);
     }
 }

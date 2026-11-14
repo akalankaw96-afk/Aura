@@ -1,4 +1,5 @@
 import { MatchRequest, Profile, ProfileKycDetails, SuccessStory, PricingPlan, FaqItem } from '../types';
+import { resolvePhoto } from '../content/avatars';
 
 import {
   API_BASE_URL,
@@ -21,6 +22,11 @@ async function problemMessage(res: Response, fallback: string): Promise<string> 
   return body.title || body.message || fallback;
 }
 
+/** The API stores avatars as "avatar:<id>"; screens get an image they can show. */
+function withPhoto<T extends { photoUrl?: string | null }>(item: T): T {
+  return item && item.photoUrl ? { ...item, photoUrl: resolvePhoto(item.photoUrl) } : item;
+}
+
 function readStoredSession(): AuthSession | null {
   if (typeof window === 'undefined') return null;
   try {
@@ -38,6 +44,7 @@ function readStoredSession(): AuthSession | null {
  */
 function storeSession(session: AuthSession): void {
   if (typeof window === 'undefined') return;
+  session = withPhoto(session);
   if (session.token) setAccessToken(session.token);
   localStorage.setItem(SESSION_KEY, JSON.stringify({ ...session, token: '' }));
   localStorage.removeItem('aura_token'); // older builds kept the token here
@@ -108,9 +115,21 @@ export interface AuthSession {
   photoUrl?: string;
 }
 
+/** Result of POST /auth/register. Mobile sign-ups must confirm the SMS code before they are signed in. */
+export interface RegisterResult {
+  phoneVerificationRequired: boolean;
+  userId: string;
+  phoneNumber: string;
+  session?: AuthSession;
+}
+
 export interface CreateProfilePayload {
   fullName: string;
+  /** saved to the account when given */
+  email?: string;
   gender: 'female' | 'male';
+  /** yyyy-mm-dd — the API works out the age */
+  dateOfBirth: string;
   age: number;
   height: string;
   profession: string;
@@ -124,6 +143,7 @@ export interface CreateProfilePayload {
   bio: string;
   aboutFamily: string;
   horoscopeAvailable: boolean;
+  /** "" | "avatar:<id>" | https URL — never image data */
   photoUrl: string;
   interests: string[];
   details?: ProfileKycDetails;
@@ -134,7 +154,9 @@ export const apiService = {
   async getHomeContent(): Promise<HomeContentResponse | null> {
     try {
       const res = await apiRequest('/content/home', { cache: 'no-store', auth: false });
-      return res.ok ? await res.json() : null;
+      if (!res.ok) return null;
+      const home: HomeContentResponse = await res.json();
+      return { ...home, featuredProfiles: (home.featuredProfiles ?? []).map(withPhoto) };
     } catch {
       return null;
     }
@@ -174,7 +196,7 @@ export const apiService = {
       throw new ApiError(NETWORK_ERROR, 0);
     }
     if (!res.ok) throw await toApiError(res, 'We couldn’t load profiles. Please try again.');
-    return res.json();
+    return ((await res.json()) as Profile[]).map(withPhoto);
   },
 
   // One member's profile. Null when it doesn't exist; throws ApiError when the API fails.
@@ -187,7 +209,7 @@ export const apiService = {
     }
     if (res.status === 404 || res.status === 400) return null;
     if (!res.ok) throw await toApiError(res, 'We couldn’t load this profile. Please try again.');
-    return res.json();
+    return withPhoto((await res.json()) as Profile);
   },
 
   // The signed-in member's own profile (null when not created yet or not signed in).
@@ -195,7 +217,7 @@ export const apiService = {
     if (!hasStoredSession()) return null;
     try {
       const res = await authFetch('/profiles/me');
-      return res.ok ? await res.json() : null;
+      return res.ok ? withPhoto((await res.json()) as Profile) : null;
     } catch {
       return null;
     }
@@ -227,23 +249,28 @@ export const apiService = {
     phoneNumber?: string;
     profileFor?: string;
     gender?: string;
-  }): Promise<AuthSession> {
+  }): Promise<RegisterResult> {
     let res: Response;
     try {
       res = await apiRequest('/auth/register', {
         auth: false,
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        credentials: 'include', // receives the httpOnly refresh cookie
+        credentials: 'include', // e-mail sign-up receives the httpOnly refresh cookie
         body: JSON.stringify(data),
       });
     } catch {
       throw new ApiError(NETWORK_ERROR, 0);
     }
     if (!res.ok) throw await toApiError(res, 'Registration failed. Please try again.');
+    // 201: mobile sign-up — no session until the SMS code is confirmed (POST /auth/verify-otp)
+    if (res.status === 201) {
+      const pending: { userId: string; phoneNumber: string } = await res.json();
+      return { phoneVerificationRequired: true, userId: pending.userId, phoneNumber: pending.phoneNumber };
+    }
     const json: AuthSession = await res.json();
     storeSession(json);
-    return json;
+    return { phoneVerificationRequired: false, userId: json.userId, phoneNumber: json.phoneNumber ?? '', session: json };
   },
 
   // Authentication: Login with Email or Mobile
@@ -353,7 +380,7 @@ export const apiService = {
     });
     if (!res.ok) throw await toApiError(res, 'We couldn’t save your profile. Please try again.');
 
-    const savedProfile: Profile = await res.json();
+    const savedProfile: Profile = withPhoto((await res.json()) as Profile);
     const current = readStoredSession();
     if (current) {
       storeSession({ ...current, hasCompletedProfile: true, profileId: savedProfile.id, fullName: savedProfile.name, token: '' });

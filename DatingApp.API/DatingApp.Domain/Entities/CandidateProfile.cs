@@ -11,7 +11,10 @@ public class CandidateProfile : BaseEntity
     public string Code { get; set; } = string.Empty; // e.g. LK-9021
     public string FullName { get; set; } = string.Empty;
     public Gender Gender { get; set; }
+    /// <summary>Kept for search; worked out from <see cref="DateOfBirth"/> whenever the profile is saved or read.</summary>
     public int Age { get; set; }
+    /// <summary>Real birth date (checked against the ID at review). Null only for profiles saved before 2026-11-14.</summary>
+    public DateOnly? DateOfBirth { get; set; }
     public string Height { get; set; } = string.Empty;
     
     public string Profession { get; set; } = string.Empty;

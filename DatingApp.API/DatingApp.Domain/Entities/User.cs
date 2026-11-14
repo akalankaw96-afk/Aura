@@ -4,7 +4,8 @@ namespace DatingApp.Domain.Entities;
 
 public class User : BaseEntity
 {
-    public string Email { get; set; } = string.Empty;
+    /// <summary>Lower-case e-mail, or null for members who signed up with a mobile number only.</summary>
+    public string? Email { get; set; }
     public string PasswordHash { get; set; } = string.Empty;
     public string FullName { get; set; } = string.Empty;
 

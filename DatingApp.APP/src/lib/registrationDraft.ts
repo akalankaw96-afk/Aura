@@ -22,6 +22,12 @@ export interface RegistrationDraft {
   /** true = WhatsApp is the same as the verified mobile number */
   whatsappSameAsMobile: boolean;
   height: string;
+  /** free text, e.g. "Software engineer" */
+  profession: string;
+  /** one of PROFESSION_CATEGORIES (API enum) */
+  professionCategory: string;
+  /** highest education, e.g. "Bachelor's degree" */
+  education: string;
   /** yyyy-mm-dd, built from the Year / Month / Day selects */
   dob: string;
   gender: string;
@@ -55,6 +61,9 @@ export const emptyDraft: RegistrationDraft = {
   whatsappCountry: "lk",
   whatsappSameAsMobile: true,
   height: "",
+  profession: "",
+  professionCategory: "",
+  education: "",
   dob: "",
   gender: "",
   civilStatus: "",

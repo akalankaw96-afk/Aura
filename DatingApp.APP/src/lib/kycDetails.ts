@@ -36,6 +36,9 @@ export function profileDetailsFromKyc(draft: RegistrationDraft): ProfileKycDetai
     zodiacSign: draft.zodiacSign,
     monthlySalaryRange: draft.monthlySalaryRange,
     weightKg: draft.weightKg,
+    profileFor: draft.profileFor,
+    // private: kept for the contact share in chat, never shown on the public profile
+    whatsApp: draft.whatsappSameAsMobile ? draft.mobile : draft.whatsapp,
   };
 }
 

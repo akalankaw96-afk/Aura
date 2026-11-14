@@ -7,6 +7,10 @@ export interface ProfileKycDetails {
   zodiacSign?: string | null;
   monthlySalaryRange?: string | null;
   weightKg?: string | null;
+  /** Myself / Son / Daughter … (sign-up step 1) */
+  profileFor?: string | null;
+  /** private — only returned in the member's own profile */
+  whatsApp?: string | null;
 }
 
 export interface Profile {
@@ -15,6 +19,8 @@ export interface Profile {
   name: string;
   gender: 'female' | 'male';
   age: number;
+  /** "yyyy-MM-dd" — only in the member's own profile */
+  dateOfBirth?: string | null;
   height: string;
   profession: string;
   professionCategory: 'Doctor' | 'Engineer' | 'IT' | 'Finance' | 'Legal' | 'Business' | 'Other';

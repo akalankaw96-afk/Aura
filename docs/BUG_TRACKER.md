@@ -33,9 +33,10 @@ Baseline: 22 issues found during the analysis on 2026-11-11 (5 critical · 6 hig
 | BUG-017 | Medium | Web · Auth | JWT stored in localStorage (readable by any XSS) | Fixed (awaiting verification) | 01 |
 | BUG-018 | Low | API · Auth | PBKDF2 with 10,000 iterations (below current guidance) | Fixed (awaiting verification) | 01 |
 | BUG-019 | Low | Web · UI | ~380 classes from non-existent palettes + 8 opacity modifiers render unstyled | Open | 05 |
-| BUG-020 | Low | Web · Tooling | `npm run lint` unusable — no ESLint config | Open | 01 |
+| BUG-020 | Low | Web · Tooling | `npm run lint` unusable — no ESLint config | Fixed (awaiting verification) | 01 |
 | BUG-021 | Low | Web · Errors | `fetch` without timeout; ~31 empty `catch {}`; ~31 stray `console` calls | Open | 05 |
-| BUG-022 | Low | Docs | Root `README.md` status section is out of date | Open | 01 |
+| BUG-022 | Low | Docs | Root `README.md` status section is out of date | Fixed (awaiting verification) | 01 |
+| BUG-023 | High | API · Data | Registration saved made-up data: fake `phone_…@auramatrimony.lk` e-mails, account name stuck at "New member", unverified sign-ups could log in and blocked the number, profession / education / height / religion defaults, age instead of birth date, SVG avatars stored in `PhotoUrl`, 9,000-value random profile codes, untrimmed text | Fixed (awaiting verification) | 01 |
 
 **2026-11-13 — branch `S01-api-auth`:** fixes for BUG-001/002/003/006/007/008/013/015/018 are in the code
 (see `CHANGELOG.md`). They move to **Verified** once `dotnet build`, the `InitialCreate` migration and the auth

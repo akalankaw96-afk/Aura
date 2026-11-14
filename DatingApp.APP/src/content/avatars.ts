@@ -124,3 +124,23 @@ export function avatarSvg(a: AvatarSpec): string {
 export const avatarDataUri = (a: AvatarSpec) => `data:image/svg+xml;charset=utf-8,${encodeURIComponent(avatarSvg(a))}`;
 
 export const isIllustration = (src: string | null | undefined) => !!src && src.startsWith("data:image/svg+xml");
+
+/** What the API stores for an avatar: "avatar:<id>" — never the image itself (2026-11-14). */
+export function avatarRef(src: string | null | undefined): string {
+  if (!src) return "";
+  if (src.startsWith("avatar:")) return src;
+  if (isIllustration(src)) {
+    const match = AVATARS.find((a) => avatarDataUri(a) === src);
+    return match ? `avatar:${match.id}` : "";
+  }
+  // Uploaded photos stay in the browser until the photo upload API exists (Sprint 02) — never image data in the database.
+  return src.startsWith("data:") || src.startsWith("blob:") ? "" : src;
+}
+
+/** Turns a stored "avatar:<id>" back into an image the browser can show; other URLs pass through. */
+export function resolvePhoto(src: string | null | undefined): string {
+  if (!src) return "";
+  if (!src.startsWith("avatar:")) return src;
+  const match = AVATARS.find((a) => a.id === src.slice("avatar:".length));
+  return match ? avatarDataUri(match) : "";
+}

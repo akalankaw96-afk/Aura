@@ -5,6 +5,25 @@ Sections: Added · Changed · Fixed · Security · Removed · Breaking.
 
 ## [Unreleased]
 
+### Fixed
+- 2026-11-14 — **Registration data (BUG-023), owner report.** API: mobile-only accounts store no e-mail (`Users.Email`
+  nullable) instead of `phone_…@auramatrimony.lk`; `POST /auth/register` with a mobile number returns **201 without a
+  session** — sign-in happens at `verify-otp`; login refuses unverified numbers (`403 PHONE_NOT_VERIFIED`); an unconfirmed
+  sign-up no longer blocks the number (re-registering takes it over). `POST /profiles` validates and trims input, needs a
+  birth date (18–80) and stores `DateOfBirth` (age worked out from it, also in search filters), copies the name and
+  optional e-mail to the account (409 if the e-mail is taken), refuses image data in `photoUrl` (avatars are
+  `avatar:<id>`), keeps WhatsApp / profile-for in the details (WhatsApp and birth date owner-only), and makes profile
+  codes `LK-######` checked against the database. Startup repair cleans existing rows (see DATABASE_GUIDELINES).
+  Web: sign-up step 3 asks for profession, field of work and highest education; the profile is sent exactly as entered
+  (no "Professional", "Bachelor's Degree", "5' 8\"", age 28, Buddhist / Sinhalese defaults); avatars resolve from
+  `avatar:<id>` (`content/avatars.ts`, `services/api.ts`); uploaded photos stay in the browser until the photo API
+  (Sprint 02). Files: `Domain/Entities/{User,CandidateProfile}.cs`, `Application/Services/{AuthService,ProfileService,
+  SessionService,PasswordService}.cs`, `Application/DTOs/{AuthDtos,ProfileDtos}.cs`, `Application/Common/Exceptions/AppException.cs`,
+  `Infrastructure/Persistence/{ApplicationDbContext,ApplicationDbContextInitialiser,Configurations/AuthConfigurations}.cs`,
+  `Infrastructure/Services/JwtTokenGenerator.cs`, `WebApi/Controllers/AuthController.cs`, `DatingApp.Tests/{RegistrationTests,
+  ProfileServiceTests}.cs`; web `components/auth/RegisterFlow.tsx`, `lib/registrationDraft.ts`, `lib/kycDetails.ts`,
+  `content/avatars.ts`, `services/api.ts`, `types/index.ts`. **Needs a migration** (`RegistrationDataFix`).
+
 ### Security
 - 2026-11-14 — **Sprint 01 completion (S01-T05/06/08/09/11/12/14/15).**
   - Chat (BUG-004/005, TD-03): `ChatController` and `ChatHub` require login; the member comes from the JWT (WebSocket

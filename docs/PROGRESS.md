@@ -107,6 +107,7 @@ Blockers: none. Files: see CHANGELOG 2026-11-13.
   popup, promote card placement, styling) and keep this branch wherever main brought back demo data (sample stories, fake
   "100+ couples", sample requests / conversations, hard-coded phone, Demo tips, staff links, client-side plan/KYC switching).
   Retired demo files that main had edited are back to empty stubs (TD-01).
+- 2026-11-14 registration data fix (BUG-023): owner must run `dotnet ef migrations add RegistrationDataFix -p DatingApp.Infrastructure -s DatingApp.WebApi` before starting the API.
 - Not verified here: C# was reviewed by hand only (no .NET in the assistant's workspace); web passes `tsc`.
 
 Template for an unfinished task:
