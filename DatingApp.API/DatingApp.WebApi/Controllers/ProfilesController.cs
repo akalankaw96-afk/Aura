@@ -17,6 +17,14 @@ public class ProfilesController : BaseApiController
         _review = review;
     }
 
+    /// <summary>Update the "about me" text (≥ 50 characters, no phone numbers / e-mails / links).</summary>
+    [Authorize]
+    [HttpPatch("me/about")]
+    [ProducesResponseType(typeof(ProfileDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> UpdateAbout([FromBody] UpdateAboutDto dto, CancellationToken ct) =>
+        Ok(await _profileService.UpdateAboutAsync(RequireUserId(), dto.Bio, ct));
+
     /// <summary>Review status of the caller's profile: status, flagged fields, what is still missing (S02-T02).</summary>
     [Authorize]
     [HttpGet("me/status")]

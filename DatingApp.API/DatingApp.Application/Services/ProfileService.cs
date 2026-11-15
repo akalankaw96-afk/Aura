@@ -17,6 +17,8 @@ public interface IProfileService
     Task<ProfileDto?> GetProfileByIdAsync(Guid id, CancellationToken ct = default, bool includeMemberDetails = false);
     Task<ProfileDto?> GetProfileByUserIdAsync(Guid userId, CancellationToken ct = default);
     Task<ProfileDto> CreateOrUpdateProfileAsync(Guid userId, CreateProfileDto dto, CancellationToken ct = default);
+    /// <summary>Change only the "about me" text (approved members — everything else is checked and locked).</summary>
+    Task<ProfileDto> UpdateAboutAsync(Guid userId, string bio, CancellationToken ct = default);
 }
 
 public class ProfileService : IProfileService
@@ -201,7 +203,31 @@ public class ProfileService : IProfileService
         return MapToDto(profile, includeMemberDetails: true, owner: true);
     }
 
+    public async Task<ProfileDto> UpdateAboutAsync(Guid userId, string bio, CancellationToken ct = default)
+    {
+        var profile = await _context.CandidateProfiles.FirstOrDefaultAsync(p => p.UserId == userId, ct)
+            ?? throw AppException.Forbidden("Save your profile details first.", ErrorCodes.ProfileRequired);
+        if (profile.Status == ProfileStatus.Suspended) throw AppException.Forbidden("This profile is suspended.");
+
+        var text = (bio ?? string.Empty).Trim();
+        if (text.Length < 50) throw AppException.Validation("Write at least 50 characters.", "bio");
+        if (text.Length > MaxAbout) throw AppException.Validation($"Keep it under {MaxAbout} characters.", "bio");
+        if (ContactDetails.IsMatch(text))
+            throw AppException.Validation("Phone numbers, emails and links can't be added to your description.", "bio");
+
+        profile.Bio = text;
+        profile.UpdatedAt = DateTime.UtcNow;
+        await _context.SaveChangesAsync(ct);
+        return (await GetProfileByUserIdAsync(userId, ct))!;
+    }
+
     // ---- helpers ----
+
+    private const int MaxAbout = 500;
+    /// <summary>Phone numbers (7+ digits), e-mail addresses and links — not allowed in the public description.</summary>
+    private static readonly Regex ContactDetails = new(
+        @"(\+?\d[\d\s-]{6,}\d)|([\w.+-]+@[\w-]+\.[\w.]+)|(https?://|www\.)",
+        RegexOptions.IgnoreCase | RegexOptions.Compiled, TimeSpan.FromMilliseconds(200));
 
     private const int MinAge = 18;
     private const int MaxAge = 80;

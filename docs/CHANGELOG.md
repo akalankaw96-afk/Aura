@@ -6,6 +6,12 @@ Sections: Added · Changed · Fixed · Security · Removed · Breaking.
 ## [Unreleased]
 
 ### Changed
+- 2026-11-14 — **Edit profile on the API (S02-T10 done).** About text saves with `PATCH /api/profiles/me/about` (new
+  endpoint: 50–500 characters, phone numbers / e-mails / links refused on the server too); the Photos tab uploads,
+  replaces, removes and sets the main photo through `/api/photos` immediately, shows "In review" / rejected reasons,
+  and new photos appear in the staff New photos queue. The old `vk-profile` localStorage copy is gone.
+  Files: `components/sections/dashboard/EditProfileModal.tsx`, `lib/media.ts`, API `ProfileService.UpdateAboutAsync`,
+  `ProfilesController`, `UpdateAboutDto`, test in `ProfileServiceTests`.
 - 2026-11-14 — **Staff back office at `/admin` (S02-T11).** Replaces the placeholder: review queue, profile review with
   photos (approve / reject with reason), ID documents (in-page preview or new tab; every view logged by the API),
   details and history, and the decision panel (approve, request changes per field with reasons, suspend / reinstate).

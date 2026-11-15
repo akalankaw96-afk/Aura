@@ -47,6 +47,12 @@ public class ProfileDetailsDto
     public string? WhatsApp { get; set; }
 }
 
+/// <summary>PATCH /profiles/me/about — the description is the one field approved members change themselves.</summary>
+public class UpdateAboutDto
+{
+    public string Bio { get; set; } = string.Empty;
+}
+
 public class ProfileFilterDto
 {
     public string? Gender { get; set; }

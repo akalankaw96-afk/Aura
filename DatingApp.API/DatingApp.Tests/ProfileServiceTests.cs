@@ -120,4 +120,20 @@ public class ProfileServiceTests
 
         Assert.Equal(409, ex.Status);
     }
+
+    [Fact]
+    public async Task About_text_refuses_contact_details_and_short_text()
+    {
+        using var db = TestDb.Create();
+        var user = await NewAccountAsync(db);
+        var service = new ProfileService(db);
+        await service.CreateOrUpdateProfileAsync(user.Id, Valid());
+
+        await Assert.ThrowsAsync<AppException>(() => service.UpdateAboutAsync(user.Id, "Too short"));
+        await Assert.ThrowsAsync<AppException>(() =>
+            service.UpdateAboutAsync(user.Id, "I love music and travel with my family. Call me on 077 123 4567 any time please."));
+
+        var ok = await service.UpdateAboutAsync(user.Id, "  I love music, travelling with my family and cooking Sri Lankan food on weekends.  ");
+        Assert.Equal("I love music, travelling with my family and cooking Sri Lankan food on weekends.", ok.Bio);
+    }
 }

@@ -162,3 +162,9 @@ export function useApiImage(src: string | null | undefined): string | null {
 
   return url;
 }
+
+// ---- edit profile (approved members) ----
+
+/** PATCH /api/profiles/me/about — the description; the API refuses phone numbers, e-mails and links. */
+export const updateAbout = (bio: string) =>
+  apiJson<unknown>("/profiles/me/about", { method: "PATCH", json: { bio }, fallbackError: "We couldn’t save your description." });

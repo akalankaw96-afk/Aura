@@ -7,8 +7,8 @@ Suggested length: 1–2 weeks each; adjust here when scope changes (and note why
 | Sprint | Goal | Status |
 |---|---|---|
 | 01 | Foundation & critical security | **Completed** 2026-11-14 |
-| **02** | Join & get approved (profile, photos, KYC, moderator queue) | **Approved** 2026-11-14 — branch `S02-kyc` |
-| 03 | Match & talk (search, views, interests, chat, dashboard summary) | Planned |
+| 02 | Join & get approved (profile, photos, KYC, moderator queue) | **Completed** 2026-11-14 |
+| **03** | Match & talk (search, views, interests, chat, dashboard summary) | **Approved** 2026-11-14 — branch `S03-match` |
 | 04 | Earn (plans, payments, subscriptions, boosts, admin) | Planned |
 | 05 | Cleanup & front-end debt | Planned |
 | 06 | Quality: test coverage, E2E, performance, accessibility, launch prep | Planned |
@@ -61,11 +61,24 @@ from user-secrets; branch `S02-kyc`. **Risk:** ID documents are sensitive — pr
 | S02-T13 | Tests (status rules, file checks, access to documents, queue) + docs | TD-13 | `dotnet test` green; docs updated |
 
 ## Sprint 03 — Match & talk (S, M/C, D, W)
-Includes **contact sharing API**: request (Gold only), accept, decline, cancel; phone numbers returned only to the two
-members after acceptance; hidden again on block (front end done 2026-11-11, `ContactShare.tsx`).
-Paged server search with filters/sort and indexes (BUG-016); metered profile views/searches/interests/chats via
-`UsageCounter` (BUG-011 part); shortlist, recently viewed, saved searches; interests lifecycle wired; conversations +
-messages on the secured hub; block/report persisted; dashboard summary endpoint; remove mock fallbacks (BUG-014); TD-17.
+**Goal:** approved members find each other, send interests and chat — with the free-plan limits enforced by the server
+(and changeable by the admin), not by the browser.
+**Dependencies:** Sprint 02 (only approved profiles are visible). **Decisions (owner, 2026-11-14):** starting Free limits per month — 3 searches, 5 profile views, 3 interests, 2 new chats (Gold / Platinum unlimited), all changeable by the admin; branch `S03-match`. **Risk:** limits touch search, profile views,
+interests and chat at once — one shared usage service, tested.
+
+| ID | Task | Fixes | Acceptance criteria |
+|---|---|---|---|
+| S03-T01 | Paged server search: filters (gender, age, religion, district, profession, height…), sort, paging, indexes; hide self, blocked and suspended | BUG-016 | 20 per page; filters run in SQL; response has total count |
+| S03-T02 | Plan limits set by the admin (`PlanLimit`: searches / profile views / interests / new chats per month per plan) + admin screen | owner decision 2026-11-14 | Admin changes a number → applies at once; defaults seeded |
+| S03-T03 | `UsageCounter` service: counts per member per month; 402 `LIMIT_REACHED` with limit + reset date; `GET /me/usage` | BUG-011 (part) | Web counters come from the API; localStorage counters removed |
+| S03-T04 | Profile views: record a view, "who viewed me" (paid), recently viewed | — | Viewing your own profile isn't counted; paid gate on the server |
+| S03-T05 | Interests lifecycle: send (limited), withdraw, accept / decline, list sent / received / matched; notifications | BUG-014 (part) | Friends screen fully on the API |
+| S03-T06 | Shortlist (favourites) and saved searches on the API | — | Survive reload / other device; no localStorage |
+| S03-T07 | Chat: plan limit on starting conversations, contact share decline / cancel on the hub, block / report persisted | TD-20, TD-24 | Blocked members can't message; reports reach the staff area |
+| S03-T08 | Staff: reports queue (view, dismiss, suspend) | — | Moderator handles a report end-to-end |
+| S03-T09 | Dashboard summary endpoint (counts: interests, views, matches, unread messages, usage) | — | Dashboard stats from one call |
+| S03-T10 | Web wiring: Search, profile page, Friends, Messages, Dashboard on these APIs; remove remaining mock fallbacks | BUG-014 | No sample data or browser-only state for these features |
+| S03-T11 | Tests (search filters, limits, interests, block) + docs | TD-13 | `dotnet test` green; docs updated |
 
 ## Sprint 04 — Earn (B/U/X, AD)
 Plans from DB with money in cents (TD-11); hosted payment gateway checkout + webhook (idempotent); subscriptions and
