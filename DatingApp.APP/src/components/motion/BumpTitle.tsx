@@ -7,6 +7,7 @@ import { cn } from "@/lib/cn";
  *  - trigger="reveal" (default): plays when the title scrolls into view (RevealObserver)
  *  - trigger="load": plays as soon as the page loader finishes (hero)
  * Plain strings are split into words; any other children animate as one block.
+ * A "\n" in a string (or a <br />) starts a new line — use it to control where a title breaks.
  * Respects prefers-reduced-motion (globals.css).
  */
 export function BumpTitle({
@@ -44,8 +45,11 @@ export function BumpTitle({
         .split(/(\s+)/)
         .forEach((w, wi) => {
           if (!w) return;
-          parts.push(/^\s+$/.test(w) ? " " : word(w, `${ci}-${wi}`));
+          if (/^\s+$/.test(w)) parts.push(w.includes("\n") ? <br key={`${ci}-${wi}`} /> : " ");
+          else parts.push(word(w, `${ci}-${wi}`));
         });
+    } else if (React.isValidElement(child) && child.type === "br") {
+      parts.push(child);
     } else if (child != null && child !== false) {
       parts.push(word(child, `${ci}`));
     }

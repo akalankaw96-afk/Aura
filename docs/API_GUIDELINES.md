@@ -72,3 +72,21 @@ One global exception handler produces these (TD-12). Never leak stack traces or 
 1. Spec row exists (or add it to the spec doc). 2. DTOs + validator. 3. Service method with business rules + tests.
 4. Thin controller action with `[Authorize]`/roles and `ProducesResponseType`. 5. ProblemDetails codes from §4.
 6. Web client function in `src/services/` using the typed fetch helper (TD-04). 7. Update §1 table + `CHANGELOG.md`.
+
+## Planned: bank transfer payments (front end ready 2026-11-15)
+- `POST /api/payments/bank-transfer` — multipart: `plan` (gold|platinum), `months` (1|3|6), `amount` (LKR, server
+  must recompute from its own price list), `reference`, `paidOn` (yyyy-mm-dd), `note?`, `receipt` (JPG/PNG/WEBP/PDF
+  ≤ 10 MB). Returns `{ id, status: "Pending" }`. Store receipts privately (same rules as ID documents, TD-26).
+- `GET /api/payments/mine` — latest request + status (Pending / Approved / Rejected + reason), so the Payment page
+  and dashboard can show it across devices (replaces localStorage `vk-payment-pending`).
+- Staff: list pending receipts, approve (activates the plan, sets start/expiry, SMS) or reject with a reason.
+
+## Planned: account visibility and deletion (front end ready 2026-11-15)
+- `POST /api/account/visibility` `{ hidden: boolean, reason? }` → 204. Hidden profiles drop out of search and Best
+  matches; friends, chats and plan stay. Return the flag in the session/profile so every device agrees.
+- `POST /api/account/delete/send-code` `{}` → `{ resendAvailableInSeconds }`. SMS to the verified mobile; same limits as
+  login codes (6 digits, 60 s resend, 5 attempts, expiry).
+- `POST /api/account/delete` `{ code, reason, comment? }` → 204, or 400 ProblemDetails `{ code: CODE_INVALID |
+  CODE_EXPIRED | TOO_MANY_ATTEMPTS, attemptsLeft }`. On success: hide the profile at once, end all sessions (clear
+  the refresh cookie), schedule erasure of profile, photos, chats, ID documents within 30 days (keep legally required
+  payment records), and store the reason/comment anonymously for reporting.

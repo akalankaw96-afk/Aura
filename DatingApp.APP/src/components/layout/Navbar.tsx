@@ -28,6 +28,7 @@ import { useLanguage } from "@/context/LanguageContext";
 import { MESSAGES, REQUESTS } from "@/content/dashboard";
 import { useKyc } from "@/lib/verification";
 import { openFeedback } from "@/lib/feedback";
+import { openAccountSettings } from "@/components/account/AccountSettingsDialog";
 import { apiService, type AuthSession } from "@/services/api";
 
 /**
@@ -266,6 +267,17 @@ export function Navbar({ variant = "light" }: { variant?: NavbarVariant }) {
                   type="button"
                   onClick={() => {
                     setOpen(false);
+                    openAccountSettings();
+                  }}
+                  className="flex items-center gap-2 rounded-md px-3 py-3 text-left text-label-lg text-ink hover:bg-brand-subtle"
+                >
+                  <Setting2 size={20} color="currentColor" className="text-icon-brand" />
+                  {lang === "si" ? "ගිණුම් සැකසුම්" : "Account settings"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setOpen(false);
                     handleLogout();
                   }}
                   className="flex h-12 items-center justify-center rounded-full bg-error-bg text-button-md text-error-fg"
@@ -416,6 +428,20 @@ function AccountMenu({ session, onLogout }: { session: AuthSession | null; onLog
             >
               <MessageText1 size={18} color="currentColor" className="text-icon-brand" />
               <span>{lang === "si" ? "අදහස් බෙදාගන්න" : "Share feedback"}</span>
+            </button>
+          </li>
+          <li role="none">
+            <button
+              type="button"
+              role="menuitem"
+              onClick={() => {
+                setOpen(false);
+                openAccountSettings();
+              }}
+              className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-body-sm text-ink hover:bg-brand-subtle focus-visible:shadow-ring-brand"
+            >
+              <Setting2 size={18} color="currentColor" className="text-icon-brand" />
+              <span>{lang === "si" ? "ගිණුම් සැකසුම්" : "Account settings"}</span>
             </button>
           </li>
           {/* staff only — the role comes from the server session; /admin and its API check it again */}

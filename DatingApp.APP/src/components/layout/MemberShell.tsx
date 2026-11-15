@@ -10,12 +10,14 @@ import { KycGuard } from "@/components/auth/KycGuard";
  * Signed-in page frame — Figma: Requests / Messages — Desktop 1440.
  * Member navbar, page gradient + heart lines, Body padding 32/80/96 with gap 24,
  * page header (breadcrumb, H2, subtitle, optional right slot), then the footer.
+ * `rightPlacement="below"` puts the slot (e.g. tabs) under the subtitle, left-aligned with the page content box.
  */
 export function MemberShell({
   title,
   subtitle,
   crumb,
   right,
+  rightPlacement = "end",
   publicPage = false,
   back = publicPage ? "/" : "/dashboard",
   children,
@@ -24,6 +26,8 @@ export function MemberShell({
   subtitle?: string;
   crumb: string;
   right?: React.ReactNode;
+  /** "end" (default): slot at the right of the header · "below": under the subtitle, aligned with the content box */
+  rightPlacement?: "end" | "below";
   /** Public help pages share the layout and remain accessible during KYC. */
   publicPage?: boolean;
   /** Where the Back Button goes when there is no history (default /dashboard) */
@@ -51,8 +55,10 @@ export function MemberShell({
             <BackButton fallback={back} />
             <h1 className="text-h3 text-ink md:text-h2">{title}</h1>
             {subtitle && <p className="col-start-2 text-body-md text-ink-secondary">{subtitle}</p>}
+            {/* full width, so the tabs line up with the left edge of the content box below */}
+            {right && rightPlacement === "below" && <div className="col-span-2 mt-3 min-w-0">{right}</div>}
           </div>
-          {right}
+          {rightPlacement === "end" && right}
         </div>
         {children}
       </main>

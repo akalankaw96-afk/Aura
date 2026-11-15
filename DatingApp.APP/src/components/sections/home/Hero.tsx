@@ -46,8 +46,12 @@ export function Hero() {
             stagger={90}
             className={cn(
               "max-w-[960px] font-extrabold leading-[1.2] tracking-[-0.02em]",
-              // Sinhala letters are visually larger — 8px smaller than English at every breakpoint (28 / 40 / 52)
-              lang === "si" ? "text-[28px]/[1.2] md:text-[40px]/[1.2] lg:text-[52px]/[1.2]" : "text-[36px] md:text-display-lg lg:text-display-xl",
+              // Sinhala letters are visually larger, so the title is smaller than English. From tablet up it breaks
+              // into exactly two lines (the "\n" in the translation); sizes keep each line on one row (34 / 44 / 52).
+              // Phones wrap naturally, balanced.
+              lang === "si"
+                ? "text-balance text-[28px]/[1.25] md:max-w-none md:whitespace-nowrap md:text-[34px]/[1.25] lg:text-[44px]/[1.2] xl:text-[52px]/[1.2]"
+                : "text-[36px] md:text-display-lg lg:text-display-xl",
             )}
           >
             {t.hero.title}

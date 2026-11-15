@@ -16,10 +16,11 @@ const DETAIL_KEYS = [
 type KycDetails = Pick<RegistrationDraft, typeof DETAIL_KEYS[number]>;
 type Identity = Pick<AuthSession, "userId" | "profileId" | "phoneNumber" | "email">;
 
-export function profileDetailsFromKyc(draft: RegistrationDraft): ProfileKycDetails {
-  const first = draft.firstName.trim();
-  const last = draft.lastName.trim();
-  const initial = (name: string) => name ? `${Array.from(name)[0]}.` : "";
+/** The name other members see, for a "Display name format" choice (also used for the live preview). */
+export function displayNameFor(format: string, firstName: string, lastName: string): string {
+  const first = firstName.trim();
+  const last = lastName.trim();
+  const initial = (name: string) => (name ? `${Array.from(name)[0]}.` : "");
   const displayNames: Record<string, string> = {
     "First name only": first,
     "Last name only": last,
@@ -27,8 +28,12 @@ export function profileDetailsFromKyc(draft: RegistrationDraft): ProfileKycDetai
     "First name and first letter of last name": [first, initial(last)].filter(Boolean).join(" "),
     "First letter of first name and full last name": [initial(first), last].filter(Boolean).join(" "),
   };
+  return displayNames[format] || first || last;
+}
+
+export function profileDetailsFromKyc(draft: RegistrationDraft): ProfileKycDetails {
   return {
-    displayName: displayNames[draft.displayNameFormat] || first || last,
+    displayName: displayNameFor(draft.displayNameFormat, draft.firstName, draft.lastName),
     createdBy: draft.createdBy,
     civilStatus: draft.civilStatus,
     district: draft.district,
@@ -38,7 +43,7 @@ export function profileDetailsFromKyc(draft: RegistrationDraft): ProfileKycDetai
     weightKg: draft.weightKg,
     profileFor: draft.profileFor,
     // private: kept for the contact share in chat, never shown on the public profile
-    whatsApp: draft.whatsappSameAsMobile ? draft.mobile : draft.whatsapp,
+    whatsApp: draft.whatsapp.trim(),
   };
 }
 

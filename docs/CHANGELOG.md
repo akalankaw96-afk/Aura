@@ -6,6 +6,28 @@ Sections: Added · Changed · Fixed · Security · Removed · Breaking.
 ## [Unreleased]
 
 ### Changed
+- 2026-11-16 — **KYC profile step tidy-up.** WhatsApp is now a normal optional field the member types (removed the
+  "Same as my mobile" checkbox and the "Shared only with members you accept." helper; the saved WhatsApp is exactly
+  what was typed). **Display name format** shows a live preview under the select ("Members will see Sanjeewa S.")
+  that updates with the name and format; uses the new shared `displayNameFor()` so the preview matches what is
+  saved. Removed the "Save & finish later" text button (the draft already saves as you type). Files:
+  `auth/RegisterFlow.tsx`, `lib/kycDetails.ts`, `lib/registrationDraft.ts`.
+- 2026-11-15 — **Free plan usage card is collapsed by default** (user feedback: it took too much space). One row
+  shows the Free plan badge, "This month’s usage", a small pill per allowance (Profile views 5/5 · Searches 0/3,
+  red with a lock when used up), Upgrade and a Details toggle; Details opens the reset date, limit alert, meters
+  and Gold benefits with a height animation. The choice is remembered (`vk-usage-card-open`), same pattern as the
+  Gold / Platinum card. Desktop height closed ≈ 74 px (was ≈ 360 px). `dashboard/PlanUsageCard.tsx`.
+- 2026-11-15 — **Friends page tabs** (Friends · Favourites · Received · Sent) moved from the right of the header to
+  under the subtitle, left-aligned with the content box below (same left edge as the list card). New `MemberShell` prop
+  `rightPlacement="below"`. Files: `layout/MemberShell.tsx`, `member/RequestsScreen.tsx`.
+- 2026-11-15 — **Home sign-up form → register page.** "Ready to meet your life partner?" form now uses the shared
+  `PhoneField` (flag + country code picker, digits only; only +94 can be verified by SMS for now, with a clear
+  message). The register page fills in the mobile number from that form and shows the first name, last name,
+  email and mobile at the top of step 1 ("We’ve saved these for your profile"); name and email are already
+  filled in on the Profile step. Files: `home/SignUp.tsx`, `auth/RegisterFlow.tsx`.
+- 2026-11-15 — **Sinhala hero title on two lines** (ඔබේ මුළු පවුලටම විශ්වාස කළ හැකි / ජීවිත සහකරුවෙකු සොයා ගන්න)
+  from tablet up; sizes 34 / 44 / 52 px so each line fits, phones wrap balanced. `BumpTitle` now keeps a "\n"
+  (or `<br />`) as a line break. Files: `content/translations.ts`, `home/Hero.tsx`, `motion/BumpTitle.tsx`.
 - 2026-11-14 — **Edit profile on the API (S02-T10 done).** About text saves with `PATCH /api/profiles/me/about` (new
   endpoint: 50–500 characters, phone numbers / e-mails / links refused on the server too); the Photos tab uploads,
   replaces, removes and sets the main photo through `/api/photos` immediately, shows "In review" / rejected reasons,
@@ -32,6 +54,39 @@ Sections: Added · Changed · Fixed · Security · Removed · Breaking.
   `content/avatars.ts` (`photo:<id>` → API file URL), `lib/{registrationDraft,verification}.ts`, `services/api.ts`.
 
 ### Added
+- 2026-11-15 — **Account settings: take a break or delete account.** New "Account settings" item in the profile
+  menu (desktop dropdown + phone drawer) opens `AccountSettingsDialog` (mounted in the root layout). Home: account
+  summary (masked mobile, Visible / Hidden badge), **Take a break** (hide profile from search; friends, chats and plan
+  kept; "Show my profile again") and a red **Delete account** card. Delete flow with step dots: reason (7 options,
+  "Found my partner on Vikasitha" offers Share your story) + optional comment → confirm (what gets deleted, "I
+  understand" checkbox, "Keep my account", "Hide instead" link) → SMS code to the verified mobile (OtpInput, resend
+  timer, attempts / expired / too many) → "Account deleted" → signs out and reloads the home page. Calls planned
+  endpoints (`services/accountClosure.ts`); in development builds a missing endpoint switches to a clearly labelled
+  demo (code 123456, nothing deleted); in production it says "not available yet, contact support". Privacy Policy
+  deletion steps now point to Account settings. Files: `services/accountClosure.ts`,
+  `account/AccountSettingsDialog.tsx`, `app/layout.tsx`, `layout/Navbar.tsx`, `content/legal.ts`.
+- 2026-11-15 — **Payment page: bank transfer (phase 1)** at `/plans/checkout?plan=gold|platinum&months=1|3|6`.
+  Plans page "Upgrade to Gold" / "Choose Platinum" now open it (the "coming soon" sheet is removed; "Pay with"
+  shows Bank transfer, cards and wallets "coming soon"; FAQ "How do I pay?"). Page = member header (back to Plans) +
+  order summary (plan, amount, member payment reference `VK-G3-xxxxxx` with copy, sticky on desktop, first on
+  phones) + brand bank-account card (account number, name, bank, branch, SWIFT, each with a Copy button, plus
+  "Copy all details" and "I’ve paid, upload receipt" which scrolls to and glows the upload step) + "How to pay"
+  4 pinned notes (Home How it works style) + highlighted "Final step" receipt upload: shared `PhotoSlot` for
+  photos, a matching tile for PDFs, drag & drop, JPG/PNG/WEBP/PDF ≤ 10 MB, amount / date / reference / note,
+  checklist; then a "receipt is with us" status card (received → checking → activated). Demo: saved in
+  localStorage `vk-payment-pending` until `POST /api/payments/bank-transfer` exists. Prices + bank details in
+  `content/payment.ts` (**bank details are placeholders, fill in before launch**). Files: `content/payment.ts`,
+  `sections/payment/BankTransferScreen.tsx`, `app/plans/checkout/page.tsx`, `auth/PlansScreen.tsx`.
+- 2026-11-15 — **Terms & Conditions and Privacy Policy pages** (`/terms`, `/privacy`) replace the "coming soon"
+  placeholders (Figma: Info Pages). Same header as member pages (navbar, back button, breadcrumb, title, subtitle);
+  desktop: sticky "On this page" menu that highlights the section in view + Contact support; phones: the menu folds
+  into a tap-to-open list. Content card: last updated, read time, plain-language summary, numbered sections, link
+  to the other policy. New **"Deleting your account"** section in the Privacy Policy (how to request it, SMS check,
+  hidden from search at once, data deleted within [30] days) and in Terms § 7; footer link **Delete account** →
+  `/privacy#delete-account`. Home sign-up "By registering you agree…" now links to both pages (EN + SI).
+  Copy in `content/legal.ts`; text in [brackets] needs the business / a lawyer before launch. Files:
+  `content/legal.ts`, `sections/legal/LegalPage.tsx`, `app/terms/page.tsx`, `app/privacy/page.tsx`,
+  `layout/Footer.tsx`, `home/SignUp.tsx`.
 - 2026-11-14 — **Sprint 02 API: join & get approved (S02-T01–T08, T12; branch `S02-kyc`).**
   - Profile status (`Draft · Submitted · ChangesRequested · Resubmitted · Approved · Suspended`) replaces `Verified`;
     other members see approved profiles only; the session carries `profileStatus`.
@@ -51,6 +106,8 @@ Sections: Added · Changed · Fixed · Security · Removed · Breaking.
     `DatingApp.Tests/ReviewFlowTests.cs`. **Needs migration `Sprint02Review`.**
 
 ### Fixed
+- 2026-11-15 — Shared `Button` **danger** variant was pale pink with white text in dark mode (it used the error text
+  colour); now solid red-600 in both themes. `ui/Button.tsx`.
 - 2026-11-14 — **Registration data (BUG-023), owner report.** API: mobile-only accounts store no e-mail (`Users.Email`
   nullable) instead of `phone_…@auramatrimony.lk`; `POST /auth/register` with a mobile number returns **201 without a
   session** — sign-in happens at `verify-otp`; login refuses unverified numbers (`403 PHONE_NOT_VERIFIED`); an unconfirmed

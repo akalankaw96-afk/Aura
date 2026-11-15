@@ -38,7 +38,8 @@ const variants: Record<ButtonVariant, string> = {
   white: "bg-surface-card text-brand hover:bg-brand-subtle disabled:text-ink-disabled",
   /** Figma: Button / Danger — destructive confirm (Block) */
   danger:
-    "bg-error-fg text-white hover:brightness-110 hover:shadow-md active:brightness-95 disabled:bg-surface-muted disabled:text-ink-disabled",
+    // solid red in both themes (dark mode's error-fg is a light pink text colour — white on it was unreadable)
+    "bg-[var(--red-600)] text-white hover:brightness-110 hover:shadow-md active:brightness-95 disabled:bg-surface-muted disabled:text-ink-disabled",
 };
 
 export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(

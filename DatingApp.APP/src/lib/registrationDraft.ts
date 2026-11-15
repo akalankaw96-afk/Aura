@@ -19,7 +19,7 @@ export interface RegistrationDraft {
   whatsapp: string;
   /** dial country for the WhatsApp number, e.g. "lk" */
   whatsappCountry: string;
-  /** true = WhatsApp is the same as the verified mobile number */
+  /** legacy: the "same as my mobile" option was removed (2026-11-16); always false for new drafts */
   whatsappSameAsMobile: boolean;
   height: string;
   /** free text, e.g. "Software engineer" */
@@ -59,7 +59,7 @@ export const emptyDraft: RegistrationDraft = {
   email: "",
   whatsapp: "",
   whatsappCountry: "lk",
-  whatsappSameAsMobile: true,
+  whatsappSameAsMobile: false,
   height: "",
   profession: "",
   professionCategory: "",

@@ -1,9 +1,12 @@
 "use client";
 
+import Link from "next/link";
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowRight2, Heart, TickCircle } from "iconsax-react";
 import { Input } from "@/components/ui/Input";
+import { PhoneField, isValidSriLankanMobile } from "@/components/ui/PhoneField";
+import type { CountryCode } from "@/components/ui/Flag";
 import { flashToast } from "@/components/ui/Toast";
 import { saveDraft } from "@/lib/registrationDraft";
 import { useLanguage } from "@/context/LanguageContext";
@@ -47,6 +50,8 @@ export function SignUp({ embedded = false }: { embedded?: boolean }) {
   const { t, lang } = useLanguage();
   const [f, setF] = useState({ first: "", last: "", email: "", mobile: "" });
   const [errors, setErrors] = useState<Partial<Record<keyof typeof f, string>>>({});
+  // same mobile field as registration: flag + dial-code picker, digits only (no leading 0)
+  const [country, setCountry] = useState<CountryCode>("lk");
 
   const set = (k: keyof typeof f) => (e: React.ChangeEvent<HTMLInputElement>) => {
     setF((s) => ({ ...s, [k]: e.target.value }));
@@ -59,8 +64,11 @@ export function SignUp({ embedded = false }: { embedded?: boolean }) {
     if (!f.first.trim()) er.first = lang === "si" ? "ඔබගේ මුල් නම ඇතුළත් කරන්න" : "Enter your first name";
     if (!f.last.trim()) er.last = lang === "si" ? "ඔබගේ වාසගම ඇතුළත් කරන්න" : "Enter your last name";
     if (f.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(f.email)) er.email = lang === "si" ? "වලංගු විද්‍යුත් තැපැල් ලිපිනයක් ඇතුළත් කරන්න" : "Enter a valid email address";
-    const digits = f.mobile.replace(/\D/g, "").replace(/^94/, "").replace(/^0/, "");
-    if (!/^7\d{8}$/.test(digits)) er.mobile = lang === "si" ? "වලංගු ජංගම දුරකථන අංකයක් ඇතුළත් කරන්න" : "Enter a valid Sri Lankan mobile number";
+    const digits = f.mobile;
+    // registration verifies the number by SMS, which works for Sri Lankan (+94) mobiles only for now
+    if (country !== "lk")
+      er.mobile = lang === "si" ? "දැනට ශ්‍රී ලංකා (+94) ජංගම අංක පමණක් තහවුරු කළ හැක" : "For now we can only verify Sri Lankan (+94) mobile numbers";
+    else if (!isValidSriLankanMobile(digits)) er.mobile = lang === "si" ? "වලංගු ජංගම දුරකථන අංකයක් ඇතුළත් කරන්න" : "Enter a valid Sri Lankan mobile number";
     setErrors(er);
     if (Object.keys(er).length) return;
     saveDraft({ firstName: f.first.trim(), lastName: f.last.trim(), fullName: `${f.first.trim()} ${f.last.trim()}`, email: f.email.trim(), mobile: digits });
@@ -103,11 +111,36 @@ export function SignUp({ embedded = false }: { embedded?: boolean }) {
               <Input label={t.signUp.lastName} placeholder={lang === "si" ? "උදා: පෙරේරා" : "e.g. Perera"} value={f.last} onChange={set("last")} error={errors.last} autoComplete="family-name" />
             </div>
             <Input label={t.signUp.email} type="email" placeholder="you@example.com" value={f.email} onChange={set("email")} error={errors.email} autoComplete="email" />
-            <Input label={t.signUp.mobile} type="tel" inputMode="tel" placeholder="+94 7X XXX XXXX" value={f.mobile} onChange={set("mobile")} error={errors.mobile} autoComplete="tel" />
+            <PhoneField
+              label={t.signUp.mobile}
+              value={f.mobile}
+              onChange={(v) => {
+                setF((s) => ({ ...s, mobile: v }));
+                setErrors((x) => ({ ...x, mobile: undefined }));
+              }}
+              country={country}
+              onCountryChange={(c) => {
+                setCountry(c.iso);
+                setErrors((x) => ({ ...x, mobile: undefined }));
+              }}
+              error={errors.mobile}
+            />
             <button type="submit" className="flex h-14 items-center justify-center gap-3 rounded-full bg-brand-gradient px-8 text-button-lg text-ink-on-brand transition-shadow hover:shadow-glow">
               {t.signUp.cta} <ArrowRight2 size={24} color="currentColor" />
             </button>
-            <p className="text-center text-caption text-ink-tertiary">{t.signUp.legal}</p>
+            <p className="text-center text-caption text-ink-tertiary">
+              {lang === "si" ? (
+                <>
+                  ලියාපදිංචි වීමෙන් ඔබ අපගේ <Link href="/terms" className="font-semibold text-brand-text underline">සේවා කොන්දේසි</Link> සහ{" "}
+                  <Link href="/privacy" className="font-semibold text-brand-text underline">පෞද්ගලිකත්ව ප්‍රතිපත්තියට</Link> එකඟ වේ.
+                </>
+              ) : (
+                <>
+                  By registering you agree to our <Link href="/terms" className="font-semibold text-brand-text underline">Terms</Link> and{" "}
+                  <Link href="/privacy" className="font-semibold text-brand-text underline">Privacy Policy</Link>.
+                </>
+              )}
+            </p>
           </form>
         </div>
       </div>

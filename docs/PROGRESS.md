@@ -97,6 +97,13 @@ admins promote moderators; branch **`S02-kyc`** (from merged `S01-api-auth`).
 | Search list card: About me (KYC) + Created by | Completed | Checked 1440 light/dark + 390; `tsc` clean. Real API must return the KYC `about` text as `bio` |
 | Chat header ⋯ button styled as round outline button | Completed | Checked 1440 light + dark, default + hover |
 | Dark mode colour pass (tokens, focus ring, photo badges, pinned notes, gold band) + focus/hover fix | Testing | Checked in dark at 1440: home, login focus, dashboard, search, profile, friends, How to use; light unchanged; `tsc` clean. Needs 390 px + real-device review |
+| Home sign-up: shared mobile field + details carried to register page; Sinhala hero title on 2 lines | Completed | Tested home form → /register at 1440 + 390 (mobile, name, email shown); title 2 lines at 768–1440; `tsc` clean |
+| Friends page: tabs under the title, left-aligned | Completed | Checked 1440 light, 768 dark, 390 |
+| Terms & Conditions + Privacy Policy pages, Delete account section + footer link | Completed (front end) | Checked 1440 light/dark, 390; footer link scrolls to the delete section. [Bracketed] text needs legal review; in-app "Delete my account" button still needs an API endpoint |
+| Dashboard Free usage card collapsed by default with Details toggle | Completed | Checked 1440 light + 390 dark, open/close + remembered; `tsc` clean |
+| Payment page: bank transfer + receipt upload (front end) | Completed (front end) | Tested 1440 light / 390 dark: plans → checkout, copy, validation, I’ve paid scroll, photo + PDF upload, submit → status card; `tsc` clean. Needs real bank details + API endpoint + staff review screen |
+| Account settings: take a break (hide) + delete account with SMS code | Completed (front end) | Tested 1440 light / 390 dark: menu → settings, hide/show, reason validation, confirm checkbox, wrong code (attempts), right code → deleted → signed out → home; `tsc` clean. Needs the 3 API endpoints |
+| KYC profile step: WhatsApp typed by member, display name preview, no "Save & finish later" | Completed | Checked 1280 light / 390 dark (isolated step); `tsc` clean |
 
 ## Owner requests
 | Change | Status | Notes |
