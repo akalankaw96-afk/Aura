@@ -30,11 +30,19 @@ public class CandidateProfile : BaseEntity
     public string Bio { get; set; } = string.Empty;
     public string AboutFamily { get; set; } = string.Empty;
     public bool HoroscopeAvailable { get; set; } = true;
-    public bool Verified { get; set; } = false;
+    /// <summary>Review state (S02-T01, replaces the old Verified flag). Visible to other members only when Approved.</summary>
+    public ProfileStatus Status { get; set; } = ProfileStatus.Draft;
+    public DateTime? SubmittedAt { get; set; }
+    public DateTime? ReviewedAt { get; set; }
+    public Guid? ReviewedByUserId { get; set; }
     public bool Premium { get; set; } = false;
     public string PhotoUrl { get; set; } = string.Empty;
     public string Interests { get; set; } = string.Empty; // Comma-separated list
     public string? SubmittedDetailsJson { get; set; }
+
+    public ICollection<ProfilePhoto> Photos { get; set; } = new List<ProfilePhoto>();
+    public ICollection<KycDocument> KycDocuments { get; set; } = new List<KycDocument>();
+    public ICollection<ProfileReviewFlag> ReviewFlags { get; set; } = new List<ProfileReviewFlag>();
 
     // Match Requests
     public ICollection<MatchRequest> SentMatchRequests { get; set; } = new List<MatchRequest>();

@@ -122,7 +122,7 @@ public class ChatService : IChatService
                 PartnerName = partner.FullName,
                 PartnerPhotoUrl = partner.PhotoUrl,
                 PartnerProfession = partner.Profession,
-                PartnerVerified = partner.Verified,
+                PartnerVerified = partner.Status == ProfileStatus.Approved,
                 PartnerOnline = _presence.IsOnline(partner.UserId),
                 LastMessageText = lastMessage?.MessageText ?? string.Empty,
                 LastMessageTime = lastMessage?.CreatedAt ?? match.RespondedAt ?? match.CreatedAt,

@@ -110,6 +110,8 @@ export interface AuthSession {
   hasCompletedProfile: boolean;
   isVerified?: boolean;
   isUnderReview?: boolean;
+  /** None · Draft · Submitted · ChangesRequested · Resubmitted · Approved · Suspended */
+  profileStatus?: string;
   isPremium?: boolean;
   planId?: string;
   photoUrl?: string;

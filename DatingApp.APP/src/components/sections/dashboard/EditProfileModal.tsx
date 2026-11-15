@@ -8,7 +8,9 @@ import { cn } from "@/lib/cn";
 import { Button } from "@/components/ui/Button";
 import { SegmentedTabs } from "@/components/ui/SegmentedTabs";
 import { PhotoSlot } from "@/components/ui/PhotoSlot";
-import { ageFrom, containsContactDetails, loadDraft } from "@/lib/registrationDraft";
+import { ageFrom, containsContactDetails } from "@/lib/registrationDraft";
+import { apiService } from "@/services/api";
+import { checkFile, deletePhoto, listMyPhotos, setMainPhoto, updateAbout, uploadPhoto, type PhotoDto } from "@/lib/media";
 import { readSubmittedKycDetails } from "@/lib/kycDetails";
 import { COUNTRIES } from "@/components/ui/PhoneField";
 import { Textarea } from "@/components/ui/Textarea";
@@ -19,37 +21,14 @@ import { useAuthSession } from "@/lib/session";
 /**
  * Edit profile — approved members can change ONLY their description and photos.
  * Everything else (name, birth date, religion, location, contact…) is KYC-verified
- * and locked; changes go through support. New photos go to a quick review.
- * Saved in this browser (localStorage "vk-profile") until the edit-profile API exists (#19 PATCH /profiles/me/about, #21 photos).
+ * and locked; changes go through support.
+ * About → PATCH /api/profiles/me/about. Photos → /api/photos straight away; new photos wait for a quick
+ * review (staff "New photos" queue) before other members see them (S02-T10).
  */
 type Tab = "about" | "photos" | "details";
 const OPEN_EVENT = "vk-edit-profile";
-const KEY = "vk-profile";
 const MAX_PHOTOS = 6;
 const MAX_ABOUT = 500;
-
-interface Photo {
-  src: string;
-  review?: boolean; // new upload waiting for approval
-}
-interface Stored {
-  about: string;
-  photos: Photo[];
-}
-
-/** Before the first edit: what the member submitted at registration (no demo text). */
-function fromRegistration(): Stored {
-  const d = loadDraft();
-  return { about: d.about || "", photos: d.photo ? [{ src: d.photo }] : [] };
-}
-
-function load(): Stored {
-  try {
-    const s = JSON.parse(localStorage.getItem(KEY) || "null");
-    if (s?.about !== undefined && Array.isArray(s.photos)) return s;
-  } catch {}
-  return fromRegistration();
-}
 
 /** Opens the editor from anywhere (hero button, profile-strength todos). */
 export function openEditProfile(tab: Tab | React.MouseEvent = "about") {
@@ -62,23 +41,33 @@ export function EditProfileModal() {
   const [open, setOpen] = useState(false);
   const [closing, setClosing] = useState(false);
   const [tab, setTab] = useState<Tab>("about");
-  const [saved, setSaved] = useState<Stored>({ about: "", photos: [] });
+  const [savedAbout, setSavedAbout] = useState("");
   const [about, setAbout] = useState("");
-  const [photos, setPhotos] = useState<Photo[]>([]);
+  const [photos, setPhotos] = useState<PhotoDto[]>([]);
+  const [busy, setBusy] = useState(false);
   const [tried, setTried] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
-  const targetRef = useRef<number | null>(null); // slot being replaced, null = add
+  const targetRef = useRef<PhotoDto | null>(null); // photo being replaced, null = add
+
+  const reloadPhotos = async () => {
+    try {
+      setPhotos((await listMyPhotos()).filter((p) => p.status !== "Rejected" || p.isMain));
+    } catch {
+      /* offline — keep what we have */
+    }
+  };
 
   useEffect(() => {
     const show = (e: Event) => {
-      const s = load();
-      setSaved(s);
-      setAbout(s.about);
-      setPhotos(s.photos);
       setTried(false);
       setTab(((e as CustomEvent).detail as Tab) || "about");
       setClosing(false);
       setOpen(true);
+      void apiService.getMyProfile().then((p) => {
+        setSavedAbout(p?.bio ?? "");
+        setAbout(p?.bio ?? "");
+      });
+      void reloadPhotos();
     };
     window.addEventListener(OPEN_EVENT, show);
     return () => window.removeEventListener(OPEN_EVENT, show);
@@ -104,64 +93,72 @@ export function EditProfileModal() {
 
   const aboutError =
     about.trim().length < 50 ? `Write at least 50 characters (${about.trim().length}/50).` : containsContactDetails(about) || /(https?:\/\/|www\.)/i.test(about) ? "Phone numbers, emails and links can’t be added to your description." : "";
-  const dirty = about !== saved.about || JSON.stringify(photos) !== JSON.stringify(saved.photos);
-  const newPhotos = photos.filter((p) => p.review && !saved.photos.some((s) => s.src === p.src)).length;
+  const dirty = about.trim() !== savedAbout.trim();
+  const sorted = [...photos].sort((a, b) => Number(b.isMain) - Number(a.isMain) || a.sortOrder - b.sortOrder);
 
-  const addFiles = (files: FileList | null) => {
-    if (!files) return;
-    const room = targetRef.current !== null ? 1 : MAX_PHOTOS - photos.length;
-    const picked = Array.from(files)
-      .filter((f) => {
-        if (!f.type.startsWith("image/")) return false;
-        if (f.size > 5 * 1024 * 1024) {
-          toast.error("Photo too large", `${f.name} is over 5 MB.`);
-          return false;
-        }
-        return true;
-      })
-      .slice(0, room);
-    if (targetRef.current === null && files.length > room) toast.info("Photo limit", `You can have up to ${MAX_PHOTOS} photos.`);
-    // data URLs so the preview survives a reload (photo upload API: Sprint 02)
-    const target = targetRef.current;
-    if (target !== null && files[0]) {
-      const f = Array.from(files).find((x) => x.type.startsWith("image/") && x.size <= 5 * 1024 * 1024);
-      if (!f) return;
-      const r = new FileReader();
-      r.onload = () => setPhotos((ps) => ps.map((p, j) => (j === target ? { src: String(r.result), review: true } : p)));
-      r.readAsDataURL(f);
-      return;
+  const run = async (fn: () => Promise<unknown>, failTitle: string) => {
+    setBusy(true);
+    try {
+      await fn();
+      await reloadPhotos();
+      return true;
+    } catch (err) {
+      toast.error(failTitle, err instanceof Error ? err.message : "Please try again.");
+      return false;
+    } finally {
+      setBusy(false);
     }
-    picked.forEach((f) => {
-      const r = new FileReader();
-      r.onload = () => setPhotos((ps) => (ps.length < MAX_PHOTOS ? [...ps, { src: String(r.result), review: true }] : ps));
-      r.readAsDataURL(f);
-    });
   };
-  const pickInto = (i: number | null) => {
-    targetRef.current = i;
-    if (fileRef.current) fileRef.current.multiple = i === null;
+
+  const addFiles = async (files: FileList | null) => {
+    if (!files?.length) return;
+    const replacing = targetRef.current;
+    const room = replacing ? 1 : MAX_PHOTOS - photos.length;
+    const list = Array.from(files).slice(0, Math.max(room, 0));
+    if (!replacing && files.length > room) toast.info("Photo limit", `You can have up to ${MAX_PHOTOS} photos.`);
+    let added = 0;
+    await run(async () => {
+      for (const f of list) {
+        const problem = checkFile(f, false);
+        if (problem) {
+          toast.error("Photo not added", `${f.name}: ${problem}`);
+          continue;
+        }
+        const photo = await uploadPhoto(f);
+        added++;
+        if (replacing) {
+          if (replacing.isMain) await setMainPhoto(photo.id);
+          await deletePhoto(replacing.id);
+        }
+      }
+    }, "Photo not added");
+    if (added) toast.success(added > 1 ? `${added} photos added` : "Photo added", "New photos are checked by our team, usually within 24 hours.");
+  };
+  const pickInto = (p: PhotoDto | null) => {
+    targetRef.current = p;
+    if (fileRef.current) fileRef.current.multiple = p === null;
     fileRef.current?.click();
   };
-  const replaceAt = (i: number) => pickInto(i);
-  const remove = (i: number) => setPhotos((ps) => ps.filter((_, j) => j !== i));
-  const makeMain = (i: number) => setPhotos((ps) => [ps[i], ...ps.filter((_, j) => j !== i)]);
+  const remove = (p: PhotoDto) => void run(() => deletePhoto(p.id), "Couldn’t remove the photo");
+  const makeMain = (p: PhotoDto) => void run(() => setMainPhoto(p.id), "Couldn’t change your main photo");
 
-  const save = () => {
+  const save = async () => {
     setTried(true);
     if (aboutError) {
       setTab("about");
       return;
     }
-    const next = { about: about.trim(), photos };
+    setBusy(true);
     try {
-      localStorage.setItem(KEY, JSON.stringify(next));
-    } catch {
-      toast.error("Couldn’t save", "Your browser storage is full. Try fewer or smaller photos.");
-      return;
+      await updateAbout(about.trim());
+      setSavedAbout(about.trim());
+      close();
+      toast.success("Profile updated", "Your description is live.");
+    } catch (err) {
+      toast.error("Couldn’t save", err instanceof Error ? err.message : "Please try again.");
+    } finally {
+      setBusy(false);
     }
-    close();
-    if (newPhotos) toast.success("Changes saved", `${newPhotos} new photo${newPhotos > 1 ? "s are" : " is"} in review, usually live within 24 hours.`);
-    else toast.success("Profile updated", "Your changes are live.");
   };
 
   return createPortal(
@@ -218,34 +215,37 @@ export function EditProfileModal() {
               error={tried && aboutError ? aboutError : undefined}
             />
           ) : tab === "photos" ? (
-            <div key="photos" className="flex animate-fade-in flex-col gap-3">
+            <div key="photos" className={cn("flex animate-fade-in flex-col gap-3", busy && "pointer-events-none opacity-60")} aria-busy={busy}>
               <div className="grid grid-cols-3 gap-3">
-                {photos.map((ph, i) => (
-                  <PhotoSlot
-                    key={ph.src.slice(-40) + i}
-                    src={ph.src}
-                    main={i === 0}
-                    inReview={ph.review}
-                    className="aspect-[3/4]"
-                    onPick={() => replaceAt(i)}
-                    onMakeMain={() => makeMain(i)}
-                    onRemove={photos.length > 1 ? () => remove(i) : undefined}
-                  />
+                {sorted.map((ph) => (
+                  <div key={ph.id} className="flex flex-col gap-1">
+                    <PhotoSlot
+                      src={ph.ref}
+                      main={ph.isMain}
+                      rejected={ph.status === "Rejected"}
+                      inReview={ph.status === "Pending"}
+                      className="aspect-[3/4]"
+                      onPick={() => pickInto(ph)}
+                      onMakeMain={ph.status !== "Rejected" ? () => makeMain(ph) : undefined}
+                      onRemove={photos.length > 1 || ph.status === "Rejected" ? () => remove(ph) : undefined}
+                    />
+                    {ph.rejectReason && <span className="text-caption text-error-fg">{ph.rejectReason}</span>}
+                  </div>
                 ))}
                 {photos.length < MAX_PHOTOS && <PhotoSlot src={null} className="aspect-[3/4]" onPick={() => pickInto(null)} />}
               </div>
               <input
                 ref={fileRef}
                 type="file"
-                accept="image/*"
+                accept="image/jpeg,image/png,image/webp"
                 multiple
                 hidden
                 onChange={(e) => {
-                  addFiles(e.target.files);
+                  void addFiles(e.target.files);
                   e.target.value = "";
                 }}
               />
-              <p className="text-body-xs text-ink-tertiary">JPG or PNG up to 5 MB · clear face photos only · new photos are checked before they go live.</p>
+              <p className="text-body-xs text-ink-tertiary">JPG, PNG or WebP up to 8 MB · clear face photos only · photos are saved straight away and checked before other members see them.</p>
             </div>
           ) : <ProfileDetails />}
 
@@ -274,14 +274,14 @@ export function EditProfileModal() {
 
         {/* Footer */}
         <div className="flex gap-3 border-t border-line p-5 sm:px-6">
-          {tab === "details" && !dirty ? (
+          {tab !== "about" && !dirty ? (
             <Button size="md" fullWidth onClick={close}>Done</Button>
           ) : (
             <>
               <Button variant="outline" size="md" className="flex-1" onClick={close}>
                 Cancel
               </Button>
-              <Button size="md" className="flex-1" disabled={!dirty} onClick={save}>
+              <Button size="md" className="flex-1" disabled={!dirty || busy} loading={busy} onClick={() => void save()}>
                 Save changes
               </Button>
             </>

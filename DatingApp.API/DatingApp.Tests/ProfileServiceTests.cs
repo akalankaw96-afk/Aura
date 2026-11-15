@@ -66,6 +66,13 @@ public class ProfileServiceTests
         var service = new ProfileService(db);
         var saved = await service.CreateOrUpdateProfileAsync(user.Id, Valid());
 
+        // a draft is invisible to others
+        Assert.Null(await service.GetProfileByIdAsync(saved.Id, includeMemberDetails: true));
+
+        var row = await db.CandidateProfiles.SingleAsync();
+        row.Status = DatingApp.Domain.Enums.ProfileStatus.Approved;
+        await db.SaveChangesAsync();
+
         var publicView = await service.GetProfileByIdAsync(saved.Id, includeMemberDetails: true);
 
         Assert.NotNull(publicView);
@@ -112,5 +119,21 @@ public class ProfileServiceTests
         var ex = await Assert.ThrowsAsync<AppException>(() => new ProfileService(db).CreateOrUpdateProfileAsync(user.Id, Valid()));
 
         Assert.Equal(409, ex.Status);
+    }
+
+    [Fact]
+    public async Task About_text_refuses_contact_details_and_short_text()
+    {
+        using var db = TestDb.Create();
+        var user = await NewAccountAsync(db);
+        var service = new ProfileService(db);
+        await service.CreateOrUpdateProfileAsync(user.Id, Valid());
+
+        await Assert.ThrowsAsync<AppException>(() => service.UpdateAboutAsync(user.Id, "Too short"));
+        await Assert.ThrowsAsync<AppException>(() =>
+            service.UpdateAboutAsync(user.Id, "I love music and travel with my family. Call me on 077 123 4567 any time please."));
+
+        var ok = await service.UpdateAboutAsync(user.Id, "  I love music, travelling with my family and cooking Sri Lankan food on weekends.  ");
+        Assert.Equal("I love music, travelling with my family and cooking Sri Lankan food on weekends.", ok.Bio);
     }
 }

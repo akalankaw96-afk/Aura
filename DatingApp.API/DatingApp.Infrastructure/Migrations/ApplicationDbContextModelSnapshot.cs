@@ -101,6 +101,18 @@ namespace DatingApp.Infrastructure.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<DateTime?>("ReviewedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("ReviewedByUserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("SubmittedAt")
+                        .HasColumnType("datetime2");
+
                     b.Property<string>("SubmittedDetailsJson")
                         .HasColumnType("nvarchar(max)");
 
@@ -114,9 +126,6 @@ namespace DatingApp.Infrastructure.Migrations
                     b.Property<Guid>("UserId")
                         .HasColumnType("uniqueidentifier");
 
-                    b.Property<bool>("Verified")
-                        .HasColumnType("bit");
-
                     b.HasKey("Id");
 
                     b.HasIndex("Code")
@@ -124,6 +133,8 @@ namespace DatingApp.Infrastructure.Migrations
 
                     b.HasIndex("UserId")
                         .IsUnique();
+
+                    b.HasIndex("Status", "SubmittedAt");
 
                     b.ToTable("CandidateProfiles");
                 });
@@ -211,6 +222,47 @@ namespace DatingApp.Infrastructure.Migrations
                     b.ToTable("FaqItems");
                 });
 
+            modelBuilder.Entity("DatingApp.Domain.Entities.KycDocument", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("ContentType")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("ProfileId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<long>("SizeBytes")
+                        .HasColumnType("bigint");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("int");
+
+                    b.Property<string>("StorageKey")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<int>("Type")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ProfileId", "Type");
+
+                    b.ToTable("KycDocuments");
+                });
+
             modelBuilder.Entity("DatingApp.Domain.Entities.MatchRequest", b =>
                 {
                     b.Property<Guid>("Id")
@@ -245,6 +297,50 @@ namespace DatingApp.Infrastructure.Migrations
                     b.HasIndex("SenderProfileId");
 
                     b.ToTable("MatchRequests");
+                });
+
+            modelBuilder.Entity("DatingApp.Domain.Entities.Notification", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Body")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Link")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<DateTime?>("ReadAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("nvarchar(120)");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("nvarchar(40)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId", "ReadAt", "CreatedAt");
+
+                    b.ToTable("Notifications");
                 });
 
             modelBuilder.Entity("DatingApp.Domain.Entities.OtpCode", b =>
@@ -385,6 +481,132 @@ namespace DatingApp.Infrastructure.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("PricingPlans");
+                });
+
+            modelBuilder.Entity("DatingApp.Domain.Entities.ProfilePhoto", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("ContentType")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsMain")
+                        .HasColumnType("bit");
+
+                    b.Property<Guid>("ProfileId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("RejectReason")
+                        .HasMaxLength(300)
+                        .HasColumnType("nvarchar(300)");
+
+                    b.Property<DateTime?>("ReviewedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("ReviewedByUserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<long>("SizeBytes")
+                        .HasColumnType("bigint");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("int");
+
+                    b.Property<string>("StorageKey")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Status");
+
+                    b.HasIndex("ProfileId", "SortOrder");
+
+                    b.ToTable("ProfilePhotos");
+                });
+
+            modelBuilder.Entity("DatingApp.Domain.Entities.ProfileReviewFlag", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("CreatedByUserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Field")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("nvarchar(40)");
+
+                    b.Property<Guid>("ProfileId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Reason")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("nvarchar(300)");
+
+                    b.Property<DateTime?>("ResolvedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ProfileId", "ResolvedAt");
+
+                    b.ToTable("ProfileReviewFlags");
+                });
+
+            modelBuilder.Entity("DatingApp.Domain.Entities.ProfileReviewLog", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("Action")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("ModeratorUserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Note")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<Guid>("ProfileId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ProfileId", "CreatedAt");
+
+                    b.ToTable("ProfileReviewLogs");
                 });
 
             modelBuilder.Entity("DatingApp.Domain.Entities.RefreshToken", b =>
@@ -592,6 +814,17 @@ namespace DatingApp.Infrastructure.Migrations
                     b.Navigation("SenderProfile");
                 });
 
+            modelBuilder.Entity("DatingApp.Domain.Entities.KycDocument", b =>
+                {
+                    b.HasOne("DatingApp.Domain.Entities.CandidateProfile", "Profile")
+                        .WithMany("KycDocuments")
+                        .HasForeignKey("ProfileId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Profile");
+                });
+
             modelBuilder.Entity("DatingApp.Domain.Entities.MatchRequest", b =>
                 {
                     b.HasOne("DatingApp.Domain.Entities.CandidateProfile", "ReceiverProfile")
@@ -622,6 +855,28 @@ namespace DatingApp.Infrastructure.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("DatingApp.Domain.Entities.ProfilePhoto", b =>
+                {
+                    b.HasOne("DatingApp.Domain.Entities.CandidateProfile", "Profile")
+                        .WithMany("Photos")
+                        .HasForeignKey("ProfileId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Profile");
+                });
+
+            modelBuilder.Entity("DatingApp.Domain.Entities.ProfileReviewFlag", b =>
+                {
+                    b.HasOne("DatingApp.Domain.Entities.CandidateProfile", "Profile")
+                        .WithMany("ReviewFlags")
+                        .HasForeignKey("ProfileId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Profile");
+                });
+
             modelBuilder.Entity("DatingApp.Domain.Entities.RefreshToken", b =>
                 {
                     b.HasOne("DatingApp.Domain.Entities.User", "User")
@@ -635,7 +890,13 @@ namespace DatingApp.Infrastructure.Migrations
 
             modelBuilder.Entity("DatingApp.Domain.Entities.CandidateProfile", b =>
                 {
+                    b.Navigation("KycDocuments");
+
+                    b.Navigation("Photos");
+
                     b.Navigation("ReceivedMatchRequests");
+
+                    b.Navigation("ReviewFlags");
 
                     b.Navigation("SentMatchRequests");
                 });

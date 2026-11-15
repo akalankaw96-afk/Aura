@@ -9,11 +9,37 @@ namespace DatingApp.WebApi.Controllers;
 public class ProfilesController : BaseApiController
 {
     private readonly IProfileService _profileService;
+    private readonly IReviewService _review;
 
-    public ProfilesController(IProfileService profileService)
+    public ProfilesController(IProfileService profileService, IReviewService review)
     {
         _profileService = profileService;
+        _review = review;
     }
+
+    /// <summary>Update the "about me" text (≥ 50 characters, no phone numbers / e-mails / links).</summary>
+    [Authorize]
+    [HttpPatch("me/about")]
+    [ProducesResponseType(typeof(ProfileDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> UpdateAbout([FromBody] UpdateAboutDto dto, CancellationToken ct) =>
+        Ok(await _profileService.UpdateAboutAsync(RequireUserId(), dto.Bio, ct));
+
+    /// <summary>Review status of the caller's profile: status, flagged fields, what is still missing (S02-T02).</summary>
+    [Authorize]
+    [HttpGet("me/status")]
+    [ProducesResponseType(typeof(ProfileStatusDto), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetMyStatus(CancellationToken ct) =>
+        Ok(await _review.GetStatusAsync(RequireUserId(), ct));
+
+    /// <summary>Submit (or resubmit after changes) for review. 400 with <c>missing</c> when something is still needed.</summary>
+    [Authorize]
+    [HttpPost("me/submit")]
+    [ProducesResponseType(typeof(ProfileStatusDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> Submit(CancellationToken ct) =>
+        Ok(await _review.SubmitAsync(RequireUserId(), ct));
 
     [HttpGet]
     [ProducesResponseType(typeof(List<ProfileDto>), StatusCodes.Status200OK)]

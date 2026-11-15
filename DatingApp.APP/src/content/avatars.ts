@@ -1,3 +1,5 @@
+import { API_BASE_URL } from "@/lib/http";
+
 /**
  * Illustrated profile avatars — for members who'd rather not post real photos yet.
  * Flat style that matches /brand/bride.png & /brand/groom.png: pastel circle,
@@ -137,9 +139,10 @@ export function avatarRef(src: string | null | undefined): string {
   return src.startsWith("data:") || src.startsWith("blob:") ? "" : src;
 }
 
-/** Turns a stored "avatar:<id>" back into an image the browser can show; other URLs pass through. */
+/** Turns a stored "avatar:<id>" / "photo:<id>" into an image URL the browser can show; other URLs pass through. */
 export function resolvePhoto(src: string | null | undefined): string {
   if (!src) return "";
+  if (src.startsWith("photo:")) return `${API_BASE_URL}/photos/${src.slice("photo:".length)}/file`;
   if (!src.startsWith("avatar:")) return src;
   const match = AVATARS.find((a) => a.id === src.slice("avatar:".length));
   return match ? avatarDataUri(match) : "";

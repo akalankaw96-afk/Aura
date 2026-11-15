@@ -38,7 +38,7 @@ public class ContentService : IContentService
             SuccessStories = stories,
             PricingPlans = plans,
             Faqs = faqs,
-            TotalVerifiedCount = await _context.CandidateProfiles.CountAsync(p => p.Verified, ct),
+            TotalVerifiedCount = await _context.CandidateProfiles.CountAsync(p => p.Status == DatingApp.Domain.Enums.ProfileStatus.Approved, ct),
             TotalWeddingsCount = stories.Count
         };
     }

@@ -80,3 +80,8 @@ $RECYCLE.BIN/
 
 # Local backup of the pre-Figma UI (see README)
 _backup_pre_figma/
+
+# =======================================================
+# Uploaded member files (photos, ID documents) — never commit (S02-T03)
+# =======================================================
+**/App_Data/

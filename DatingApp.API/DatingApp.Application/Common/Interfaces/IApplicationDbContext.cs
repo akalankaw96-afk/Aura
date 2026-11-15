@@ -18,5 +18,12 @@ public interface IApplicationDbContext
     DbSet<OtpCode> OtpCodes { get; }
     DbSet<PasswordResetToken> PasswordResetTokens { get; }
 
+    // Review (S02)
+    DbSet<ProfilePhoto> ProfilePhotos { get; }
+    DbSet<KycDocument> KycDocuments { get; }
+    DbSet<ProfileReviewFlag> ProfileReviewFlags { get; }
+    DbSet<ProfileReviewLog> ProfileReviewLogs { get; }
+    DbSet<Notification> Notifications { get; }
+
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }

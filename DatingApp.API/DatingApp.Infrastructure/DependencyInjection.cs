@@ -51,6 +51,14 @@ public static class DependencyInjection
         services.AddScoped<IContentService, ContentService>();
         services.AddScoped<IChatService, ChatService>();
 
+        // Review & files (S02)
+        services.AddSingleton<IFileStorage, LocalDiskFileStorage>();
+        services.AddScoped<INotificationService, NotificationService>();
+        services.AddScoped<IMediaService, MediaService>();
+        services.AddScoped<IReviewService, ReviewService>();
+        services.AddScoped<IModerationService, ModerationService>();
+        services.AddScoped<IStaffService, StaffService>();
+
         return services;
     }
 }

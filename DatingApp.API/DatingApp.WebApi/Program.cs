@@ -51,6 +51,9 @@ builder.Services.AddProblemDetails(options =>
     };
 });
 builder.Services.AddExceptionHandler<AppExceptionHandler>();
+// The built-in middleware logs every exception as "unhandled" with a stack trace — including expected ones such as a
+// wrong password. AppExceptionHandler already logs real crashes (non-AppException) with the trace id, so mute the duplicate.
+builder.Logging.AddFilter("Microsoft.AspNetCore.Diagnostics.ExceptionHandlerMiddleware", LogLevel.None);
 builder.Services.AddAuthRateLimits();
 
 // 3. CORS: only the web app's own origins, with credentials for the refresh cookie (BUG-006)

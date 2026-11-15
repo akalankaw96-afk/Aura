@@ -7,6 +7,9 @@ import {
   ArrowLeft,
   ArrowRight2,
   Calendar,
+  Camera,
+  DocumentText,
+  Personalcard,
   EmojiHappy,
   Gallery,
   InfoCircle,
@@ -35,7 +38,21 @@ import {
   useToast,
 } from "@/components/ui";
 import { cn } from "@/lib/cn";
-import { ageFrom, containsContactDetails, emptyDraft, loadDraft, saveDraft, type RegistrationDraft } from "@/lib/registrationDraft";
+import { ageFrom, clearDraft, containsContactDetails, emptyDraft, loadDraft, saveDraft, type RegistrationDraft } from "@/lib/registrationDraft";
+import {
+  MISSING_LABELS,
+  checkFile,
+  deletePhoto,
+  listMyDocuments,
+  listMyPhotos,
+  setMainPhoto,
+  submitForReview,
+  uploadDocument,
+  uploadPhoto,
+  type KycDocumentDto,
+  type KycDocumentType,
+  type PhotoDto,
+} from "@/lib/media";
 import { profileDetailsFromKyc, saveSubmittedKycDetails } from "@/lib/kycDetails";
 import { AuthShell } from "./AuthShell";
 import { GoogleSignInButton } from "./GoogleSignInButton";
@@ -43,11 +60,11 @@ import { formatPhone } from "./shared";
 
 /** Same as the API (AuthRules.CodeMaxAttempts). */
 const CODE_MAX_ATTEMPTS = 5;
-import { setKyc } from "@/lib/verification";
 import { AVATARS, avatarDataUri, avatarRef, isIllustration, type AvatarGender } from "@/content/avatars";
 import { DISTRICT_OPTIONS } from "@/content/search";
 import type { CountryCode } from "@/components/ui/Flag";
 import { ApiError, apiService, type CreateProfilePayload } from "@/services/api";
+import type { Profile } from "@/types";
 import { PhotoSlot } from "@/components/ui/PhotoSlot";
 import { SegmentedSwitch } from "@/components/ui/SegmentedSwitch";
 
@@ -56,13 +73,78 @@ import { SegmentedSwitch } from "@/components/ui/SegmentedSwitch";
  * 05 Photos, with every error / success / toast state from the flow).
  * Draft kept in sessionStorage (src/lib/registrationDraft.ts); steps call the auth + profile APIs.
  */
-export type RegisterStep = 1 | 2 | 3 | 4;
+export type RegisterStep = 1 | 2 | 3 | 4 | 5;
 
 export interface RegisterFlowProps {
   initialStep?: RegisterStep;
   /** Inside the home-page modal: no page chrome, call onComplete at the end */
   embedded?: boolean;
   onComplete?: (draft: RegistrationDraft) => void;
+}
+
+/** POST /api/profiles with exactly what the member entered. Throws ApiError when the API refuses it. */
+export async function saveProfileDraft(d: RegistrationDraft): Promise<void> {
+  const fullName = [d.firstName.trim(), d.lastName.trim()].filter(Boolean).join(" ");
+  await apiService.createOrUpdateProfile({
+    fullName,
+    email: d.email.trim() || undefined,
+    gender: d.gender.toLowerCase() === "female" ? "female" : "male",
+    dateOfBirth: d.dob,
+    age: ageFrom(d.dob) ?? 0,
+    height: d.height,
+    profession: d.profession.trim(),
+    professionCategory: (PROFESSION_CATEGORY[d.professionCategory] ?? "Other") as CreateProfilePayload["professionCategory"],
+    education: d.education,
+    university: "",
+    location: d.district,
+    country: d.country,
+    religion: d.religion,
+    community: d.ethnicity,
+    bio: d.about.trim(),
+    aboutFamily: "",
+    horoscopeAvailable: false,
+    // avatars as "avatar:<id>"; uploaded photos are managed by /api/photos ("photo:<id>" is ignored by the API)
+    photoUrl: avatarRef(d.photo),
+    interests: [],
+    details: profileDetailsFromKyc(d),
+  });
+  saveSubmittedKycDetails(d);
+}
+
+/** The member's saved profile → form values, so a signed-in member can finish or fix it on any device. */
+export function profileToDraft(p: Profile, session?: { phoneNumber?: string; email?: string }): Partial<RegistrationDraft> {
+  const [firstName, ...rest] = (p.name || "").trim().split(/\s+/);
+  const category = Object.entries(PROFESSION_CATEGORY).find(([, v]) => v === p.professionCategory)?.[0] ?? "";
+  const d = p.details ?? {};
+  return {
+    mobile: session?.phoneNumber ?? "",
+    email: session?.email ?? "",
+    firstName: firstName ?? "",
+    lastName: rest.join(" "),
+    fullName: p.name,
+    displayNameFormat: d.displayName ? "First name only" : "",
+    createdBy: d.createdBy ?? "",
+    profileFor: d.profileFor ?? "Myself",
+    whatsapp: d.whatsApp ?? "",
+    whatsappSameAsMobile: !d.whatsApp || d.whatsApp === session?.phoneNumber,
+    height: p.height,
+    profession: p.profession,
+    professionCategory: category,
+    education: p.education,
+    dob: p.dateOfBirth ?? "",
+    gender: p.gender === "female" ? "Female" : "Male",
+    civilStatus: d.civilStatus ?? "",
+    religion: p.religion,
+    ethnicity: p.community,
+    caste: d.caste ?? "",
+    country: p.country,
+    district: d.district ?? p.location,
+    zodiacSign: d.zodiacSign ?? "",
+    monthlySalaryRange: d.monthlySalaryRange ?? "",
+    weightKg: d.weightKg ?? "",
+    about: p.bio,
+    photo: p.photoUrl?.startsWith("data:image/svg") ? p.photoUrl : null,
+  };
 }
 
 export function RegisterFlow({ initialStep = 1, embedded, onComplete }: RegisterFlowProps) {
@@ -79,65 +161,37 @@ export function RegisterFlow({ initialStep = 1, embedded, onComplete }: Register
     if (typeof window !== "undefined") window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
+  /** POST /api/profiles with exactly what the member entered (step 3 → 4, and again when an avatar is chosen). */
+  const saveProfile = async (d: RegistrationDraft): Promise<boolean> => {
+    try {
+      await saveProfileDraft(d);
+      return true;
+    } catch (err) {
+      toast.error("Couldn’t save your profile", err instanceof Error ? err.message : "Please try again.");
+      return false;
+    }
+  };
+
+  /** Last step: POST /api/profiles/me/submit → the profile joins the review queue. */
   const finish = async () => {
-    const d = saveDraft({
-      fullName: [draft.firstName.trim(), draft.lastName.trim()].filter(Boolean).join(" "),
-      reviewStatus: "submitted",
-    });
+    const d = saveDraft({ fullName: [draft.firstName.trim(), draft.lastName.trim()].filter(Boolean).join(" "), reviewStatus: "submitted" });
     if (embedded && onComplete) {
-      toast.success("Profile submitted", "We’ll review it within 24 hours.");
       onComplete(d);
       return;
     }
-    // Save the profile in the database (POST /api/profiles). Stay on this step if it fails.
     try {
-      // Only what the member entered — the API refuses missing required values instead of us inventing them.
-      const fullName = [d.firstName.trim(), d.lastName.trim()].filter(Boolean).join(" ");
-      await apiService.createOrUpdateProfile({
-        fullName,
-        email: d.email.trim() || undefined,
-        gender: d.gender.toLowerCase() === "female" ? "female" : "male",
-        dateOfBirth: d.dob,
-        age: ageFrom(d.dob) ?? 0,
-        height: d.height,
-        profession: d.profession.trim(),
-        professionCategory: (PROFESSION_CATEGORY[d.professionCategory] ?? "Other") as CreateProfilePayload["professionCategory"],
-        education: d.education,
-        university: "",
-        location: d.district,
-        country: d.country,
-        religion: d.religion,
-        community: d.ethnicity,
-        bio: d.about.trim(),
-        aboutFamily: "",
-        horoscopeAvailable: false,
-        photoUrl: avatarRef(d.photo), // avatars as "avatar:<id>", never the image itself
-        interests: [],
-        details: profileDetailsFromKyc(d),
-      });
+      await submitForReview();
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Please try again.";
+      const missing = err instanceof ApiError ? (err.extras as { missing?: string[] }).missing : undefined;
+      const message = missing?.length
+        ? `Still needed: ${missing.map((m) => MISSING_LABELS[m] ?? m).join(", ")}.`
+        : err instanceof Error ? err.message : "Please try again.";
       toast.error("Couldn’t submit your profile", message);
       return;
     }
-    flashToast("success", "Profile submitted", "You can explore your dashboard while we review it.");
-
-    // signed in with a pending profile → Dashboard (features unlock after review)
-    try {
-      const raw = localStorage.getItem("aura_session");
-      const sess = raw ? JSON.parse(raw) : {};
-      sess.fullName = d.fullName || d.firstName || sess.fullName || "New member";
-      sess.email = d.email || sess.email;
-      sess.phoneNumber = d.mobile || sess.phoneNumber;
-      sess.photoUrl = d.photo || sess.photoUrl;
-      sess.hasCompletedProfile = true;
-      sess.isUnderReview = true;
-      sess.isVerified = false;
-      localStorage.setItem("aura_session", JSON.stringify(sess));
-      window.dispatchEvent(new Event("aura_auth_change"));
-    } catch {}
-    saveSubmittedKycDetails(d);
-    setKyc("pending");
+    await apiService.refreshSession(); // status now comes from the server: "Submitted"
+    clearDraft();
+    flashToast("success", "Profile submitted", "We’ll review it within 24 hours and let you know by SMS.");
     router.push("/dashboard");
   };
 
@@ -150,8 +204,29 @@ export function RegisterFlow({ initialStep = 1, embedded, onComplete }: Register
       <Card className="w-full max-w-[680px] p-5 sm:p-8">
         {step === 1 && <AccountStep draft={draft} update={update} onNext={() => go(2)} onGoogleSuccess={() => go(3)} />}
         {step === 2 && <VerifyStep mobile={draft.mobile} onBack={() => go(1)} onNext={() => go(3)} />}
-        {step === 3 && <ProfileStep draft={draft} update={update} onBack={() => go(2)} onNext={() => go(4)} />}
-        {step === 4 && <PhotosStep draft={draft} update={update} onBack={() => go(3)} onFinish={finish} />}
+        {step === 3 && (
+          <ProfileStep
+            draft={draft}
+            update={update}
+            onBack={() => go(2)}
+            onNext={async () => {
+              if (await saveProfile(loadDraft())) go(4);
+            }}
+          />
+        )}
+        {step === 4 && (
+          <PhotosStep
+            draft={draft}
+            update={update}
+            onBack={() => go(3)}
+            onFinish={async () => {
+              // an avatar is part of the profile; uploaded photos are already on the server
+              if (isIllustration(draft.photo) && !(await saveProfile(loadDraft()))) return;
+              go(5);
+            }}
+          />
+        )}
+        {step === 5 && <IdentityStep onBack={() => go(4)} onFinish={finish} />}
       </Card>
       {step === 2 && (
         <p className="inline-flex items-center gap-1.5 rounded-full bg-info-bg px-3 py-1 text-body-xs font-semibold text-info-fg">
@@ -698,8 +773,6 @@ export function ProfileStep({
 
 /* ───────────────────────── Step 4 · Photos (05, 05a–05c) ───────────────────────── */
 
-const MAX_MB = 5;
-const OK_TYPES = ["image/jpeg", "image/png", "image/webp"];
 
 /** Review mode (Figma 06e · Edit photos — main photo rejected) */
 export interface PhotoReview {
@@ -722,12 +795,12 @@ export function PhotosStep({
   review?: PhotoReview;
 }) {
   const toast = useToast();
-  const photoRejected = !!review && (draft.photo === review.original || !draft.photo);
   const fileRef = useRef<HTMLInputElement>(null);
-  const [extra, setExtra] = useState<(string | null)[]>([null, null, null, null]);
+  // Photos live on the server (POST /api/photos) — nothing but the avatar choice is kept in the browser
+  const [photos, setPhotos] = useState<PhotoDto[]>([]);
+  const [busy, setBusy] = useState(false);
   const [target, setTarget] = useState<number>(-1); // -1 main, 0..3 extra
   const [failed, setFailed] = useState<string>();
-  const [blur, setBlur] = useState(false);
   const [confirmSkip, setConfirmSkip] = useState(false);
   // "upload" real photos, or "illustration" — a friendly avatar for members not ready to share photos
   const [mode, setMode] = useState<"upload" | "illustration">(isIllustration(draft.photo) ? "illustration" : "upload");
@@ -735,34 +808,78 @@ export function PhotosStep({
     if (isIllustration(draft.photo)) setMode("illustration");
   }, [draft.photo]);
 
+  const reload = async () => {
+    try {
+      setPhotos(await listMyPhotos());
+    } catch {
+      /* first visit before the profile exists, or offline — slots stay empty */
+    }
+  };
+  useEffect(() => {
+    void reload();
+  }, []);
+
+  const visible = photos.filter((p) => p.status !== "Rejected" || p.isMain);
+  const main = visible.find((p) => p.isMain) ?? null;
+  const extras = visible.filter((p) => !p.isMain).sort((a, b) => a.sortOrder - b.sortOrder);
+  const slots: (PhotoDto | null)[] = [0, 1, 2, 3].map((i) => extras[i] ?? null);
+  const photoRejected = !!review && (!main || main.status === "Rejected");
+  const hasPhoto = !!main && main.status !== "Rejected";
+
   const pick = (slot: number) => {
     setTarget(slot);
     fileRef.current?.click();
   };
 
-  const onFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const onFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0];
     e.target.value = "";
     if (!f) return;
-    if (!OK_TYPES.includes(f.type)) return uploadFailed("Photos must be JPG, PNG or WEBP.");
-    if (f.size > MAX_MB * 1024 * 1024) return uploadFailed(`This photo is ${(f.size / 1024 / 1024).toFixed(1)} MB. The limit is ${MAX_MB} MB.`);
-    const reader = new FileReader();
-    reader.onload = () => {
-      const url = String(reader.result);
+    const problem = checkFile(f, false);
+    if (problem) return uploadFailed(problem);
+
+    setBusy(true);
+    try {
+      const replacing = target === -1 ? main : slots[target];
+      const added = await uploadPhoto(f);
+      if (target === -1 && !added.isMain) await setMainPhoto(added.id);
+      if (replacing) await deletePhoto(replacing.id);
+      if (target === -1) update({ photo: added.ref }); // the photo replaces any avatar
       setFailed(undefined);
       setConfirmSkip(false);
-      if (target === -1) {
-        try {
-          update({ photo: url });
-        } catch {
-          update({ photo: null });
-        }
-      } else {
-        setExtra((x) => x.map((v, i) => (i === target ? url : v)));
-      }
       toast.success("Photo uploaded", target === -1 ? "Looking great! It’ll be checked by our team." : "Added to your gallery.");
-    };
-    reader.readAsDataURL(f);
+      await reload();
+    } catch (err) {
+      uploadFailed(err instanceof Error ? err.message : "Please try again.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const remove = async (photo: PhotoDto) => {
+    setBusy(true);
+    try {
+      await deletePhoto(photo.id);
+      if (photo.isMain && draft.photo === photo.ref) update({ photo: null });
+      await reload();
+    } catch (err) {
+      toast.error("Couldn’t remove the photo", err instanceof Error ? err.message : "Please try again.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const makeMain = async (photo: PhotoDto) => {
+    setBusy(true);
+    try {
+      await setMainPhoto(photo.id);
+      update({ photo: photo.ref });
+      await reload();
+    } catch (err) {
+      toast.error("Couldn’t change your main photo", err instanceof Error ? err.message : "Please try again.");
+    } finally {
+      setBusy(false);
+    }
   };
 
   const uploadFailed = (msg: string) => {
@@ -783,7 +900,8 @@ export function PhotosStep({
       toast.error("Choose an avatar", "Pick an avatar below, or switch to Upload photos.");
       return;
     }
-    if (!draft.photo && !confirmSkip) {
+    if (mode === "upload" && !hasPhoto) {
+      // a main photo (or an avatar) is needed for the review
       setConfirmSkip(true);
       return;
     }
@@ -811,16 +929,16 @@ export function PhotosStep({
 
       {/* Upload real photos ↔ use an illustration */}
       <PhotoModeSwitch value={mode} onChange={(m) => { setMode(m); setConfirmSkip(false); }} />
-      <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={onFile} />
+      <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={onFile} />
 
       {failed && (
         <Alert type="error" title="Upload failed" action={<button type="button" onClick={() => pick(target)} className="font-bold text-brand hover:underline">Try again</button>}>
           {failed}
         </Alert>
       )}
-      {confirmSkip && !draft.photo && (
-        <Alert type="warning" title="Continue without a photo?" action={<span className="flex gap-4"><button type="button" onClick={() => pick(-1)} className="font-bold text-brand hover:underline">Add a photo</button><button type="button" onClick={onFinish} className="font-bold text-ink-secondary hover:underline">Skip anyway</button></span>}>
-          Profiles without a photo get far fewer replies. You can add one later from your profile.
+      {confirmSkip && !hasPhoto && (
+        <Alert type="warning" title="Add a main photo or an avatar" action={<span className="flex gap-4"><button type="button" onClick={() => pick(-1)} className="font-bold text-brand hover:underline">Add a photo</button><button type="button" onClick={() => setMode("illustration")} className="font-bold text-ink-secondary hover:underline">Choose an avatar</button></span>}>
+          Our team needs a picture to review your profile. If you’re not ready to share photos, pick an avatar for now.
         </Alert>
       )}
 
@@ -837,23 +955,27 @@ export function PhotosStep({
       ) : (
       <>
       {/* Figma: Photo slots — row 260 high, gap 12: Main photo 200 × 260 + More photos 2 × 2 of 146 × 124 */}
-      <div key="upload" className="flex animate-fade-up flex-col gap-3 sm:h-[260px] sm:flex-row">
+      <div key="upload" className={cn("flex animate-fade-up flex-col gap-3 sm:h-[260px] sm:flex-row", busy && "pointer-events-none opacity-60")} aria-busy={busy}>
         <PhotoSlot
           main
-          rejected={photoRejected && !!draft.photo}
-          src={draft.photo}
+          rejected={!!main && main.status === "Rejected"}
+          inReview={!!main && main.status === "Pending"}
+          src={main?.ref ?? null}
           onPick={() => pick(-1)}
-          onRemove={() => update({ photo: null })}
+          onRemove={main ? () => void remove(main) : undefined}
           className="aspect-[200/260] w-full sm:aspect-auto sm:h-full sm:w-[200px] sm:shrink-0"
         />
         <div className="grid grid-cols-2 grid-rows-2 gap-3 sm:w-[304px] sm:shrink-0">
-          {extra.map((src, i) => (
+          {slots.map((photo, i) => (
             <PhotoSlot
-              key={i}
-              src={src}
+              key={photo?.id ?? `empty-${i}`}
+              src={photo?.ref ?? null}
+              rejected={photo?.status === "Rejected"}
+              inReview={photo?.status === "Pending"}
               label={i === 0 ? "Add photo" : "Optional"}
               onPick={() => pick(i)}
-              onRemove={() => setExtra((x) => x.map((v, j) => (j === i ? null : v)))}
+              onRemove={photo ? () => void remove(photo) : undefined}
+              onMakeMain={photo && photo.status !== "Rejected" ? () => void makeMain(photo) : undefined}
               className="h-[124px] w-full"
             />
           ))}
@@ -867,7 +989,6 @@ export function PhotosStep({
           </li>
         ))}
       </ul>
-      <Checkbox checked={blur} onChange={setBlur}>Blur my photos until I accept an interest</Checkbox>
       </>
       )}
 
@@ -875,15 +996,149 @@ export function PhotosStep({
         <Button variant="outline" onClick={onBack} leftIcon={<ArrowLeft size={18} color="currentColor" />} className="shrink-0">
           Back
         </Button>
-        <Button fullWidth onClick={finish} rightIcon={<ArrowRight2 size={18} color="currentColor" />}>
-          {review ? "Resubmit for review" : <>Finish &amp; go live</>}
+        <Button fullWidth onClick={finish} disabled={busy} rightIcon={<ArrowRight2 size={18} color="currentColor" />}>
+          {review ? "Resubmit for review" : "Continue"}
         </Button>
       </div>
-      {mode === "upload" && !review && (
-        <button type="button" onClick={() => setConfirmSkip(true)} className="text-left text-body-sm font-semibold text-brand hover:underline">
-          Skip for now, I’ll add photos later
-        </button>
-      )}
+    </div>
+  );
+}
+
+/* ───────────────────────── Step 5 · Identity (Sprint 02 — S02-T09) ───────────────────────── */
+
+const DOCUMENT_SLOTS: Record<"nic" | "passport", { type: KycDocumentType; label: string; hint: string }[]> = {
+  nic: [
+    { type: "NicFront", label: "NIC — front", hint: "The side with your photo" },
+    { type: "NicBack", label: "NIC — back", hint: "The side with the address" },
+  ],
+  passport: [{ type: "Passport", label: "Passport photo page", hint: "The page with your photo and details" }],
+};
+
+/**
+ * Identity check: NIC (front + back) or passport, plus a selfie. Files go straight to the API
+ * (POST /api/kyc/documents) and are only seen by our safety team. Then the profile is submitted for review.
+ */
+export function IdentityStep({ onBack, onFinish }: { onBack: () => void; onFinish: () => Promise<void> | void }) {
+  const toast = useToast();
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [docs, setDocs] = useState<KycDocumentDto[]>([]);
+  const [kind, setKind] = useState<"nic" | "passport">("nic");
+  const [target, setTarget] = useState<KycDocumentType>("NicFront");
+  const [busy, setBusy] = useState<KycDocumentType | "submit" | null>(null);
+
+  useEffect(() => {
+    listMyDocuments()
+      .then((list) => {
+        setDocs(list);
+        if (list.some((d) => d.type === "Passport")) setKind("passport");
+      })
+      .catch(() => undefined);
+  }, []);
+
+  const has = (t: KycDocumentType) => docs.some((d) => d.type === t && d.status !== "Rejected");
+  const idDone = kind === "nic" ? has("NicFront") && has("NicBack") : has("Passport");
+  const ready = idDone && has("Selfie");
+
+  const pick = (t: KycDocumentType) => {
+    setTarget(t);
+    fileRef.current?.click();
+  };
+
+  const onFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0];
+    e.target.value = "";
+    if (!f) return;
+    const problem = checkFile(f, target !== "Selfie");
+    if (problem) {
+      toast.error("Upload failed", problem);
+      return;
+    }
+    setBusy(target);
+    try {
+      const saved = await uploadDocument(target, f);
+      setDocs((list) => [...list.filter((d) => d.type !== saved.type), saved]);
+      toast.success("Uploaded", "Only our safety team can see this file.");
+    } catch (err) {
+      toast.error("Upload failed", err instanceof Error ? err.message : "Please try again.");
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const submit = async () => {
+    if (!ready) {
+      toast.error("A few files are missing", kind === "nic" ? "Upload both sides of your NIC and a selfie." : "Upload your passport photo page and a selfie.");
+      return;
+    }
+    setBusy("submit");
+    try {
+      await onFinish();
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const slot = (type: KycDocumentType, label: string, hint: string) => {
+    const done = has(type);
+    return (
+      <li key={type} className="flex items-center gap-3 rounded-lg border border-line bg-surface-card p-3">
+        <span className={cn("flex h-11 w-11 shrink-0 items-center justify-center rounded-full", done ? "bg-success-bg text-success-fg" : "bg-brand-subtle text-icon-brand")}>
+          {done ? <TickCircle size={22} color="currentColor" /> : type === "Selfie" ? <Camera size={22} color="currentColor" /> : <DocumentText size={22} color="currentColor" />}
+        </span>
+        <span className="flex min-w-0 flex-1 flex-col">
+          <span className="text-label-lg text-ink">{label}</span>
+          <span className="text-body-sm text-ink-secondary">{done ? "Uploaded — waiting for review" : hint}</span>
+        </span>
+        <Button size="sm" variant={done ? "outline" : "primary"} onClick={() => pick(type)} disabled={busy !== null} loading={busy === type}>
+          {done ? "Replace" : "Upload"}
+        </Button>
+      </li>
+    );
+  };
+
+  return (
+    <div className="flex flex-col gap-5">
+      <CardTitle title="Verify your identity" subtitle="Every member is checked by our safety team. Your documents are private and are never shown on your profile." />
+      <input
+        ref={fileRef}
+        type="file"
+        accept={target === "Selfie" ? "image/jpeg,image/png,image/webp" : "image/jpeg,image/png,image/webp,application/pdf"}
+        capture={target === "Selfie" ? "user" : undefined}
+        className="hidden"
+        onChange={onFile}
+      />
+
+      <SegmentedSwitch
+        label="Identity document"
+        options={[
+          { id: "nic", label: "National ID (NIC)", Icon: Personalcard },
+          { id: "passport", label: "Passport", Icon: DocumentText },
+        ]}
+        value={kind}
+        onChange={(v) => setKind(v as "nic" | "passport")}
+      />
+
+      <ul className="flex flex-col gap-3">
+        {DOCUMENT_SLOTS[kind].map((d) => slot(d.type, d.label, d.hint))}
+        {slot("Selfie", "Selfie", "A clear photo of your face, no sunglasses")}
+      </ul>
+
+      <ul className="space-y-2 rounded-md bg-surface-subtle p-4 text-body-sm text-ink-secondary">
+        {["JPG, PNG, WebP or PDF, up to 8 MB", "All four corners visible, no glare", "The name and photo must match your profile"].map((t) => (
+          <li key={t} className="flex items-center gap-2">
+            <TickCircle size={18} color="currentColor" className="text-success-fg" /> {t}
+          </li>
+        ))}
+      </ul>
+
+      <div className="flex gap-3">
+        <Button variant="outline" onClick={onBack} leftIcon={<ArrowLeft size={18} color="currentColor" />} className="shrink-0">
+          Back
+        </Button>
+        <Button fullWidth onClick={submit} disabled={busy !== null} loading={busy === "submit"} rightIcon={<ArrowRight2 size={18} color="currentColor" />}>
+          Submit for review
+        </Button>
+      </div>
     </div>
   );
 }

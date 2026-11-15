@@ -20,6 +20,11 @@ public class ApplicationDbContext : DbContext, IApplicationDbContext
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
     public DbSet<OtpCode> OtpCodes => Set<OtpCode>();
     public DbSet<PasswordResetToken> PasswordResetTokens => Set<PasswordResetToken>();
+    public DbSet<ProfilePhoto> ProfilePhotos => Set<ProfilePhoto>();
+    public DbSet<KycDocument> KycDocuments => Set<KycDocument>();
+    public DbSet<ProfileReviewFlag> ProfileReviewFlags => Set<ProfileReviewFlag>();
+    public DbSet<ProfileReviewLog> ProfileReviewLogs => Set<ProfileReviewLog>();
+    public DbSet<Notification> Notifications => Set<Notification>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

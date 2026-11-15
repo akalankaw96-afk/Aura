@@ -47,11 +47,12 @@ public class AppExceptionHandler : IExceptionHandler
         }
 
         httpContext.Response.StatusCode = problem.Status!.Value;
-        return await _problemDetails.TryWriteAsync(new ProblemDetailsContext
-        {
-            HttpContext = httpContext,
-            ProblemDetails = problem,
-            Exception = exception
-        });
+        problem.Extensions["traceId"] = httpContext.TraceIdentifier;
+
+        // Write the body ourselves: the default writer skips it when the client's Accept header is e.g. "text/plain"
+        // (Swagger), and a generic "Unauthorized" body would replace the real reason (INVALID_CREDENTIALS, ACCOUNT_LOCKED …).
+        await httpContext.Response.WriteAsJsonAsync(problem, (System.Text.Json.JsonSerializerOptions?)null,
+            "application/problem+json", cancellationToken);
+        return true;
     }
 }

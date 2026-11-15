@@ -14,29 +14,29 @@ Baseline: 22 issues found during the analysis on 2026-11-11 (5 critical · 6 hig
 
 | ID | Severity | Area | Title | Status | Sprint |
 |---|---|---|---|---|---|
-| BUG-001 | Critical | API · Auth | OTP master code accepted for any phone; OTP returned in the response | Fixed (awaiting verification) | 01 |
-| BUG-002 | Critical | API · Auth | Google login trusts the e-mail without verifying the ID token | Fixed (awaiting verification) | 01 |
-| BUG-003 | Critical | Web · Auth | `googleLogin` creates a fake local session when the API fails | Fixed (awaiting verification) | 01 |
-| BUG-004 | Critical | API · Chat | `ChatController` has no `[Authorize]`; identity taken from the query string | Fixed (awaiting verification) | 01 |
-| BUG-005 | Critical | API · Chat | `ChatHub` has no auth; sender id supplied by the client | Fixed (awaiting verification) | 01 |
-| BUG-006 | High | API · Config | CORS allows any origin together with credentials | Fixed (awaiting verification) | 01 |
-| BUG-007 | High | API · Config | Secrets committed in `appsettings.json` + hard-coded JWT fallback in `Program.cs` | Fixed (awaiting verification) | 01 |
-| BUG-008 | High | API · Auth | 7-day JWT with no refresh, logout or revocation | Fixed (awaiting verification) | 01 |
-| BUG-009 | High | API · Profiles | `CreateOrUpdateProfile` sets `Verified = true` (KYC bypass) | Fixed (awaiting verification) | 01 |
-| BUG-010 | High | Web · Admin | "Staff Admin Panel" link shown to every member; `/admin` accepts any password | Fixed (awaiting verification) | 01 |
-| BUG-011 | High | Web · Business | Plan, KYC, usage and boost state trusted from localStorage (self-upgrade) | Open | 02–04 |
-| BUG-012 | Medium | Web · Routing | `/dashboard` has no guest guard; `KycGuard` treats missing state as approved | Fixed (awaiting verification) | 01 |
-| BUG-013 | Medium | API · DB | InMemory DB is the default (config key missing); `EnsureCreated`, no migrations | Fixed (awaiting verification) | 01 |
+| BUG-001 | Critical | API · Auth | OTP master code accepted for any phone; OTP returned in the response | Closed (verified 2026-11-14) | 01 |
+| BUG-002 | Critical | API · Auth | Google login trusts the e-mail without verifying the ID token | Closed (verified 2026-11-14) | 01 |
+| BUG-003 | Critical | Web · Auth | `googleLogin` creates a fake local session when the API fails | Closed (verified 2026-11-14) | 01 |
+| BUG-004 | Critical | API · Chat | `ChatController` has no `[Authorize]`; identity taken from the query string | Closed (verified 2026-11-14) | 01 |
+| BUG-005 | Critical | API · Chat | `ChatHub` has no auth; sender id supplied by the client | Closed (verified 2026-11-14) | 01 |
+| BUG-006 | High | API · Config | CORS allows any origin together with credentials | Closed (verified 2026-11-14) | 01 |
+| BUG-007 | High | API · Config | Secrets committed in `appsettings.json` + hard-coded JWT fallback in `Program.cs` | Closed (verified 2026-11-14) | 01 |
+| BUG-008 | High | API · Auth | 7-day JWT with no refresh, logout or revocation | Closed (verified 2026-11-14) | 01 |
+| BUG-009 | High | API · Profiles | `CreateOrUpdateProfile` sets `Verified = true` (KYC bypass) | Closed (verified 2026-11-14) | 01 |
+| BUG-010 | High | Web · Admin | "Staff Admin Panel" link shown to every member; `/admin` accepts any password | Closed (verified 2026-11-14) | 01 |
+| BUG-011 | High | Web · Business | Plan, KYC, usage and boost state trusted from localStorage (self-upgrade) | In Progress — KYC from server (S02); usage S03; plan/boost S04 | 02–04 |
+| BUG-012 | Medium | Web · Routing | `/dashboard` has no guest guard; `KycGuard` treats missing state as approved | Closed (verified 2026-11-14) | 01 |
+| BUG-013 | Medium | API · DB | InMemory DB is the default (config key missing); `EnsureCreated`, no migrations | Closed (verified 2026-11-14) | 01 |
 | BUG-014 | Medium | API + Web | Services/clients swallow errors and serve fallback or mock data | In Progress | 03 |
-| BUG-015 | Medium | API · DB | Demo user with a known password seeded in every environment | Fixed (awaiting verification) | 01 |
+| BUG-015 | Medium | API · DB | Demo user with a known password seeded in every environment | Closed (verified 2026-11-14) | 01 |
 | BUG-016 | Medium | API · Search | Profile search loads the whole table; no paging | Open | 03 |
-| BUG-017 | Medium | Web · Auth | JWT stored in localStorage (readable by any XSS) | Fixed (awaiting verification) | 01 |
-| BUG-018 | Low | API · Auth | PBKDF2 with 10,000 iterations (below current guidance) | Fixed (awaiting verification) | 01 |
+| BUG-017 | Medium | Web · Auth | JWT stored in localStorage (readable by any XSS) | Closed (verified 2026-11-14) | 01 |
+| BUG-018 | Low | API · Auth | PBKDF2 with 10,000 iterations (below current guidance) | Closed (verified 2026-11-14) | 01 |
 | BUG-019 | Low | Web · UI | ~380 classes from non-existent palettes + 8 opacity modifiers render unstyled | Open | 05 |
-| BUG-020 | Low | Web · Tooling | `npm run lint` unusable — no ESLint config | Fixed (awaiting verification) | 01 |
+| BUG-020 | Low | Web · Tooling | `npm run lint` unusable — no ESLint config | Closed (verified 2026-11-14) | 01 |
 | BUG-021 | Low | Web · Errors | `fetch` without timeout; ~31 empty `catch {}`; ~31 stray `console` calls | Open | 05 |
-| BUG-022 | Low | Docs | Root `README.md` status section is out of date | Fixed (awaiting verification) | 01 |
-| BUG-023 | High | API · Data | Registration saved made-up data: fake `phone_…@auramatrimony.lk` e-mails, account name stuck at "New member", unverified sign-ups could log in and blocked the number, profession / education / height / religion defaults, age instead of birth date, SVG avatars stored in `PhotoUrl`, 9,000-value random profile codes, untrimmed text | Fixed (awaiting verification) | 01 |
+| BUG-022 | Low | Docs | Root `README.md` status section is out of date | Closed (verified 2026-11-14) | 01 |
+| BUG-023 | High | API · Data | Registration saved made-up data: fake `phone_…@auramatrimony.lk` e-mails, account name stuck at "New member", unverified sign-ups could log in and blocked the number, profession / education / height / religion defaults, age instead of birth date, SVG avatars stored in `PhotoUrl`, 9,000-value random profile codes, untrimmed text | Closed (verified 2026-11-14) | 01 |
 
 **2026-11-13 — branch `S01-api-auth`:** fixes for BUG-001/002/003/006/007/008/013/015/018 are in the code
 (see `CHANGELOG.md`). They move to **Verified** once `dotnet build`, the `InitialCreate` migration and the auth

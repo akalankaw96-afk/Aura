@@ -3,6 +3,7 @@ using DatingApp.Application.Common.Interfaces;
 using DatingApp.Application.Common.Security;
 using DatingApp.Application.DTOs;
 using DatingApp.Domain.Entities;
+using DatingApp.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
 
 namespace DatingApp.Application.Services;
@@ -158,8 +159,9 @@ public class SessionService : ISessionService
             Role = user.Role,
             ProfileId = profile?.Id,
             HasCompletedProfile = hasProfile,
-            IsVerified = profile?.Verified ?? false,
-            IsUnderReview = hasProfile && !profile!.Verified,
+            IsVerified = profile?.Status == ProfileStatus.Approved,
+            IsUnderReview = profile?.Status is ProfileStatus.Submitted or ProfileStatus.Resubmitted,
+            ProfileStatus = profile?.Status.ToString() ?? "None",
             IsPremium = profile?.Premium ?? false,
             PlanId = (profile?.Premium ?? false) ? "premium" : "free",
             PhotoUrl = profile?.PhotoUrl
