@@ -30,7 +30,8 @@ public class ProfileService : IProfileService
 
     public async Task<List<ProfileDto>> GetProfilesAsync(ProfileFilterDto? filter = null, CancellationToken ct = default, bool includeMemberDetails = false)
     {
-        var query = _context.CandidateProfiles.AsNoTracking().AsQueryable();
+        // Other members see approved profiles only (S02-T01)
+        var query = _context.CandidateProfiles.AsNoTracking().Where(p => p.Status == ProfileStatus.Approved);
 
         if (filter != null)
         {
@@ -75,10 +76,6 @@ public class ProfileService : IProfileService
                 query = query.Where(p => p.Location.Contains(filter.Location) || p.Country.Contains(filter.Location));
             }
 
-            if (filter.VerifiedOnly == true)
-            {
-                query = query.Where(p => p.Verified);
-            }
         }
 
         // Real members only — no fallback sample profiles (BUG-014). Errors surface as 500 ProblemDetails.
@@ -88,14 +85,23 @@ public class ProfileService : IProfileService
 
     public async Task<ProfileDto?> GetProfileByIdAsync(Guid id, CancellationToken ct = default, bool includeMemberDetails = false)
     {
-        var profile = await _context.CandidateProfiles.AsNoTracking().FirstOrDefaultAsync(p => p.Id == id, ct);
+        var profile = await _context.CandidateProfiles.AsNoTracking()
+            .FirstOrDefaultAsync(p => p.Id == id && p.Status == ProfileStatus.Approved, ct);
         return profile == null ? null : MapToDto(profile, includeMemberDetails);
     }
 
     public async Task<ProfileDto?> GetProfileByUserIdAsync(Guid userId, CancellationToken ct = default)
     {
         var profile = await _context.CandidateProfiles.AsNoTracking().FirstOrDefaultAsync(p => p.UserId == userId, ct);
-        return profile == null ? null : MapToDto(profile, includeMemberDetails: true, owner: true);
+        if (profile == null) return null;
+        var dto = MapToDto(profile, includeMemberDetails: true, owner: true);
+
+        // The member sees their own main photo even while it waits for review
+        var main = await _context.ProfilePhotos.AsNoTracking()
+            .Where(ph => ph.ProfileId == profile.Id && ph.IsMain && ph.Status != ReviewItemStatus.Rejected)
+            .Select(ph => (Guid?)ph.Id).FirstOrDefaultAsync(ct);
+        if (main.HasValue) dto.PhotoUrl = $"photo:{main.Value}";
+        return dto;
     }
 
     public async Task<ProfileDto> CreateOrUpdateProfileAsync(Guid userId, CreateProfileDto dto, CancellationToken ct = default)
@@ -132,7 +138,8 @@ public class ProfileService : IProfileService
         var category = Enum.TryParse<ProfessionCategory>(Clean(dto.ProfessionCategory, 20), true, out var pc) && Enum.IsDefined(pc)
             ? pc
             : ProfessionCategory.Other;
-        var photoUrl = CleanPhoto(dto.PhotoUrl);
+        // "photo:<id>" points at an uploaded photo the server already manages — saving the form never changes it
+        var photoUrl = (dto.PhotoUrl ?? string.Empty).Trim().StartsWith("photo:") ? string.Empty : CleanPhoto(dto.PhotoUrl);
 
         string? email = null;
         if (!string.IsNullOrWhiteSpace(dto.Email))
@@ -158,7 +165,7 @@ public class ProfileService : IProfileService
             {
                 UserId = userId,
                 Code = await NewProfileCodeAsync(ct),
-                Verified = false, // BUG-009: only the KYC review may verify a profile
+                Status = ProfileStatus.Draft, // BUG-009: only a moderator can approve (submit with POST /profiles/me/submit)
                 Premium = false
             };
             _context.CandidateProfiles.Add(profile);
@@ -289,7 +296,8 @@ public class ProfileService : IProfileService
             Country = p.Country,
             Religion = p.Religion,
             Community = p.Community,
-            Verified = p.Verified,
+            Verified = p.Status == ProfileStatus.Approved,
+            Status = owner ? p.Status.ToString() : null,
             Premium = p.Premium,
             PhotoUrl = p.PhotoUrl,
             Bio = p.Bio,

@@ -1,9 +1,9 @@
 import React from "react";
-import { Heart, ShieldTick, TickCircle, User, UserAdd } from "iconsax-react";
+import { Heart, Personalcard, ShieldTick, TickCircle, User, UserAdd } from "iconsax-react";
 import { cn } from "@/lib/cn";
 
 /**
- * Figma: Stepper (Step = 1 / 2 / 3 / 4 / Complete)
+ * Figma: Stepper (Step = 1 / 2 / 3 / 4 / Complete) + Identity step (Sprint 02: ID documents and selfie)
  * Same width as the form card (680px). The filled track grows with progress
  * and ends in a small "tip" dot in front of the current step.
  */
@@ -12,10 +12,11 @@ const STEPS = [
   { title: "Verify", sub: "OTP code", Icon: ShieldTick },
   { title: "Profile", sub: "About you", Icon: User },
   { title: "Photos", sub: "Add your best", Icon: Heart },
+  { title: "Identity", sub: "ID & selfie", Icon: Personalcard },
 ];
 
 export interface StepperProps {
-  /** 1–4, or 5 for Complete */
+  /** 1–5, or 6 for Complete */
   step: number;
   className?: string;
 }
@@ -30,14 +31,14 @@ export function Stepper({ step, className }: StepperProps) {
     <nav aria-label="Registration progress" className={cn("w-full rounded-xl border border-line bg-surface-card px-4 pb-4 pt-5 shadow-sm sm:px-6", className)}>
       <div className="relative">
         {/* track */}
-        <div className="absolute left-[12.5%] right-[12.5%] top-5 h-1.5 -translate-y-1/2 rounded-full bg-surface-muted">
+        <div className="absolute left-[10%] right-[10%] top-5 h-1.5 -translate-y-1/2 rounded-full bg-surface-muted">
           <div className="relative h-full rounded-full bg-brand-gradient transition-all duration-500" style={{ width: `${Math.min(pct, 100)}%` }}>
             {step <= n && (
               <span className="absolute -right-1.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 rounded-full border-[3px] border-brand bg-surface-card" />
             )}
           </div>
         </div>
-        <ol className="relative grid grid-cols-4">
+        <ol className="relative grid grid-cols-5">
           {STEPS.map((s, i) => {
             const idx = i + 1;
             const isDone = idx <= done;

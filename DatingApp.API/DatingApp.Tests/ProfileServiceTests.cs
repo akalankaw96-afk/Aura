@@ -66,6 +66,13 @@ public class ProfileServiceTests
         var service = new ProfileService(db);
         var saved = await service.CreateOrUpdateProfileAsync(user.Id, Valid());
 
+        // a draft is invisible to others
+        Assert.Null(await service.GetProfileByIdAsync(saved.Id, includeMemberDetails: true));
+
+        var row = await db.CandidateProfiles.SingleAsync();
+        row.Status = DatingApp.Domain.Enums.ProfileStatus.Approved;
+        await db.SaveChangesAsync();
+
         var publicView = await service.GetProfileByIdAsync(saved.Id, includeMemberDetails: true);
 
         Assert.NotNull(publicView);

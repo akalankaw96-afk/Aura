@@ -5,6 +5,7 @@ import { Edit2, Gallery, GalleryAdd, Star1, Trash } from "iconsax-react";
 import { cn } from "@/lib/cn";
 import { Badge } from "./Badge";
 import { isIllustration } from "@/content/avatars";
+import { useApiImage } from "@/lib/media";
 
 /**
  * Figma: Register 05 · Photos → Photo slot (shared with Dashboard → Edit profile).
@@ -28,12 +29,14 @@ const action =
   "flex h-8 w-8 items-center justify-center rounded-full bg-surface-glass-strong shadow-sm transition-colors hover:bg-surface-card";
 
 export function PhotoSlot({ src, main, rejected, inReview, label = "Add photo", onPick, onRemove, onMakeMain, className }: PhotoSlotProps) {
+  // photos in review need the member's token — shown through a temporary blob URL
+  const shown = useApiImage(src);
   if (src) {
     const illustration = isIllustration(src);
     return (
       <div className={cn("group relative overflow-hidden rounded-lg bg-surface-muted", rejected && "ring-2 ring-error-fg ring-offset-2 ring-offset-surface-card", className)}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={src} alt={main ? "Main photo" : "Photo"} className="h-full w-full object-cover" />
+        {shown && <img src={shown} alt={main ? "Main photo" : "Photo"} className="h-full w-full object-cover" />}
         <span className="absolute left-2.5 top-2.5 flex flex-col items-start gap-1">
           {main &&
             (rejected ? (

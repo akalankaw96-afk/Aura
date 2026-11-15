@@ -18,7 +18,10 @@ public class ProfileDto
     public string Country { get; set; } = string.Empty;
     public string Religion { get; set; } = string.Empty;
     public string Community { get; set; } = string.Empty;
+    /// <summary>True when a moderator approved the profile (Status == Approved).</summary>
     public bool Verified { get; set; }
+    /// <summary>Review state — only in the member's own profile.</summary>
+    public string? Status { get; set; }
     public bool Premium { get; set; }
     public string PhotoUrl { get; set; } = string.Empty;
     public string Bio { get; set; } = string.Empty;

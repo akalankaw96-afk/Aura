@@ -5,6 +5,39 @@ Sections: Added · Changed · Fixed · Security · Removed · Breaking.
 
 ## [Unreleased]
 
+### Changed
+- 2026-11-14 — **Finish / fix your profile from the dashboard (S02-T10, part).** The verification panel now uses the
+  server's review status: Draft profiles get a checklist (details · photos · ID · selfie) and "Complete my profile";
+  changes requested show each flagged field with the moderator's reason and a Fix link. New page `/profile/complete`
+  (signed-in members, prefilled from `GET /profiles/me`) with Profile details → Photos → ID & selfie → Submit; the old
+  `/register/status` links redirect there. Files: `components/auth/CompleteProfileFlow.tsx`, `app/profile/complete/page.tsx`,
+  `components/auth/{RegisterFlow,ReviewStatus}.tsx`, `components/sections/dashboard/VerificationPanel.tsx`.
+- 2026-11-14 — **Registration on the review API (S02-T09).** Step 3 saves the profile to the server; step 4 uploads real
+  photos to `/api/photos` (no image data in the browser any more) or keeps an avatar; new step 5 "Identity" uploads
+  NIC front + back or passport and a selfie, then submits for review (`POST /api/profiles/me/submit`; missing items are
+  listed). Member status reads `profileStatus` from the session (Approved → live, ChangesRequested → changes).
+  Files: `components/auth/RegisterFlow.tsx`, new `lib/media.ts`, `components/ui/{PhotoSlot,Stepper}.tsx`,
+  `content/avatars.ts` (`photo:<id>` → API file URL), `lib/{registrationDraft,verification}.ts`, `services/api.ts`.
+
+### Added
+- 2026-11-14 — **Sprint 02 API: join & get approved (S02-T01–T08, T12; branch `S02-kyc`).**
+  - Profile status (`Draft · Submitted · ChangesRequested · Resubmitted · Approved · Suspended`) replaces `Verified`;
+    other members see approved profiles only; the session carries `profileStatus`.
+  - Member: `GET /api/profiles/me/status`, `POST /api/profiles/me/submit` (needs birth date, main photo or avatar,
+    NIC front + back or passport, selfie — 400 lists what is `missing`); resubmitting after changes resolves the flags.
+  - Files: `IFileStorage` with local disk (`App_Data/uploads`, not public, ignored by Git); uploads checked by file
+    signature (JPEG / PNG / WebP, PDF for documents), ≤ 8 MB.
+  - Photos `/api/photos` (≤ 6, main, order, delete, file) — pending until a moderator approves; approved photos of
+    approved members load by link, others only for the owner / staff. Documents `/api/kyc/documents` — owner and staff
+    only, every staff view logged.
+  - Moderation `/api/moderation` (Staff policy): queue, review details, approve, request changes per field with reason,
+    suspend / reinstate, new-photo queue, approve / reject photo; all decisions in `ProfileReviewLogs`.
+  - Admin `/api/admin` (Admin policy): staff list, find by mobile, make Moderator / Member (sessions revoked). First
+    admin from user-secrets `Seed:AdminPhone` + `Seed:AdminPassword`.
+  - Notifications `/api/notifications` + SMS for approve / changes / suspend / reinstate; in-app note for rejected photos.
+  - New tables: `ProfilePhotos`, `KycDocuments`, `ProfileReviewFlags`, `ProfileReviewLogs`, `Notifications`. Tests:
+    `DatingApp.Tests/ReviewFlowTests.cs`. **Needs migration `Sprint02Review`.**
+
 ### Fixed
 - 2026-11-14 — **Registration data (BUG-023), owner report.** API: mobile-only accounts store no e-mail (`Users.Email`
   nullable) instead of `phone_…@auramatrimony.lk`; `POST /auth/register` with a mobile number returns **201 without a

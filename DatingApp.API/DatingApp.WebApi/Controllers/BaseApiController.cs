@@ -1,5 +1,7 @@
 using DatingApp.Application.Common.Exceptions;
 using DatingApp.Application.Common.Interfaces;
+using DatingApp.Application.Services;
+using DatingApp.Domain.Entities;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
 
@@ -32,6 +34,10 @@ public abstract class BaseApiController : ControllerBase
 
     /// <summary>The signed-in member's id, or a 401 ProblemDetails when there is none.</summary>
     protected Guid RequireUserId() => CurrentUserId ?? throw AppException.Unauthenticated();
+
+    /// <summary>The caller for file access checks: signed-in user (if any) and whether they are Admin / Moderator.</summary>
+    protected Viewer CurrentViewer =>
+        new(CurrentUserId, User.IsInRole(Roles.Admin) || User.IsInRole(Roles.Moderator));
 
     protected ClientInfo Client => new(
         HttpContext.Connection.RemoteIpAddress?.ToString(),

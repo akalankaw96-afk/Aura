@@ -19,6 +19,8 @@ const KYC_EVENT = "vk-kyc-change";
 const PLAN_EVENT = "vk-plan-change";
 
 interface SessionFlags {
+  /** Draft · Submitted · ChangesRequested · Resubmitted · Approved · Suspended (Sprint 02) */
+  profileStatus?: string;
   isVerified?: boolean;
   isUnderReview?: boolean;
   hasCompletedProfile?: boolean;
@@ -39,7 +41,16 @@ function readSession(): SessionFlags | null {
 /** Not signed in or not approved → "pending" (never assume approved — BUG-012). */
 export function readKyc(): KycStatus {
   const s = readSession();
-  return s?.isVerified === true ? "live" : "pending";
+  switch (s?.profileStatus) {
+    case "Approved":
+      return "live";
+    case "ChangesRequested":
+      return "changes";
+    case "Resubmitted":
+      return "resubmitted";
+    default:
+      return s?.isVerified === true ? "live" : "pending";
+  }
 }
 
 /**

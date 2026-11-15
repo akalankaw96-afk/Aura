@@ -91,6 +91,15 @@ export function loadDraft(): RegistrationDraft {
   }
 }
 
+/** After the profile is submitted: the server has everything, so the browser copy is dropped. */
+export function clearDraft(): void {
+  try {
+    sessionStorage.removeItem(KEY);
+  } catch {
+    /* storage unavailable */
+  }
+}
+
 export function saveDraft(patch: Partial<RegistrationDraft>): RegistrationDraft {
   const next = { ...loadDraft(), ...patch };
   try {

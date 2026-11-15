@@ -122,6 +122,8 @@ public class AuthResponseDto
     public bool HasCompletedProfile { get; set; }
     public bool IsVerified { get; set; }
     public bool IsUnderReview { get; set; }
+    /// <summary>None · Draft · Submitted · ChangesRequested · Resubmitted · Approved · Suspended (S02-T01).</summary>
+    public string ProfileStatus { get; set; } = "None";
     public bool IsPremium { get; set; }
     public string PlanId { get; set; } = "free";
     public string? PhotoUrl { get; set; }

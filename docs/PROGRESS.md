@@ -3,36 +3,56 @@
 **Status values:** Not Started · In Progress · Testing · Completed · Blocked · Deferred.
 "Completed" only when acceptance criteria pass and tests/manual checks are recorded (`TESTING_GUIDELINES.md` §6).
 
-_Last updated: 2026-11-14 — Sprint 01 code complete (chat security, in-memory tokens, page guards, tests, CI) and `main` merged in; awaiting build + test. Earlier: demo data removed; Auth API #1–14._
+_Last updated: 2026-11-14 — Sprint 02 API (T01–T08, T12) written on `S02-kyc`; awaiting migration `Sprint02Review` + `dotnet test`. Web (T09–T11) next._
 
 ## Overall
 | Area | State |
 |---|---|
 | Web UI (screens, design system) | Largely built against Figma; most screens run on demo/localStorage data |
-| API | 27 of ~103 endpoints (auth group rebuilt 2026-11-13, not yet built/tested); chat still insecure (BUG-004/005) |
-| Security | 5 critical + 6 high open issues |
-| Tests / CI | None |
-| Current sprint | **01 — Foundation & critical security** (started 2026-11-13, branch `S01-api-auth`) |
+| API | Auth group (#1–14), profiles, interests, secured chat — built and verified 2026-11-14 |
+| Security | Sprint 01 critical/high issues closed; BUG-011 (client-trusted plan/usage) remains for Sprints 02–04 |
+| Tests / CI | `DatingApp.Tests` (xUnit, 25 tests) + CI workflow (owner adds `.github/workflows/ci.yml`) |
+| Current sprint | **02 — Join & get approved** (approved 2026-11-14, branch `S02-kyc`) |
 
 ## Sprint 01 — Foundation & critical security
 | Task | Status | Notes |
 |---|---|---|
-| S01-T01 Secrets out of source | Testing | Secrets removed from appsettings; app refuses to start without `JwtSettings:Secret` (≥32 bytes); user-secrets id added. **Rotate** the old JWT key + Google client secret (in Git history) |
-| S01-T02 CORS allow-list | Testing | `Cors:AllowedOrigins` allow-list (dev: localhost:3001/3000); production list empty until set |
-| S01-T03 OTP hardening | Testing | Hashed codes, 5 min, 5 tries, 60 s resend, 3 resends/hour, per-IP limit; no master code; never in response. `ISmsSender` logs in dev only (TD-21: real provider) |
-| S01-T04 Google token verification + no fake session | Testing | Google ID token (One Tap) + access token (popup) verified with Google; web fake sessions removed (register, Google, OTP, profile auto-session) |
-| S01-T05 Refresh / logout / token storage | Testing | API: 15-min access token, rotating refresh token in httpOnly `vk_refresh` cookie, reuse detection. Web (2026-11-14): access token in memory only (`lib/http.ts`), restored with `/auth/refresh` after reload, old `aura_token` removed (BUG-017) |
-| S01-T06 Chat authentication | Testing | Hub + chat API `[Authorize]`; identity from the JWT (`?access_token=` on the WebSocket); only matched members can chat; outsiders get 404; contact share needs the other member's accept (`ChatService`, BUG-004/005, TD-03) |
-| S01-T07 Stop auto-verify on profile save | Testing | New profiles saved with `Verified = false` (2026-11-13). Existing-profile updates leave the flag unchanged |
-| S01-T08 Admin link + role gate | Testing | Admin links stay out of the menu (also after merging `main`); `/admin` needs Admin/Moderator (`RequireMember role`); API policies `Admin` / `Staff` |
-| S01-T09 Dashboard guest guard / KycGuard default | Testing | Guests on Dashboard / Friends / Messages → `/login?next=…` (`RequireMember`); `KycGuard` only acts for signed-in members; KYC default is "pending" |
-| S01-T10 Migrations, SQL default, dev-only seed | Testing | `Migrate()` on start, SQL Server default, `InitialCreate` migration generated (2026-11-14), content seed only (no demo member) |
-| S01-T11 Global ProblemDetails handler | Testing | All controllers throw `AppException` → ProblemDetails (`code`, `traceId`); match requests: 400 / 403 `PROFILE_REQUIRED` / 404 / 409; content no longer swallows DB errors |
-| S01-T12 Typed fetch helper | Testing | `lib/http.ts`: `apiRequest` / `apiJson`, 15 s timeout, refresh-once on 401, `ApiError`; used by `api.ts`, `passwordReset.ts`, chat REST (TD-04) |
-| S01-T13 Password hashing upgrade | Testing | PBKDF2-SHA256 600k (`v2.` format); old hashes verify and are upgraded at login |
-| S01-T14 Lint, tests, CI, ui exports | Testing | `eslint.config.mjs` (+ devDeps — run `npm install`); `DatingApp.Tests` (xUnit, 17 tests: OTP, sessions, chat, interests); `.github/workflows/ci.yml` (owner to add — tool can't write `.github`); `SegmentedTabs`, `PhotoSlot`, `ButtonLink` exported |
-| S01-T15 README update | Testing | Root README: start-here links to CLAUDE.md / docs, run + check commands, status |
-| S01-T16 Forgot password journey | Testing | API endpoints #9–11 + change password #12 built; `services/passwordReset.ts` now calls them. Password rule aligned web ↔ API: 8+ chars, letter + number |
+| S01-T01 Secrets out of source | Completed | Secrets removed from appsettings; app refuses to start without `JwtSettings:Secret` (≥32 bytes); user-secrets id added. **Rotate** the old JWT key + Google client secret (in Git history) |
+| S01-T02 CORS allow-list | Completed | `Cors:AllowedOrigins` allow-list (dev: localhost:3001/3000); production list empty until set |
+| S01-T03 OTP hardening | Completed | Hashed codes, 5 min, 5 tries, 60 s resend, 3 resends/hour, per-IP limit; no master code; never in response. `ISmsSender` logs in dev only (TD-21: real provider) |
+| S01-T04 Google token verification + no fake session | Completed | Google ID token (One Tap) + access token (popup) verified with Google; web fake sessions removed (register, Google, OTP, profile auto-session) |
+| S01-T05 Refresh / logout / token storage | Completed | API: 15-min access token, rotating refresh token in httpOnly `vk_refresh` cookie, reuse detection. Web (2026-11-14): access token in memory only (`lib/http.ts`), restored with `/auth/refresh` after reload, old `aura_token` removed (BUG-017) |
+| S01-T06 Chat authentication | Completed | Hub + chat API `[Authorize]`; identity from the JWT (`?access_token=` on the WebSocket); only matched members can chat; outsiders get 404; contact share needs the other member's accept (`ChatService`, BUG-004/005, TD-03) |
+| S01-T07 Stop auto-verify on profile save | Completed | New profiles saved with `Verified = false` (2026-11-13). Existing-profile updates leave the flag unchanged |
+| S01-T08 Admin link + role gate | Completed | Admin links stay out of the menu (also after merging `main`); `/admin` needs Admin/Moderator (`RequireMember role`); API policies `Admin` / `Staff` |
+| S01-T09 Dashboard guest guard / KycGuard default | Completed | Guests on Dashboard / Friends / Messages → `/login?next=…` (`RequireMember`); `KycGuard` only acts for signed-in members; KYC default is "pending" |
+| S01-T10 Migrations, SQL default, dev-only seed | Completed | `Migrate()` on start, SQL Server default, `InitialCreate` migration generated (2026-11-14), content seed only (no demo member) |
+| S01-T11 Global ProblemDetails handler | Completed | All controllers throw `AppException` → ProblemDetails (`code`, `traceId`); match requests: 400 / 403 `PROFILE_REQUIRED` / 404 / 409; content no longer swallows DB errors |
+| S01-T12 Typed fetch helper | Completed | `lib/http.ts`: `apiRequest` / `apiJson`, 15 s timeout, refresh-once on 401, `ApiError`; used by `api.ts`, `passwordReset.ts`, chat REST (TD-04) |
+| S01-T13 Password hashing upgrade | Completed | PBKDF2-SHA256 600k (`v2.` format); old hashes verify and are upgraded at login |
+| S01-T14 Lint, tests, CI, ui exports | Completed | `eslint.config.mjs` (+ devDeps — run `npm install`); `DatingApp.Tests` (xUnit, 17 tests: OTP, sessions, chat, interests); `.github/workflows/ci.yml` (owner to add — tool can't write `.github`); `SegmentedTabs`, `PhotoSlot`, `ButtonLink` exported |
+| S01-T15 README update | Completed | Root README: start-here links to CLAUDE.md / docs, run + check commands, status |
+| S01-T16 Forgot password journey | Completed | API endpoints #9–11 + change password #12 built; `services/passwordReset.ts` now calls them. Password rule aligned web ↔ API: 8+ chars, letter + number |
+
+## Sprint 02 — Join & get approved
+Decisions (owner, 2026-11-14): files on **local disk** behind `IFileStorage` (cloud later); first **Admin from user-secrets**,
+admins promote moderators; branch **`S02-kyc`** (from merged `S01-api-auth`).
+
+| Task | Status | Notes |
+|---|---|---|
+| S02-T01 Profile status replaces `Verified` | Testing | `ProfileStatus` enum on `CandidateProfile` (Verified removed); only approved profiles in search / profile pages; session returns `profileStatus` |
+| S02-T02 Profile draft / submit / status API | Testing | `GET /profiles/me/status`, `POST /profiles/me/submit` (`ReviewService`); new profiles start as Draft |
+| S02-T03 File storage (`IFileStorage`, local disk) | Testing | `IFileStorage` + `LocalDiskFileStorage` (`App_Data/uploads`, `Storage:Root`); type by file signature, ≤ 8 MB (`FileRules`) |
+| S02-T04 Photo upload API | Testing | `/api/photos` upload · mine · main · order · delete · `{id}/file` (`MediaService`); max 6; pending until approved |
+| S02-T05 KYC document upload API | Testing | `/api/kyc/documents` upload (NicFront · NicBack · Passport · Selfie) · list · `{id}/file`; owner + staff only; staff views logged |
+| S02-T06 Moderator review queue API | Testing | `/api/moderation` queue · profile · approve · request-changes · suspend · reinstate · pending photos · approve / reject photo (`Staff` policy, `ModerationService`, review log) |
+| S02-T07 Changes-requested → resubmit flow | Testing | Resubmit after changes resolves the flags and returns the profile to the queue |
+| S02-T08 Admin bootstrap + staff roles API | Testing | First Admin from `Seed:AdminPhone` / `Seed:AdminPassword`; `/api/admin` staff · find user · change role (Member / Moderator), sessions revoked on change |
+| S02-T09 Web: registration photos + KYC steps on the API | Testing | Step 3 saves the profile (`POST /profiles`); step 4 uploads photos to `/api/photos` (main, extra, replace, remove, in-review badges via `useApiImage`) or picks an avatar; new step 5 "Identity" uploads NIC / passport + selfie and submits (`lib/media.ts`); stepper has 5 steps |
+| S02-T10 Web: dashboard review states + edit profile on the API | In Progress | Dashboard panel reads `GET /profiles/me/status`: Draft → "N things to add" checklist + Complete my profile; Changes requested → the moderator's fields and reasons with Fix links; new `/profile/complete` (details → photos → ID & selfie → submit) for signed-in members, prefilled from the server; `/register/status` redirects there. Remaining: Edit profile → Photos tab on the API |
+| S02-T11 Web: staff back office (queue + review) | Not Started | |
+| S02-T12 Basic notifications for KYC decisions | Testing | `Notifications` table + `/api/notifications` (list, unread count, read, read all); SMS on approve / changes / suspend |
+| S02-T13 Tests + docs | In Progress | API part: `ReviewFlowTests` (7) + profile test updated. Web part with T09–T11 |
 
 ## Small UI changes (outside sprint tasks)
 | Change | Status | Notes |

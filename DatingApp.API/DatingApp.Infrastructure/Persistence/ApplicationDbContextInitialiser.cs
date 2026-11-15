@@ -1,4 +1,6 @@
 using DatingApp.Application.Common.Interfaces;
+using DatingApp.Application.Common.Security;
+using Microsoft.Extensions.Configuration;
 using DatingApp.Domain.Entities;
 using DatingApp.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
@@ -11,13 +13,19 @@ public class ApplicationDbContextInitialiser
 {
     private readonly ApplicationDbContext _context;
     private readonly ILogger<ApplicationDbContextInitialiser> _logger;
+    private readonly IConfiguration _configuration;
+    private readonly IPasswordHasher _passwordHasher;
 
     public ApplicationDbContextInitialiser(
         ApplicationDbContext context,
-        ILogger<ApplicationDbContextInitialiser> logger)
+        ILogger<ApplicationDbContextInitialiser> logger,
+        IConfiguration configuration,
+        IPasswordHasher passwordHasher)
     {
         _context = context;
         _logger = logger;
+        _configuration = configuration;
+        _passwordHasher = passwordHasher;
     }
 
     /// <summary>
@@ -42,11 +50,71 @@ public class ApplicationDbContextInitialiser
         try
         {
             await CleanUpRegistrationDataAsync();
+            await EnsureAdminAsync();
             await TrySeedAsync();
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error occurred while seeding the database");
+        }
+    }
+
+    /// <summary>
+    /// First Admin (S02-T08): from user-secrets <c>Seed:AdminPhone</c> + <c>Seed:AdminPassword</c>. Nothing happens
+    /// without both. An existing account with that number is promoted (its password is kept); otherwise one is created.
+    /// </summary>
+    private async Task EnsureAdminAsync()
+    {
+        var phoneSetting = _configuration["Seed:AdminPhone"];
+        var password = _configuration["Seed:AdminPassword"];
+        if (string.IsNullOrWhiteSpace(phoneSetting) || string.IsNullOrWhiteSpace(password)) return;
+
+        var phone = Identifiers.NormalizePhone(phoneSetting);
+        if (phone == null)
+        {
+            _logger.LogWarning("Seed:AdminPhone is not a valid phone number — no admin created");
+            return;
+        }
+
+        var user = await _context.Users.FirstOrDefaultAsync(u => u.PhoneNumber == phone);
+        if (user == null)
+        {
+            Identifiers.EnsureStrongPassword(password, "Seed:AdminPassword");
+            _context.Users.Add(new User
+            {
+                FullName = "Administrator",
+                PhoneNumber = phone,
+                PhoneVerified = true,
+                PasswordHash = _passwordHasher.HashPassword(password),
+                Role = Roles.Admin
+            });
+            await _context.SaveChangesAsync();
+            _logger.LogInformation("Admin account created for {Phone}", phone);
+        }
+        else
+        {
+            if (user.Role != Roles.Admin)
+            {
+                user.Role = Roles.Admin;
+                user.PhoneVerified = true;
+                user.SecurityStamp = Guid.NewGuid().ToString("N");
+                _logger.LogInformation("Account {Phone} promoted to Admin", phone);
+            }
+
+            // Development help: Seed:AdminResetPassword=true sets the admin password from Seed:AdminPassword and clears a lockout.
+            if (string.Equals(_configuration["Seed:AdminResetPassword"], "true", StringComparison.OrdinalIgnoreCase))
+            {
+                Identifiers.EnsureStrongPassword(password, "Seed:AdminPassword");
+                user.PasswordHash = _passwordHasher.HashPassword(password);
+                user.PasswordChangedAt = DateTime.UtcNow;
+                user.FailedLoginCount = 0;
+                user.LockoutEndsAt = null;
+                user.PhoneVerified = true;
+                user.SecurityStamp = Guid.NewGuid().ToString("N");
+                _logger.LogWarning("Admin password for {Phone} reset from Seed:AdminPassword — remove Seed:AdminResetPassword now", phone);
+            }
+
+            await _context.SaveChangesAsync();
         }
     }
 
