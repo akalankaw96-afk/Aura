@@ -6,6 +6,12 @@ Sections: Added · Changed · Fixed · Security · Removed · Breaking.
 ## [Unreleased]
 
 ### Changed
+- 2026-11-14 — **Staff back office at `/admin` (S02-T11).** Replaces the placeholder: review queue, profile review with
+  photos (approve / reject with reason), ID documents (in-page preview or new tab; every view logged by the API),
+  details and history, and the decision panel (approve, request changes per field with reasons, suspend / reinstate).
+  New-photos tab for approved members' uploads; Staff tab (Admin) to make or remove moderators. "Staff area" link in the
+  account menu for Admin / Moderator only. Files: `components/sections/admin/{StaffConsole,AdminScreen}.tsx`,
+  `app/admin/page.tsx`, `lib/staff.ts`, `components/layout/Navbar.tsx`.
 - 2026-11-14 — **Finish / fix your profile from the dashboard (S02-T10, part).** The verification panel now uses the
   server's review status: Draft profiles get a checklist (details · photos · ID · selfie) and "Complete my profile";
   changes requested show each flagged field with the moderator's reason and a Fix link. New page `/profile/complete`

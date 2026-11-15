@@ -26,11 +26,36 @@ import { Badge } from "@/components/ui/Badge";
 import { Alert } from "@/components/ui/Alert";
 import { Button } from "@/components/ui/Button";
 import { useFlashToast } from "@/components/ui";
-import { FLAGGED } from "@/components/auth/ReviewStatus";
 import { formatPhone } from "@/components/auth/shared";
 import { loadDraft, type RegistrationDraft } from "@/lib/registrationDraft";
 import { useKyc, type KycStatus } from "@/lib/verification";
 import { useAuthSession } from "@/lib/session";
+import { getReviewStatus, useApiImage, type ProfileStatusInfo } from "@/lib/media";
+import { apiService } from "@/services/api";
+
+/** Flagged field from the moderator → label, icon and the step that fixes it (/profile/complete). */
+const FLAG_INFO: Record<string, { label: string; Icon: typeof Clock; step: string }> = {
+  photo: { label: "Main photo", Icon: Gallery, step: "photos" },
+  documents: { label: "ID document", Icon: ShieldTick, step: "identity" },
+  selfie: { label: "Selfie", Icon: ShieldTick, step: "identity" },
+  name: { label: "Name", Icon: Edit2, step: "details" },
+  dob: { label: "Date of birth", Icon: Edit2, step: "details" },
+  gender: { label: "Gender", Icon: Edit2, step: "details" },
+  about: { label: "About you", Icon: Edit2, step: "details" },
+  profession: { label: "Profession", Icon: Edit2, step: "details" },
+  education: { label: "Education", Icon: Edit2, step: "details" },
+  religion: { label: "Religion", Icon: Edit2, step: "details" },
+  location: { label: "Location", Icon: Edit2, step: "details" },
+  other: { label: "Other", Icon: Edit2, step: "details" },
+};
+
+/** What a Draft profile still needs → where to add it. */
+const TODO: { key: string; label: string; note: string; Icon: typeof Clock; step: string }[] = [
+  { key: "details", label: "Profile details", note: "Name, birth date, religion, work", Icon: Profile2User, step: "details" },
+  { key: "photo", label: "Photos", note: "A clear main photo, or an avatar", Icon: Gallery, step: "photos" },
+  { key: "idDocument", label: "ID document", note: "NIC front and back, or passport", Icon: ShieldTick, step: "identity" },
+  { key: "selfie", label: "Selfie", note: "So we know it’s really you", Icon: UserTick, step: "identity" },
+];
 
 /**
  * Dashboard → Profile verification panel (shown until the profile is approved).
@@ -42,13 +67,32 @@ const STEPS = ["Account created", "Mobile verified", "Profile submitted", "Safet
 
 export function VerificationPanel() {
   const { status } = useKyc();
-  const { session, firstName, photoUrl, hasCompletedProfile } = useAuthSession();
+  const { session, firstName, photoUrl } = useAuthSession();
   useFlashToast(); // shows "Profile submitted" after the registration redirect
   const [draft, setDraft] = useState<RegistrationDraft | null>(null);
   const [justLive, setJustLive] = useState(false);
   const prev = useRef<KycStatus>(status);
 
   useEffect(() => setDraft(loadDraft()), [status]);
+
+  // Own photo, even while in review (needs the token → blob URL)
+  const shownPhoto = useApiImage(photoUrl || draft?.photo || null);
+
+  // The review state from the server: Draft (still to submit), flags from the moderator, what's missing
+  const [review, setReview] = useState<ProfileStatusInfo | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    getReviewStatus()
+      .then((info) => {
+        if (cancelled) return;
+        setReview(info);
+        void apiService.refreshSession(); // keep the session's status in step (e.g. approved while away)
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, []);
   useEffect(() => {
     if (prev.current !== "live" && status === "live") setJustLive(true);
     prev.current = status;
@@ -75,10 +119,14 @@ export function VerificationPanel() {
     );
   }
 
-  const rejected = status === "changes";
-  const current = hasCompletedProfile ? 3 : 2; // index of "Safety review" or "Profile submitted"
+  const rejected = status === "changes" || review?.status === "ChangesRequested";
+  const isDraft = !!review && (review.status === "Draft" || review.status === "None");
+  const flags = review?.flags ?? [];
+  const missing = new Set(review?.missing ?? []);
+  const todo = TODO.filter((t) => (t.key === "details" ? missing.has("profile") || missing.has("dateOfBirth") : missing.has(t.key)));
+  const current = isDraft ? 2 : 3; // index of "Profile submitted" or "Safety review"
   const name = firstName || draft?.firstName || "there";
-  const displayPhoto = photoUrl || draft?.photo;
+  const displayPhoto = shownPhoto;
   const mobileDisplay = session?.phoneNumber || draft?.mobile ? formatPhone(session?.phoneNumber || draft?.mobile || "") : (session?.email || "your email/mobile");
   const reviewedOn = new Date().toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
 
@@ -112,19 +160,19 @@ export function VerificationPanel() {
                   ? "Your profile needs a few changes"
                   : status === "resubmitted"
                   ? "Thanks, we’re checking your changes"
-                  : !hasCompletedProfile
-                  ? `Welcome ${name}, complete your candidate profile`
+                  : isDraft
+                  ? `Welcome ${name}, finish your profile`
                   : `Your Profile Is Under Review`}
               </h2>
-              <Badge tone={rejected ? "error" : !hasCompletedProfile ? "brand" : "warning"}>
-                {rejected ? "Action needed" : !hasCompletedProfile ? "Incomplete" : "Pending review"}
+              <Badge tone={rejected ? "error" : isDraft ? "brand" : "warning"}>
+                {rejected ? "Action needed" : isDraft ? "Not submitted yet" : "Pending review"}
               </Badge>
             </div>
             <p className="mt-1 text-body-sm text-ink-secondary">
               {rejected
                 ? "Please fix the items below and resubmit. Nothing is shown to other members until it’s approved."
-                : !hasCompletedProfile
-                ? "Your dashboard features will be available once your matrimony profile is completed and approved."
+                : isDraft
+                ? "Add your photos and ID, then submit your profile. Our safety team reviews it within 24 hours."
                 : <>Your dashboard features will be available once your KYC verification is approved. We’ll notify you at{" "}
                     <b className="text-ink">{mobileDisplay}</b> as soon as you’re live.</>}
             </p>
@@ -135,14 +183,33 @@ export function VerificationPanel() {
           )}
         </div>
 
-        {!hasCompletedProfile && (
-          <div className="mt-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 rounded-xl border border-brand/20 bg-brand-subtle p-4">
-            <div className="flex flex-col">
-              <span className="text-label-md font-bold text-ink">Candidate Details Incomplete</span>
-              <span className="text-body-xs text-ink-secondary">Complete your matrimony profile to activate match recommendations and unlock KYC approval.</span>
-            </div>
-            <Link href="/register">
-              <Button variant="primary" className="rounded-full shadow-sm">Complete Profile</Button>
+        {isDraft && !rejected && (
+          <div className="mt-4 flex flex-col gap-3 rounded-xl border border-brand/20 bg-brand-subtle p-4">
+            <span className="text-label-md font-bold text-ink">
+              {todo.length ? `${todo.length} thing${todo.length === 1 ? "" : "s"} to add before you submit` : "Everything is ready — submit your profile"}
+            </span>
+            {todo.length > 0 && (
+              <ul className="grid gap-2 sm:grid-cols-2">
+                {todo.map(({ key, label, note, Icon, step }) => (
+                  <li key={key}>
+                    <Link href={`/profile/complete?step=${step}`} className="group flex items-center gap-3 rounded-md bg-surface-card px-3 py-2.5 shadow-xs transition-all hover:-translate-y-0.5 hover:shadow-md">
+                      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand-subtle text-brand">
+                        <Icon size={18} color="currentColor" />
+                      </span>
+                      <span className="min-w-0 flex-1">
+                        <span className="block text-body-sm font-bold text-ink">{label}</span>
+                        <span className="block truncate text-caption text-ink-tertiary">{note}</span>
+                      </span>
+                      <ArrowRight2 size={16} color="currentColor" className="text-ink-tertiary transition-transform group-hover:translate-x-0.5" />
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            )}
+            <Link href={`/profile/complete${todo[0] ? `?step=${todo[0].step}` : "?step=identity"}`} className="self-start">
+              <Button variant="primary" className="rounded-full shadow-sm" rightIcon={<ArrowRight2 size={18} color="currentColor" />}>
+                {todo.length ? "Complete my profile" : "Review & submit"}
+              </Button>
             </Link>
           </div>
         )}
@@ -184,56 +251,47 @@ export function VerificationPanel() {
         {rejected ? (
           /* Rejected fields — Figma 06b · Profile rejected (status rows + Rejected / Approved badges) */
           <div className="mt-6 flex flex-col gap-3">
-            <Alert type="error" title={`${FLAGGED.length} fields need changes`}>
-              Reviewed on {reviewedOn} by our safety team. Everything else is approved.
+            <Alert type="error" title={`${flags.length} field${flags.length === 1 ? "" : "s"} need${flags.length === 1 ? "s" : ""} changes`}>
+              Reviewed on {review?.reviewedAt ? new Date(review.reviewedAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }) : reviewedOn} by our safety team. Everything else is fine.
             </Alert>
             <ul className="flex flex-col gap-2">
-              {FLAGGED.map(({ key, label, reason, Icon, fix }, i) => (
-                <li key={key} style={{ animation: `fade-up 420ms cubic-bezier(0.22,1,0.36,1) ${250 + i * 70}ms backwards` }}>
-                  <Link
-                    href={`/register/status?fix=${fix}`}
-                    className="group flex items-center gap-3 rounded-md bg-surface-subtle px-4 py-3 transition-colors hover:bg-error-bg"
-                  >
-                    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-sm bg-surface-card text-error-fg">
-                      <Icon size={20} color="currentColor" />
-                    </span>
-                    <span className="min-w-0 flex-1">
-                      <span className="block text-body-sm font-bold text-ink">{label}</span>
-                      <span className="block text-body-xs text-ink-tertiary">{reason}</span>
-                    </span>
-                    <Badge tone="error">Rejected</Badge>
-                    <ArrowRight2 size={16} color="currentColor" className="shrink-0 text-ink-tertiary transition-transform group-hover:translate-x-0.5" />
-                  </Link>
-                </li>
-              ))}
-              <li
-                className="flex items-center gap-3 rounded-md bg-surface-subtle px-4 py-3"
-                style={{ animation: `fade-up 420ms cubic-bezier(0.22,1,0.36,1) ${250 + FLAGGED.length * 70}ms backwards` }}
-              >
-                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-sm bg-surface-card text-success-fg">
-                  <TickCircle size={20} color="currentColor" />
-                </span>
-                <span className="min-w-0 flex-1">
-                  <span className="block text-body-sm font-bold text-ink">Basic, family &amp; education</span>
-                  <span className="block text-body-xs text-ink-tertiary">All other details look good</span>
-                </span>
-                <Badge tone="success">Approved</Badge>
-              </li>
+              {flags.map((f, i) => {
+                const info = FLAG_INFO[f.field] ?? FLAG_INFO.other;
+                return (
+                  <li key={f.field} style={{ animation: `fade-up 420ms cubic-bezier(0.22,1,0.36,1) ${250 + i * 70}ms backwards` }}>
+                    <Link
+                      href={`/profile/complete?step=${info.step}`}
+                      className="group flex items-center gap-3 rounded-md bg-surface-subtle px-4 py-3 transition-colors hover:bg-error-bg"
+                    >
+                      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-sm bg-surface-card text-error-fg">
+                        <info.Icon size={20} color="currentColor" />
+                      </span>
+                      <span className="min-w-0 flex-1">
+                        <span className="block text-body-sm font-bold text-ink">{info.label}</span>
+                        <span className="block text-body-xs text-ink-tertiary">{f.reason}</span>
+                      </span>
+                      <Badge tone="error">Change</Badge>
+                      <ArrowRight2 size={16} color="currentColor" className="shrink-0 text-ink-tertiary transition-transform group-hover:translate-x-0.5" />
+                    </Link>
+                  </li>
+                );
+              })}
             </ul>
-            <Link href="/register/status?fix=details" className="mt-1">
+            <Link href={`/profile/complete?step=${(FLAG_INFO[flags[0]?.field] ?? FLAG_INFO.other).step}`} className="mt-1">
               <Button variant="primary" fullWidth className="rounded-full" rightIcon={<ArrowRight2 size={18} color="currentColor" />}>
                 Edit &amp; resubmit
               </Button>
             </Link>
           </div>
-        ) : (
+        ) : isDraft ? null : (
           /* What we check / what you can do now */
           <div className="mt-6 grid gap-4 md:grid-cols-2">
             <div className="rounded-md bg-surface-subtle p-4">
               <p className="mb-3 text-label-md text-ink">What we’re checking</p>
               <ul className="flex flex-col gap-2.5 text-body-sm">
                 <CheckItem Icon={Mobile} done label="Mobile number" note="Verified" />
-                <CheckItem Icon={Gallery} label="Photos" note={draft?.photo?.startsWith("data:image/svg") ? "Illustration, quick check" : "Clear face, recent"} />
+                <CheckItem Icon={Gallery} label="Photos" note={review?.hasMainPhoto ? `${review.photoCount} photo${review.photoCount === 1 ? "" : "s"}, clear face` : "Illustration, quick check"} />
+                <CheckItem Icon={ShieldTick} label="Identity" note={review?.documentTypes.includes("Passport") ? "Passport + selfie" : "NIC + selfie"} />
                 <CheckItem Icon={Profile2User} label="Profile details" note="Age, religion, location" />
                 <CheckItem Icon={ShieldTick} label="Safety" note="No contact details in your bio" />
               </ul>

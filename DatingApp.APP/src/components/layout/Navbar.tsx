@@ -15,6 +15,7 @@ import {
   Messages2,
   MessageText1,
   Setting2,
+  ShieldTick,
   TextalignJustifycenter,
   User,
 } from "iconsax-react";
@@ -417,6 +418,15 @@ function AccountMenu({ session, onLogout }: { session: AuthSession | null; onLog
               <span>{lang === "si" ? "අදහස් බෙදාගන්න" : "Share feedback"}</span>
             </button>
           </li>
+          {/* staff only — the role comes from the server session; /admin and its API check it again */}
+          {(session?.role === "Admin" || session?.role === "Moderator") && (
+            <li role="none">
+              <Link role="menuitem" href="/admin" onClick={() => setOpen(false)} className="flex items-center gap-2.5 px-3 py-2 text-body-sm text-ink hover:bg-brand-subtle focus-visible:shadow-ring-brand">
+                <ShieldTick size={18} color="currentColor" className="text-icon-brand" />
+                <span>Staff area</span>
+              </Link>
+            </li>
+          )}
 
           <div className="my-1 border-t border-line" />
 
