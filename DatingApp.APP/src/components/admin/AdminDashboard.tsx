@@ -157,7 +157,7 @@ const TONE: Record<string, string> = {
   info: "bg-info-bg text-info-fg",
 };
 
-function Kpi({ label, value, Icon, tone, note, href, urgent }: { label: string; value?: number; Icon: typeof People; tone: keyof typeof TONE; note?: string; href?: string; urgent?: boolean }) {
+function Kpi({ label, value, Icon, tone, note, href, urgent }: Readonly<{ label: string; value?: number; Icon: typeof People; tone: keyof typeof TONE; note?: string; href?: string; urgent?: boolean }>) {
   const body = (
     <>
       <div className="flex items-start justify-between gap-2">
@@ -185,7 +185,7 @@ function Kpi({ label, value, Icon, tone, note, href, urgent }: { label: string; 
   );
 }
 
-function MiniStat({ label, value, Icon }: { label: string; value?: number; Icon: typeof People }) {
+function MiniStat({ label, value, Icon }: Readonly<{ label: string; value?: number; Icon: typeof People }>) {
   return (
     <div className="flex items-center gap-3 rounded-lg border border-line bg-surface-card px-4 py-3">
       <Icon size={18} color="currentColor" className="shrink-0 text-icon-brand" />
@@ -195,7 +195,7 @@ function MiniStat({ label, value, Icon }: { label: string; value?: number; Icon:
   );
 }
 
-function ReviewTable({ title, hint, items, tab }: { title: string; hint: string; items: QueueItem[] | null; tab: "new" | "updates" }) {
+function ReviewTable({ title, hint, items, tab }: Readonly<{ title: string; hint: string; items: QueueItem[] | null; tab: "new" | "updates" }>) {
   const rows = items?.slice(0, 5);
   return (
     <section className="flex flex-col overflow-hidden rounded-xl border border-line bg-surface-card shadow-xs">
@@ -211,19 +211,21 @@ function ReviewTable({ title, hint, items, tab }: { title: string; hint: string;
           View all <ArrowRight2 size={14} color="currentColor" />
         </Link>
       </div>
-      {items === null ? (
+      {items === null && (
         <div className="flex flex-col gap-2 p-5">
           {[0, 1, 2].map((i) => (
             <div key={i} className="h-12 animate-pulse rounded bg-surface-muted" />
           ))}
         </div>
-      ) : !rows?.length ? (
+      )}
+      {items !== null && !rows?.length && (
         <div className="flex flex-1 flex-col items-center justify-center gap-1 px-5 py-10 text-center">
           <ProfileTick size={28} color="currentColor" className="text-success-fg" />
           <p className="text-label-md text-ink">All caught up</p>
           <p className="text-body-xs text-ink-tertiary">Nothing waiting here.</p>
         </div>
-      ) : (
+      )}
+      {!!rows?.length && (
         <ul className="divide-y divide-line">
           {rows.map((p) => (
             <li key={p.profileId} className="flex items-center gap-3 px-5 py-3 hover:bg-surface-subtle">
@@ -232,7 +234,7 @@ function ReviewTable({ title, hint, items, tab }: { title: string; hint: string;
                 <p className="truncate text-label-md text-ink">{p.fullName}</p>
                 <p className="text-body-xs text-ink-tertiary">
                   {p.code} · {p.gender === "female" ? "Bride" : "Groom"} · {p.age} · {ago(p.submittedAt)}
-                  {p.pendingPhotos ? ` · ${p.pendingPhotos} new photo${p.pendingPhotos > 1 ? "s" : ""}` : ""}
+                  {photoNote(p.pendingPhotos)}
                 </p>
               </div>
               <Link href={`/admin/reviews?open=${encodeURIComponent(p.profileId)}`} className="shrink-0 rounded-full bg-brand-subtle px-3 py-1.5 text-label-sm text-brand-text hover:bg-brand hover:text-ink-on-brand">
@@ -246,7 +248,12 @@ function ReviewTable({ title, hint, items, tab }: { title: string; hint: string;
   );
 }
 
-export function MemberCell({ m }: { m: AdminMember }) {
+function photoNote(n?: number) {
+  if (!n) return "";
+  return ` · ${n} new photo${n > 1 ? "s" : ""}`;
+}
+
+export function MemberCell({ m }: Readonly<{ m: AdminMember }>) {
   return (
     <div className="flex items-center gap-3">
       <span className={cn("flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-label-md", m.gender === "Female" ? "bg-brand-subtle text-brand" : "bg-info-bg text-info-fg")}>
@@ -260,7 +267,7 @@ export function MemberCell({ m }: { m: AdminMember }) {
   );
 }
 
-export function PlanChip({ plan }: { plan: AdminMember["plan"] }) {
+export function PlanChip({ plan }: Readonly<{ plan: AdminMember["plan"] }>) {
   return (
     <span className={cn("inline-flex h-6 items-center gap-1 rounded-full px-2 text-label-sm", plan === "Free" ? "bg-surface-subtle text-ink-secondary" : "bg-premium-bg text-premium-fg")}>
       {plan !== "Free" && <Crown1 size={12} color="currentColor" />}

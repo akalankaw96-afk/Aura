@@ -400,7 +400,7 @@ function AccountStep({
 
 /* ───────────────────────── Step 2 · Verify (03, 03a–03f) ───────────────────────── */
 
-function VerifyStep({ mobile, onBack, onNext }: { mobile: string; onBack: () => void; onNext: () => void }) {
+function VerifyStep({ mobile, onBack, onNext }: Readonly<{ mobile: string; onBack: () => void; onNext: () => void }>) {
   const toast = useToast();
   const [code, setCode] = useState("");
   const [state, setState] = useState<"default" | "error" | "success">("default");
@@ -1023,7 +1023,7 @@ const DOCUMENT_SLOTS: Record<"nic" | "passport", { type: KycDocumentType; label:
  * Identity check: NIC (front + back) or passport, plus a selfie. Files go straight to the API
  * (POST /api/kyc/documents) and are only seen by our safety team. Then the profile is submitted for review.
  */
-export function IdentityStep({ onBack, onFinish }: { onBack: () => void; onFinish: () => Promise<void> | void }) {
+export function IdentityStep({ onBack, onFinish }: Readonly<{ onBack: () => void; onFinish: () => Promise<void> | void }>) {
   const toast = useToast();
   const fileRef = useRef<HTMLInputElement>(null);
   const [docs, setDocs] = useState<KycDocumentDto[]>([]);
@@ -1149,7 +1149,7 @@ export function IdentityStep({ onBack, onFinish }: { onBack: () => void; onFinis
 }
 
 /** Segmented switch for uploading photos or choosing an avatar. */
-function PhotoModeSwitch({ value, onChange }: { value: "upload" | "illustration"; onChange: (v: "upload" | "illustration") => void }) {
+function PhotoModeSwitch({ value, onChange }: Readonly<{ value: "upload" | "illustration"; onChange: (v: "upload" | "illustration") => void }>) {
   return (
     <SegmentedSwitch
       label="Profile picture type"
@@ -1168,7 +1168,7 @@ function PhotoModeSwitch({ value, onChange }: { value: "upload" | "illustration"
  * Large preview on the left (like the Main photo slot), options grid on the right,
  * Bride / Groom filter preset from the gender chosen in the previous step.
  */
-function IllustrationPicker({ gender, value, onPick }: { gender?: AvatarGender; value: string | null; onPick: (uri: string, name: string) => void }) {
+function IllustrationPicker({ gender, value, onPick }: Readonly<{ gender?: AvatarGender; value: string | null; onPick: (uri: string, name: string) => void }>) {
   const [filter, setFilter] = useState<AvatarGender>(gender ?? "female");
   const list = AVATARS.filter((a) => a.gender === filter);
   const selected = AVATARS.find((a) => avatarDataUri(a) === value);
@@ -1251,7 +1251,7 @@ function IllustrationPicker({ gender, value, onPick }: { gender?: AvatarGender; 
 }
 
 /** "Members will see: Sanjeewa S." — updates as the member types their name or changes the format. */
-function DisplayNamePreview({ format, first, last }: { format: string; first: string; last: string }) {
+function DisplayNamePreview({ format, first, last }: Readonly<{ format: string; first: string; last: string }>) {
   const hasName = !!(first.trim() || last.trim());
   const shown = format ? displayNameFor(format, first, last) : "";
   if (!format) {

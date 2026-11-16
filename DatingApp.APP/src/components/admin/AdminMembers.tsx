@@ -251,7 +251,7 @@ export function AdminMembers() {
 
 /* ───────────── row actions menu ───────────── */
 
-function RowActions({ member, onPick }: { member: AdminMember; onPick: (a: MemberAction | "reset") => void }) {
+function RowActions({ member, onPick }: Readonly<{ member: AdminMember; onPick: (a: MemberAction | "reset") => void }>) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -299,7 +299,7 @@ function RowActions({ member, onPick }: { member: AdminMember; onPick: (a: Membe
           {member.profileId && (
             <Link
               role="menuitem"
-              href={s === "PendingReview" ? `/admin/reviews?open=${encodeURIComponent(member.profileId)}` : `/admin/reviews?open=${encodeURIComponent(member.profileId)}`}
+              href={`/admin/reviews?open=${encodeURIComponent(member.profileId)}`}
               className="flex items-center gap-2.5 px-3 py-2 text-body-sm text-ink hover:bg-brand-subtle"
             >
               <Eye size={16} color="currentColor" className="text-icon-brand" /> {s === "PendingReview" ? "Review profile" : "View profile"}
@@ -326,7 +326,7 @@ const ACTION_COPY: Record<MemberAction | "reset", { title: string; text: string;
   reset: { title: "Reset this member’s password?", text: "They’ll be logged out and must set a new password with an SMS code at their next login. You never see or type their password.", button: "Reset password", done: "Password reset, member notified by SMS", reason: false, danger: false },
 };
 
-function ConfirmAction({ pending, onClose, onDone }: { pending: NonNullable<Pending>; onClose: () => void; onDone: (msg: string) => void }) {
+function ConfirmAction({ pending, onClose, onDone }: Readonly<{ pending: NonNullable<Pending>; onClose: () => void; onDone: (msg: string) => void }>) {
   const ref = useRef<HTMLDialogElement>(null);
   const [reason, setReason] = useState("");
   const [tried, setTried] = useState(false);
@@ -363,8 +363,9 @@ function ConfirmAction({ pending, onClose, onDone }: { pending: NonNullable<Pend
       }}
       className="fixed inset-0 m-0 h-dvh max-h-none w-full max-w-none bg-transparent p-0 backdrop:bg-black/45 backdrop:backdrop-blur-sm"
     >
-      <div className="flex h-full items-end justify-center sm:items-center sm:p-4" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
-        <div className="flex w-full max-w-[460px] animate-dialog-in flex-col gap-4 rounded-t-[24px] bg-surface-card p-6 shadow-xl sm:rounded-[24px]">
+      <div className="relative flex h-full items-end justify-center sm:items-center sm:p-4">
+        <button type="button" tabIndex={-1} aria-hidden="true" className="absolute inset-0 cursor-default" onClick={onClose} />
+        <div className="relative flex w-full max-w-[460px] animate-dialog-in flex-col gap-4 rounded-t-[24px] bg-surface-card p-6 shadow-xl sm:rounded-[24px]">
           <div className="flex items-center gap-3 rounded-lg bg-surface-subtle p-3">
             <MemberCell m={pending.member} />
             <span className="ml-auto">

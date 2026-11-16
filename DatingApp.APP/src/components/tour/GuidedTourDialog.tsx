@@ -97,7 +97,7 @@ export function GuidedTourDialog() {
                   type="button"
                   onClick={() => setI(k)}
                   aria-label={`Go to step ${k + 1}: ${s.title}`}
-                  className={cn("h-1.5 flex-1 rounded-full transition-colors", k < i || last ? "bg-brand" : k === i ? "bg-brand-focus" : "bg-line-strong")}
+                  className={cn("h-1.5 flex-1 rounded-full transition-colors", progressTone(k, i, last))}
                 />
               ))}
             </div>
@@ -184,4 +184,11 @@ export function GuidedTourDialog() {
       </div>
     </dialog>
   );
+}
+
+/** Progress bar segment: done (or last slide) · current · still to come. */
+function progressTone(k: number, current: number, last: boolean) {
+  if (k < current || last) return "bg-brand";
+  if (k === current) return "bg-brand-focus";
+  return "bg-line-strong";
 }

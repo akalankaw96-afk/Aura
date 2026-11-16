@@ -8,7 +8,7 @@ export const metadata: Metadata = { title: "Staff area | Vikasitha", robots: { i
  * Staff back office (/admin/*): own shell (sidebar + slim top bar), no marketing navbar / footer.
  * Admin / Moderator only — RequireMember redirects others, and the API checks every call again.
  */
-export default function AdminLayout({ children }: { children: React.ReactNode }) {
+export default function AdminLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <>
       <RequireMember role={["Admin", "Moderator"]} />

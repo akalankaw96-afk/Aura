@@ -14,6 +14,7 @@ const DEV = process.env.NODE_ENV !== "production";
 
 export type MemberStatus = "Active" | "PendingReview" | "Incomplete" | "Deactivated" | "Blocked";
 export type MemberAction = "activate" | "deactivate" | "block" | "unblock";
+const STATUS_AFTER: Record<MemberAction, MemberStatus> = { activate: "Active", unblock: "Active", deactivate: "Deactivated", block: "Blocked" };
 
 export interface AdminStats {
   totalMembers: number;
@@ -121,6 +122,12 @@ export class NeedsApi extends Error {
   }
 }
 
+function demoPlan(i: number): AdminMember["plan"] {
+  if (i % 9 === 0) return "Platinum";
+  if (i % 4 === 0) return "Gold";
+  return "Free";
+}
+
 async function call<T>(path: string, init: { method?: string; json?: unknown } | undefined, demo: () => T): Promise<Result<T>> {
   let res: Response;
   try {
@@ -159,7 +166,7 @@ const demoMembers: AdminMember[] = Array.from({ length: 64 }, (_, i) => {
     phoneNumber: `+94 7${(i * 3) % 8} ${String(1000000 + i * 7919).slice(0, 3)} ${String(1000 + i * 37).slice(-4)}`,
     email: i % 4 === 3 ? null : `${first.toLowerCase()}.${last.toLowerCase()}${i}@example.com`,
     gender: i % 2 ? "Male" : "Female",
-    plan: i % 9 === 0 ? "Platinum" : i % 4 === 0 ? "Gold" : "Free",
+    plan: demoPlan(i),
     status,
     joinedAt: new Date(Date.now() - (i * 1.7 + 0.3) * day).toISOString(),
     lastActiveAt: status === "Active" ? new Date(Date.now() - ((i * 5) % 40) * 3_600_000).toISOString() : null,
@@ -224,7 +231,7 @@ export function getMembers(q: { search?: string; status?: MemberStatus | "All"; 
 export function setMemberStatus(userId: string, action: MemberAction, reason?: string) {
   return call<void>(`/admin/members/${encodeURIComponent(userId)}/status`, { method: "POST", json: { action, reason } }, () => {
     const m = demoMembers.find((x) => x.userId === userId);
-    if (m) m.status = action === "block" ? "Blocked" : action === "deactivate" ? "Deactivated" : "Active";
+    if (m) m.status = STATUS_AFTER[action];
   });
 }
 

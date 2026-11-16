@@ -74,7 +74,7 @@ export function PlanUsageCard() {
                   key={kind}
                   className={cn(
                     "inline-flex h-7 items-center gap-1.5 rounded-full px-2.5 text-label-sm",
-                    out ? "bg-error-bg text-error-fg" : l === 1 ? "bg-premium-bg text-premium-fg" : "bg-surface-subtle text-ink-secondary",
+                    pillTone(l),
                   )}
                 >
                   {out ? <Lock1 size={14} color="currentColor" /> : <Icon size={14} color="currentColor" />}
@@ -183,4 +183,11 @@ export function PlanUsageCard() {
       </div>
     </section>
   );
+}
+
+/** Usage pill colour: used up · one left · plenty left. */
+function pillTone(left: number) {
+  if (left === 0) return "bg-error-bg text-error-fg";
+  if (left === 1) return "bg-premium-bg text-premium-fg";
+  return "bg-surface-subtle text-ink-secondary";
 }

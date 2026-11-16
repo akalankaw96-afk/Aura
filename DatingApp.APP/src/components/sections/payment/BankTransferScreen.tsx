@@ -133,13 +133,8 @@ function useCopy() {
     try {
       await navigator.clipboard.writeText(value);
     } catch {
-      // older browsers: fall back to a hidden textarea
-      const ta = document.createElement("textarea");
-      ta.value = value;
-      document.body.appendChild(ta);
-      ta.select();
-      document.execCommand("copy");
-      ta.remove();
+      toast.error("Couldn’t copy", `Select the ${label.toLowerCase()} and copy it yourself.`);
+      return;
     }
     setCopied(key);
     toast.success(`${label} copied`);
@@ -148,7 +143,14 @@ function useCopy() {
   return { copied, copy };
 }
 
-function CopyButton({ done, onClick, label, onBrand = false }: { done: boolean; onClick: () => void; label: string; onBrand?: boolean }) {
+function copyButtonTone(onBrand: boolean, done: boolean) {
+  if (onBrand) {
+    return done ? "bg-white text-success-fg" : "bg-[rgba(255,255,255,0.18)] text-white ring-1 ring-inset ring-[rgba(255,255,255,0.35)] hover:bg-[rgba(255,255,255,0.28)]";
+  }
+  return done ? "bg-success-bg text-success-fg" : "bg-brand-subtle text-brand-text hover:bg-brand hover:text-ink-on-brand";
+}
+
+function CopyButton({ done, onClick, label, onBrand = false }: Readonly<{ done: boolean; onClick: () => void; label: string; onBrand?: boolean }>) {
   return (
     <button
       type="button"
@@ -157,13 +159,7 @@ function CopyButton({ done, onClick, label, onBrand = false }: { done: boolean; 
       title={`Copy ${label}`}
       className={cn(
         "flex h-9 shrink-0 items-center gap-1.5 rounded-full px-3 text-label-sm transition-[background-color,color,transform] duration-150 active:scale-95 focus-visible:outline-none focus-visible:shadow-ring-brand",
-        onBrand
-          ? done
-            ? "bg-white text-success-fg"
-            : "bg-[rgba(255,255,255,0.18)] text-white ring-1 ring-inset ring-[rgba(255,255,255,0.35)] hover:bg-[rgba(255,255,255,0.28)]"
-          : done
-            ? "bg-success-bg text-success-fg"
-            : "bg-brand-subtle text-brand-text hover:bg-brand hover:text-ink-on-brand",
+        copyButtonTone(onBrand, done),
       )}
     >
       {done ? <CopySuccess size={16} color="currentColor" /> : <Copy size={16} color="currentColor" />}
@@ -174,7 +170,7 @@ function CopyButton({ done, onClick, label, onBrand = false }: { done: boolean; 
 
 /* ─────────────────────────── Order summary ─────────────────────────── */
 
-function OrderSummary({ plan, months, amount, reference }: { plan: PaidPlan; months: Period; amount: number; reference: string }) {
+function OrderSummary({ plan, months, amount, reference }: Readonly<{ plan: PaidPlan; months: Period; amount: number; reference: string }>) {
   const { copied, copy } = useCopy();
   return (
     <section aria-label="Order summary" className="flex flex-col gap-4 rounded-xl border border-premium-line bg-surface-card p-5 shadow-sm sm:p-6">
@@ -222,7 +218,7 @@ function OrderSummary({ plan, months, amount, reference }: { plan: PaidPlan; mon
 
 /* ─────────────────────────── Bank account card ─────────────────────────── */
 
-function BankCard({ amount, reference, onPaid }: { amount: number; reference: string; onPaid: () => void }) {
+function BankCard({ amount, reference, onPaid }: Readonly<{ amount: number; reference: string; onPaid: () => void }>) {
   const { copied, copy } = useCopy();
   const rows: { key: string; label: string; value: string; big?: boolean }[] = [
     { key: "acc", label: "Account number", value: BANK_ACCOUNT.accountNumber, big: true },
@@ -342,7 +338,7 @@ function ReceiptUpload({
   amount,
   reference,
   onDone,
-}: {
+}: Readonly<{
   sectionRef: React.RefObject<HTMLElement | null>;
   flash: boolean;
   plan: PaidPlan;
@@ -350,7 +346,7 @@ function ReceiptUpload({
   amount: number;
   reference: string;
   onDone: (p: Pending) => void;
-}) {
+}>) {
   const toast = useToast();
   const fileRef = useRef<HTMLInputElement>(null);
   const [file, setFile] = useState<File | null>(null);
@@ -398,7 +394,8 @@ function ReceiptUpload({
       return;
     }
     setSending(true);
-    // TODO(API): POST /api/payments/bank-transfer (multipart: plan, months, amount, reference, paidOn, note, receipt)
+    // Waits for the API: POST /api/payments/bank-transfer (see API_GUIDELINES → Planned: bank transfer payments)
+    // (multipart: plan, months, amount, reference, paidOn, note, receipt)
     await new Promise((r) => setTimeout(r, 700));
     setSending(false);
     toast.success("Receipt sent", "We’ll check it and activate your plan.");
@@ -502,7 +499,25 @@ function ReceiptUpload({
 
 /* ─────────────────────────── After upload ─────────────────────────── */
 
-function SubmittedCard({ pending, onReplace }: { pending: Pending; onReplace: () => void }) {
+function StepMark({ done, current }: Readonly<{ done: boolean; current?: boolean }>) {
+  if (done) {
+    return (
+      <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-success-fg text-label-sm text-white">
+        <TickCircle size={16} color="currentColor" />
+      </span>
+    );
+  }
+  if (current) {
+    return (
+      <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-brand text-label-sm text-ink-on-brand">
+        <Clock size={16} color="currentColor" />
+      </span>
+    );
+  }
+  return <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-surface-muted text-label-sm text-ink-tertiary">3</span>;
+}
+
+function SubmittedCard({ pending, onReplace }: Readonly<{ pending: Pending; onReplace: () => void }>) {
   const steps = [
     { label: "Receipt received", done: true },
     { label: "Our team checks the payment", done: false, current: true },
@@ -526,9 +541,7 @@ function SubmittedCard({ pending, onReplace }: { pending: Pending; onReplace: ()
       <ol className="flex w-full flex-col gap-3 text-left">
         {steps.map((s) => (
           <li key={s.label} className={cn("flex items-center gap-3 rounded-lg px-4 py-3", s.current ? "bg-brand-subtle" : "bg-surface-subtle")}>
-            <span className={cn("flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-label-sm", s.done ? "bg-success-fg text-white" : s.current ? "bg-brand text-ink-on-brand" : "bg-surface-muted text-ink-tertiary")}>
-              {s.done ? <TickCircle size={16} color="currentColor" /> : s.current ? <Clock size={16} color="currentColor" /> : "3"}
-            </span>
+            <StepMark done={s.done} current={s.current} />
             <span className={cn("text-body-md", s.current ? "font-semibold text-ink" : "text-ink-secondary")}>{s.label}</span>
           </li>
         ))}

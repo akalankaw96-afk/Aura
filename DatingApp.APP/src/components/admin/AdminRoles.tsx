@@ -88,7 +88,7 @@ export function AdminRoles() {
 
 /* ───────────── Roles & permissions ───────────── */
 
-function RolesPanel({ roles, onChanged }: { roles: AdminRole[] | null; onChanged: () => void }) {
+function RolesPanel({ roles, onChanged }: Readonly<{ roles: AdminRole[] | null; onChanged: () => void }>) {
   const toast = useToast();
   const [selected, setSelected] = useState<string | null>(null);
   const [draft, setDraft] = useState<{ id?: string; name: string; description: string; permissions: Permission[] } | null>(null);
@@ -274,7 +274,7 @@ function RolesPanel({ roles, onChanged }: { roles: AdminRole[] | null; onChanged
 
 /* ───────────── Staff accounts ───────────── */
 
-function StaffPanel({ staff, roles, onChanged }: { staff: StaffAccount[] | null; roles: AdminRole[]; onChanged: () => void }) {
+function StaffPanel({ staff, roles, onChanged }: Readonly<{ staff: StaffAccount[] | null; roles: AdminRole[]; onChanged: () => void }>) {
   const toast = useToast();
   const [adding, setAdding] = useState(false);
   const [temp, setTemp] = useState<{ name: string; password: string } | null>(null);
@@ -383,7 +383,7 @@ function StaffPanel({ staff, roles, onChanged }: { staff: StaffAccount[] | null;
   );
 }
 
-function StaffActions({ s, roles, onAct }: { s: StaffAccount; roles: AdminRole[]; onAct: (w: "deactivate" | "activate" | "reset" | { roleId: string }) => void }) {
+function StaffActions({ s, roles, onAct }: Readonly<{ s: StaffAccount; roles: AdminRole[]; onAct: (w: "deactivate" | "activate" | "reset" | { roleId: string }) => void }>) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -450,7 +450,7 @@ function StaffActions({ s, roles, onAct }: { s: StaffAccount; roles: AdminRole[]
   );
 }
 
-function Modal({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
+function Modal({ title, onClose, children }: Readonly<{ title: string; onClose: () => void; children: React.ReactNode }>) {
   const ref = useRef<HTMLDialogElement>(null);
   useEffect(() => {
     ref.current?.showModal();
@@ -465,8 +465,9 @@ function Modal({ title, onClose, children }: { title: string; onClose: () => voi
       }}
       className="fixed inset-0 m-0 h-dvh max-h-none w-full max-w-none bg-transparent p-0 backdrop:bg-black/45 backdrop:backdrop-blur-sm"
     >
-      <div className="flex h-full items-end justify-center sm:items-center sm:p-4" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
-        <div className="flex max-h-full w-full max-w-[520px] animate-dialog-in flex-col gap-5 overflow-y-auto rounded-t-[24px] bg-surface-card p-6 shadow-xl sm:rounded-[24px]">
+      <div className="relative flex h-full items-end justify-center sm:items-center sm:p-4">
+        <button type="button" tabIndex={-1} aria-hidden="true" className="absolute inset-0 cursor-default" onClick={onClose} />
+        <div className="relative flex max-h-full w-full max-w-[520px] animate-dialog-in flex-col gap-5 overflow-y-auto rounded-t-[24px] bg-surface-card p-6 shadow-xl sm:rounded-[24px]">
           <h2 className="text-h5 text-ink">{title}</h2>
           {children}
         </div>
@@ -475,7 +476,16 @@ function Modal({ title, onClose, children }: { title: string; onClose: () => voi
   );
 }
 
-function AddStaffModal({ roles, onClose, onCreated }: { roles: AdminRole[]; onClose: () => void; onCreated: (name: string, password: string) => void }) {
+/** Simple linear check (no backtracking regex): one "@", text before it, a dot inside the domain, no spaces. */
+function looksLikeEmail(v: string) {
+  const at = v.indexOf("@");
+  if (/\s/.test(v) || at < 1 || at !== v.lastIndexOf("@")) return false;
+  const domain = v.slice(at + 1);
+  const dot = domain.lastIndexOf(".");
+  return dot > 0 && dot < domain.length - 1;
+}
+
+function AddStaffModal({ roles, onClose, onCreated }: Readonly<{ roles: AdminRole[]; onClose: () => void; onCreated: (name: string, password: string) => void }>) {
   const toast = useToast();
   const [f, setF] = useState({ fullName: "", username: "", email: "", roleId: roles.find((r) => r.id === "moderator")?.id ?? roles[0]?.id ?? "", password: makeTempPassword() });
   const [tried, setTried] = useState(false);
@@ -483,7 +493,7 @@ function AddStaffModal({ roles, onClose, onCreated }: { roles: AdminRole[]; onCl
   const err = {
     fullName: f.fullName.trim().length < 2 ? "Enter their name" : undefined,
     username: !/^[a-z0-9._-]{3,30}$/.test(f.username) ? "3–30 lowercase letters, numbers, dot, dash or underscore" : undefined,
-    email: f.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(f.email) ? "Enter a valid email" : undefined,
+    email: f.email && !looksLikeEmail(f.email) ? "Enter a valid email" : undefined,
     password: f.password.length < 10 ? "At least 10 characters" : undefined,
   };
   const ok = !Object.values(err).some(Boolean) && f.roleId;
@@ -547,7 +557,7 @@ function AddStaffModal({ roles, onClose, onCreated }: { roles: AdminRole[]; onCl
   );
 }
 
-function TempPasswordModal({ name, password, onClose }: { name: string; password: string; onClose: () => void }) {
+function TempPasswordModal({ name, password, onClose }: Readonly<{ name: string; password: string; onClose: () => void }>) {
   const toast = useToast();
   return (
     <Modal title="Temporary password" onClose={onClose}>

@@ -149,6 +149,16 @@ Sections: Added · Changed · Fixed · Security · Removed · Breaking.
     `DatingApp.Tests/ReviewFlowTests.cs`. **Needs migration `Sprint02Review`.**
 
 ### Fixed
+- 2026-11-16 — **SonarCloud warnings on PR #6 cleared.** Read-only component props (`Readonly<…>`) across the new
+  admin, payment, account, legal and register files; nested ternaries moved into small helpers (`copyButtonTone`,
+  `StepMark`, `progressTone`, `pillTone`, `photoNote`, `demoPlan`, `STATUS_AFTER`); the staff drawer on phones is now a
+  native `<dialog>` (Esc and focus trap built in) and the demo notice an `<output>`; modal backdrops close through a
+  hidden button instead of a click handler on a `<div>`; the admin context value is memoised; the email check in
+  Add staff no longer uses a backtracking regex; Copy on the payment page dropped the deprecated
+  `document.execCommand` fallback (shows "copy it yourself" if the clipboard is blocked); un-awaited promises marked
+  with `void`. **Account settings dialog** split into one small component per step (Home, Break, Ask, Reason,
+  Confirm, Code, Done + header) to bring its complexity under Sonar's limit; screens and behaviour unchanged
+  (re-tested the full hide / delete / wrong code / back / right code flow at 1440 light and 390 dark).
 - 2026-11-15 — Shared `Button` **danger** variant was pale pink with white text in dark mode (it used the error text
   colour); now solid red-600 in both themes. `ui/Button.tsx`.
 - 2026-11-14 — **Registration data (BUG-023), owner report.** API: mobile-only accounts store no e-mail (`Users.Email`

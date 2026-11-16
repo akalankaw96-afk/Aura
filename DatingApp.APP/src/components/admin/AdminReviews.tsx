@@ -61,7 +61,8 @@ export function AdminReviews() {
 
   const fresh = queue?.filter((q) => q.status === "Submitted") ?? null;
   const updates = queue?.filter((q) => q.status === "Resubmitted") ?? null;
-  const shown = tab === "new" ? fresh : tab === "updates" ? updates : queue;
+  const byTab = { new: fresh, updates, all: queue };
+  const shown = byTab[tab];
 
   return (
     <>

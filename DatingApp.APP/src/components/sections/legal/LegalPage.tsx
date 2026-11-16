@@ -14,7 +14,7 @@ import { ABOUT } from "@/content/about";
  * "On this page" menu on the left (highlights the section in view) + numbered sections on the right.
  * Phones: the menu sits above the content.
  */
-export function LegalPage({ doc }: { doc: "terms" | "privacy" | "about" }) {
+export function LegalPage({ doc }: Readonly<{ doc: "terms" | "privacy" | "about" }>) {
   const d: LegalDoc = doc === "terms" ? TERMS : doc === "privacy" ? PRIVACY : ABOUT;
   const related =
     d.related ?? (doc === "terms" ? [{ href: "/privacy", label: "Privacy Policy" }] : [{ href: "/terms", label: "Terms & Conditions" }]);
@@ -141,7 +141,7 @@ export function LegalPage({ doc }: { doc: "terms" | "privacy" | "about" }) {
 }
 
 /** Groups "• " lines into a bullet list, other lines into paragraphs. */
-function Body({ paragraphs }: { paragraphs: string[] }) {
+function Body({ paragraphs }: Readonly<{ paragraphs: string[] }>) {
   const out: React.ReactNode[] = [];
   let list: string[] = [];
   const flush = () => {

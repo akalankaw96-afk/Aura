@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -38,7 +38,7 @@ const NAV = [
   { href: "/admin/roles", label: "Roles & staff", Icon: SecurityUser, admin: true },
 ];
 
-export function AdminShell({ children }: { children: React.ReactNode }) {
+export function AdminShell({ children }: Readonly<{ children: React.ReactNode }>) {
   const { session, loading } = useAuthSession();
   const pathname = usePathname();
   const [drawer, setDrawer] = useState(false);
@@ -55,6 +55,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
     if (role === "Admin" || role === "Moderator") refreshCounts();
   }, [role, refreshCounts]);
   useEffect(() => setDrawer(false), [pathname]);
+  const ctx = useMemo(() => ({ isAdmin, queueCount, refreshCounts }), [isAdmin, queueCount, refreshCounts]);
 
   if (loading || (role !== "Admin" && role !== "Moderator")) return null;
 
@@ -95,7 +96,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
   );
 
   return (
-    <AdminCtx.Provider value={{ isAdmin, queueCount, refreshCounts }}>
+    <AdminCtx.Provider value={ctx}>
       <div className="min-h-screen bg-surface-subtle">
         {/* top bar */}
         <header className="sticky top-0 z-40 flex h-16 items-center gap-3 border-b border-line bg-surface-card/90 px-4 backdrop-blur lg:px-6">
@@ -126,20 +127,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
           </div>
 
           {/* phone / tablet drawer */}
-          {drawer && (
-            <div className="fixed inset-0 z-50 lg:hidden" role="dialog" aria-modal="true" aria-label="Staff menu">
-              <button type="button" aria-label="Close menu" className="absolute inset-0 bg-black/45" onClick={() => setDrawer(false)} />
-              <aside className="absolute inset-y-0 left-0 flex w-[280px] animate-fade-up flex-col bg-surface-card shadow-xl">
-                <div className="flex h-16 items-center justify-between border-b border-line px-4">
-                  <Logo height={36} />
-                  <button type="button" onClick={() => setDrawer(false)} aria-label="Close menu" className="rounded-md p-1 text-ink-tertiary hover:text-ink">
-                    <CloseSquare size={24} color="currentColor" />
-                  </button>
-                </div>
-                {sidebar}
-              </aside>
-            </div>
-          )}
+          {drawer && <StaffDrawer onClose={() => setDrawer(false)}>{sidebar}</StaffDrawer>}
 
           <main className="min-w-0 flex-1 p-4 sm:p-6 lg:p-8">{children}</main>
         </div>
@@ -148,7 +136,39 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
   );
 }
 
-function ProfileMenu({ name, role }: { name: string; role: string }) {
+/** Phone / tablet menu: native modal <dialog> (focus trap, Esc to close) sliding in from the left. */
+function StaffDrawer({ onClose, children }: Readonly<{ onClose: () => void; children: React.ReactNode }>) {
+  const ref = useRef<HTMLDialogElement>(null);
+  useEffect(() => {
+    const d = ref.current;
+    d?.showModal();
+    return () => d?.close();
+  }, []);
+  return (
+    <dialog
+      ref={ref}
+      aria-label="Staff menu"
+      onCancel={(e) => {
+        e.preventDefault();
+        onClose();
+      }}
+      className="fixed inset-0 m-0 h-dvh max-h-none w-full max-w-none bg-transparent p-0 backdrop:bg-black/45 lg:hidden"
+    >
+      <button type="button" tabIndex={-1} aria-hidden="true" className="absolute inset-0 cursor-default" onClick={onClose} />
+      <aside className="absolute inset-y-0 left-0 flex w-[280px] animate-fade-up flex-col bg-surface-card shadow-xl">
+        <div className="flex h-16 items-center justify-between border-b border-line px-4">
+          <Logo height={36} />
+          <button type="button" onClick={onClose} aria-label="Close menu" className="rounded-md p-1 text-ink-tertiary hover:text-ink">
+            <CloseSquare size={24} color="currentColor" />
+          </button>
+        </div>
+        {children}
+      </aside>
+    </dialog>
+  );
+}
+
+function ProfileMenu({ name, role }: Readonly<{ name: string; role: string }>) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -207,7 +227,7 @@ function ProfileMenu({ name, role }: { name: string; role: string }) {
 }
 
 /** Page title row used by every admin page. */
-export function AdminPageHeader({ title, subtitle, actions }: { title: string; subtitle?: string; actions?: React.ReactNode }) {
+export function AdminPageHeader({ title, subtitle, actions }: Readonly<{ title: string; subtitle?: string; actions?: React.ReactNode }>) {
   return (
     <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
       <div className="min-w-0">
@@ -220,11 +240,11 @@ export function AdminPageHeader({ title, subtitle, actions }: { title: string; s
 }
 
 /** Small banner shown when a page runs on dev demo data. */
-export function DemoBanner({ show }: { show: boolean }) {
+export function DemoBanner({ show }: Readonly<{ show: boolean }>) {
   if (!show) return null;
   return (
-    <div role="status" className="mb-5 flex items-start gap-2 rounded-md border border-warning-line bg-warning-bg px-4 py-3 text-body-sm text-warning-fg">
+    <output className="mb-5 flex items-start gap-2 rounded-md border border-warning-line bg-warning-bg px-4 py-3 text-body-sm text-warning-fg">
       <b className="font-semibold">Demo data.</b> The server doesn’t have this endpoint yet, so you’re seeing sample data (development only). Nothing you do here changes real accounts.
-    </div>
+    </output>
   );
 }
