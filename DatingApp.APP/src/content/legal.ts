@@ -14,10 +14,15 @@ export type LegalDoc = {
   crumb: string;
   title: string;
   subtitle: string;
-  updated: string;
+  /** omit on pages that aren't policies (About us) to hide the "last updated" chip */
+  updated?: string;
   readMins: number;
   summary: string;
   sections: LegalSection[];
+  /** sidebar help box title (default "Questions about this policy?") */
+  helpTitle?: string;
+  /** links at the end of the page (default: the other policy) */
+  related?: { href: string; label: string }[];
 };
 
 export const LEGAL_UPDATED = "15 November 2026";

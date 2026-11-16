@@ -27,12 +27,14 @@ import {
 } from "iconsax-react";
 import { MemberShell } from "@/components/layout/MemberShell";
 import { Badge, type BadgeTone } from "@/components/ui/Badge";
-import { ButtonLink } from "@/components/ui/Button";
+import { Button, ButtonLink } from "@/components/ui/Button";
 import { SectionHeader } from "@/components/ui/SectionHeader";
 import { PinNote } from "@/components/ui/PinNote";
 import { BrandBandDecor, SignUp } from "@/components/sections/home/SignUp";
 import { useLanguage } from "@/context/LanguageContext";
 import { useSignedIn } from "@/lib/session";
+import { useAccess } from "@/lib/verification";
+import { openTour } from "@/lib/tour";
 import { cn } from "@/lib/cn";
 import { HOW_TO_USE, type Shot, type Status, type TourItem } from "@/content/howToUse";
 
@@ -40,12 +42,17 @@ import { HOW_TO_USE, type Shot, type Status, type TourItem } from "@/content/how
  * How to use — /how-to-use (public, also linked from the member profile menu).
  * 1. Journey: six steps; tap a step → its real phone screen + the statuses you'll meet.
  * 2. The full tour: every feature grouped (account · finding · connecting · plans) with screens and "Find it in".
+ *    Gold / Platinum members only (approved) — guests and Free members see only the journey, with no
+ *    hint of the full guide. Paid members also get a "Start the tour" button (popup tour, lib/tour).
  * 3. Closing call to action (guest: Login / Create New · member: dashboard / search).
  */
 export function HowToUseScreen() {
   const { lang } = useLanguage();
   const c = HOW_TO_USE[lang] ?? HOW_TO_USE.en;
   const signedIn = useSignedIn();
+  const { isPaid, locked } = useAccess();
+  // the full guide is a Gold / Platinum benefit
+  const fullGuide = signedIn && isPaid && !locked;
 
   return (
     <MemberShell
@@ -60,15 +67,23 @@ export function HowToUseScreen() {
         <TrustChip Icon={Verify}>{c.trust[0]}</TrustChip>
         <TrustChip Icon={ShieldTick}>{c.trust[1]}</TrustChip>
         <TrustChip Icon={Location}>{c.trust[2]}</TrustChip>
-        <a href="#tour" className="ml-auto inline-flex items-center gap-1.5 text-label-md text-brand-text hover:underline">
-          {c.tourLink}
-          <ArrowDown size={16} color="currentColor" />
-        </a>
+        {fullGuide && (
+          <div className="ml-auto flex items-center gap-4">
+            <a href="#tour" className="inline-flex items-center gap-1.5 text-label-md text-brand-text hover:underline">
+              {c.tourLink}
+              <ArrowDown size={16} color="currentColor" />
+            </a>
+            <Button size="sm" onClick={openTour}>
+              Start the tour
+            </Button>
+          </div>
+        )}
       </div>
 
       <Journey />
 
-      {/* The full tour */}
+      {/* The full tour — Gold / Platinum only */}
+      {fullGuide && (
       <section id="tour" aria-labelledby="tour-title" className="flex scroll-mt-24 flex-col gap-10 pt-6 lg:gap-14 lg:pt-10">
         <SectionHeader eyebrow={c.tourEyebrow} title={c.tourTitle} description={c.tourText} />
         {c.groups.map((group, gi) => (
@@ -90,6 +105,7 @@ export function HowToUseScreen() {
           </div>
         ))}
       </section>
+      )}
 
       {/* Closing CTA — the same band as the home page "Ready to meet your life partner?" */}
       {signedIn ? (

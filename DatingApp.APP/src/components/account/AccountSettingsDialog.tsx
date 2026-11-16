@@ -36,7 +36,8 @@ import {
  * Account settings popup (profile menu → Account settings). Mounted once in the root layout,
  * opened with openAccountSettings().
  *
- *  home     → account summary · Take a break (hide / show profile) · Delete account
+ *  home     → account summary · Take a break (hide / show profile) · quiet "Delete account" link
+ *  ask      → small "Delete your account?" check (Cancel / Delete account) before the real flow
  *  break    → what hiding does → Hide my profile
  *  reason   → why are you leaving (chips) + optional comment ("Found my partner" → share story)
  *  confirm  → what gets deleted + "I understand" + "Hide instead" escape
@@ -46,7 +47,7 @@ import {
 export const ACCOUNT_SETTINGS_EVENT = "vk-account-settings";
 export const openAccountSettings = () => window.dispatchEvent(new Event(ACCOUNT_SETTINGS_EVENT));
 
-type Step = "home" | "break" | "reason" | "confirm" | "code" | "done";
+type Step = "home" | "break" | "ask" | "reason" | "confirm" | "code" | "done";
 
 const REASONS = [
   { id: "found-here", label: "I found my partner on Vikasitha", happy: true },
@@ -210,7 +211,7 @@ export function AccountSettingsDialog() {
     window.location.assign("/");
   }
 
-  const back: Partial<Record<Step, Step>> = { break: "home", reason: "home", confirm: "reason", code: "confirm" };
+  const back: Partial<Record<Step, Step>> = { break: "home", ask: "home", reason: "ask", confirm: "reason", code: "confirm" };
   const danger = step === "reason" || step === "confirm" || step === "code";
 
   return (
@@ -291,21 +292,17 @@ export function AccountSettingsDialog() {
                   )}
                 </section>
 
-                {/* danger zone */}
-                <section className="flex flex-col gap-3 rounded-lg border border-error-line bg-error-bg/40 p-4">
-                  <div className="flex items-start gap-3">
-                    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-error-bg text-error-fg">
-                      <Trash size={20} color="currentColor" />
-                    </span>
-                    <div className="flex-1">
-                      <h3 className="text-label-lg text-ink">Delete account</h3>
-                      <p className="text-body-sm text-ink-secondary">Permanently delete your profile, photos, chats and ID documents. This can’t be undone.</p>
-                    </div>
-                  </div>
-                  <Button variant="danger" size="md" onClick={() => setStep("reason")}>
-                    Delete my account
-                  </Button>
-                </section>
+                {/* delete: deliberately low-key, opens a confirmation first */}
+                <div className="flex items-center justify-between gap-3 border-t border-line pt-4">
+                  <p className="text-body-xs text-ink-tertiary">Want to leave Vikasitha for good?</p>
+                  <button
+                    type="button"
+                    onClick={() => setStep("ask")}
+                    className="shrink-0 text-label-sm text-ink-tertiary underline underline-offset-4 transition-colors hover:text-error-fg focus-visible:outline-none focus-visible:shadow-ring-brand"
+                  >
+                    Delete account
+                  </button>
+                </div>
 
                 <p className="text-center text-body-xs text-ink-tertiary">
                   Read how we handle deletion in our{" "}
@@ -341,6 +338,37 @@ export function AccountSettingsDialog() {
                 <Button size="lg" fullWidth loading={busy} onClick={() => toggleHidden(true)} leftIcon={<EyeSlash size={20} color="currentColor" />}>
                   Hide my profile
                 </Button>
+              </>
+            )}
+
+            {/* ── ask: short confirmation before the delete flow ── */}
+            {step === "ask" && (
+              <>
+                <div className="flex flex-col items-center gap-3 text-center">
+                  <span className="flex h-14 w-14 items-center justify-center rounded-full bg-error-bg text-error-fg">
+                    <Trash size={28} color="currentColor" />
+                  </span>
+                  <h3 className="text-h5 text-ink">Delete your account?</h3>
+                  <p className="text-body-sm text-ink-secondary">
+                    Your profile, photos, chats and ID documents will be deleted permanently. This can’t be undone.
+                  </p>
+                </div>
+                {!hidden && (
+                  <button type="button" onClick={() => setStep("break")} className="flex items-center gap-3 rounded-lg bg-premium-bg p-3 text-left ring-1 ring-inset ring-premium-line">
+                    <Coffee size={20} color="currentColor" className="shrink-0 text-premium-fg" />
+                    <span className="flex-1 text-body-sm text-ink">
+                      <b className="font-semibold">Just need a break?</b> Hide your profile instead, and come back any time.
+                    </span>
+                  </button>
+                )}
+                <div className="flex flex-col-reverse gap-3 sm:flex-row">
+                  <Button variant="outline" size="lg" className="sm:flex-1" onClick={() => setStep("home")}>
+                    Cancel
+                  </Button>
+                  <Button variant="danger" size="lg" className="sm:flex-1" onClick={() => setStep("reason")}>
+                    Delete account
+                  </Button>
+                </div>
               </>
             )}
 

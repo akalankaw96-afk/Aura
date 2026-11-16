@@ -90,3 +90,27 @@ One global exception handler produces these (TD-12). Never leak stack traces or 
   CODE_EXPIRED | TOO_MANY_ATTEMPTS, attemptsLeft }`. On success: hide the profile at once, end all sessions (clear
   the refresh cookie), schedule erasure of profile, photos, chats, ID documents within 30 days (keep legally required
   payment records), and store the reason/comment anonymously for reporting.
+
+## Planned: admin back office (front end ready 2026-11-16)
+All under the `Staff` policy; each call also checks the permission below. Every change is written to an audit log
+(who, what, when, reason). Front end: `lib/adminApi.ts`.
+- `GET /api/admin/stats` → `{ totalMembers, newThisWeek, activeMembers, pendingReview, kycUpdates, halfRegistered,
+  paidMembers, blocked }` (`dashboard.view`).
+- `GET /api/admin/members?search=&status=&page=&pageSize=` → paged `{ items: [{ userId, fullName, code?, phoneNumber,
+  email?, gender?, plan, status: Active | PendingReview | Incomplete | Deactivated | Blocked, joinedAt, lastActiveAt? }],
+  total }` (`members.view`). Search matches name, mobile, email, MP code.
+- `POST /api/admin/members/{id}/status` `{ action: activate | deactivate | block | unblock, reason? }` → 204
+  (`members.status`). Reason required for deactivate / block; block and deactivate end all the member's sessions.
+- `POST /api/admin/members/{id}/reset-password` → 204 (`members.resetPassword`). Staff never see or type a member's
+  password: this ends their sessions and sends an SMS so the member sets a new one with a code.
+- `GET /api/admin/roles` · `POST /api/admin/roles` · `PUT /api/admin/roles/{id}` · `DELETE /api/admin/roles/{id}`
+  (`staff.manage`). Role `{ id, name, description?, permissions[], builtIn, staffCount }`. Admin (all permissions,
+  read-only) and Moderator are built-in; a role in use can't be deleted (409).
+- `GET /api/admin/staff-accounts` · `POST /api/admin/staff-accounts` `{ fullName, username, email?, password, roleId }`
+  · `PATCH /api/admin/staff-accounts/{id}` `{ roleId?, status? }` · `POST /api/admin/staff-accounts/{id}/reset-password`
+  → `{ temporaryPassword }` (`staff.manage`). Staff sign in with username + password; a new or reset password is
+  temporary and must be changed at the next sign-in; a role or status change revokes their sessions. An admin can't
+  deactivate or demote themselves, and the last active Admin can't be removed.
+- Permissions: `dashboard.view`, `reviews.view`, `reviews.decide`, `photos.moderate`, `documents.view`,
+  `members.view`, `members.status`, `members.resetPassword`, `payments.verify`, `reports.handle`, `staff.manage`.
+  Return the signed-in staff member's permissions in the session so the sidebar can hide what they can't use.

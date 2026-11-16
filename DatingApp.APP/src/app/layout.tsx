@@ -25,6 +25,7 @@ import { UpgradePrompt } from "@/components/layout/UpgradePrompt";
 import { LoginRequiredModal } from "@/components/layout/LoginRequiredModal";
 import { FeedbackDialog } from "@/components/feedback/FeedbackDialog";
 import { AccountSettingsDialog } from "@/components/account/AccountSettingsDialog";
+import { GuidedTourDialog } from "@/components/tour/GuidedTourDialog";
 
 export const metadata: Metadata = {
   title: "Vikasitha | Find a life partner your whole family can trust",
@@ -71,6 +72,8 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
             <FeedbackDialog />
             {/* profile menu → Account settings: take a break / delete account (SMS code) */}
             <AccountSettingsDialog />
+            {/* Gold / Platinum guided tour (dashboard welcome card, How to use) */}
+            <GuidedTourDialog />
           </ToastProvider>
         </LanguageProvider>
       </body>

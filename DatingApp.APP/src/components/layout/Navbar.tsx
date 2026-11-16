@@ -121,7 +121,8 @@ export function Navbar({ variant = "light" }: { variant?: NavbarVariant }) {
   const requestCount = REQUESTS.length;
   const messageCount = MESSAGES.reduce((n, m) => n + m.unread, 0);
 
-  const links: { label: string; href: string; count?: number }[] = isMember
+  // wideOnly: shown in the desktop bar from xl (1280px) up — at 1024 the bar has no room; always in the phone menu
+  const links: { label: string; href: string; count?: number; wideOnly?: boolean }[] = isMember
     ? [
         // Figma: Navbar (Style = Member) → Dashboard · Search · Requests · Messages · Plans
         { label: t.nav.dashboard, href: "/dashboard" },
@@ -136,6 +137,7 @@ export function Navbar({ variant = "light" }: { variant?: NavbarVariant }) {
         { label: t.nav.grooms, href: "/search?for=groom" },
         { label: t.nav.howItWorks, href: "/how-to-use" },
         { label: t.nav.pricing, href: "/#pricing" },
+        { label: lang === "si" ? "අප ගැන" : "About us", href: "/about", wideOnly: true },
       ];
 
   return (
@@ -166,6 +168,7 @@ export function Navbar({ variant = "light" }: { variant?: NavbarVariant }) {
                 aria-current={active ? "page" : undefined}
                 className={cn(
                   "group inline-flex items-center gap-1.5 whitespace-nowrap text-label-lg transition-colors",
+                  l.wideOnly && "hidden xl:inline-flex",
                   glass
                     ? active
                       ? "bg-brand-gradient bg-clip-text text-transparent font-bold"

@@ -6,16 +6,18 @@ import { ArrowDown2, Calendar, Clock, MessageQuestion, ShieldTick } from "iconsa
 import { cn } from "@/lib/cn";
 import { MemberShell } from "@/components/layout/MemberShell";
 import { PRIVACY, TERMS, type LegalDoc } from "@/content/legal";
+import { ABOUT } from "@/content/about";
 
 /**
- * Terms & Conditions / Privacy Policy (Figma: 📄 Info Pages).
+ * Info pages: Terms & Conditions, Privacy Policy and About us (Figma: 📄 Info Pages).
  * Same page header as member pages (navbar, back, breadcrumb, title, subtitle). Desktop: sticky
  * "On this page" menu on the left (highlights the section in view) + numbered sections on the right.
  * Phones: the menu sits above the content.
  */
-export function LegalPage({ doc }: { doc: "terms" | "privacy" }) {
-  const d: LegalDoc = doc === "terms" ? TERMS : PRIVACY;
-  const other = doc === "terms" ? { href: "/privacy", label: "Privacy Policy" } : { href: "/terms", label: "Terms & Conditions" };
+export function LegalPage({ doc }: { doc: "terms" | "privacy" | "about" }) {
+  const d: LegalDoc = doc === "terms" ? TERMS : doc === "privacy" ? PRIVACY : ABOUT;
+  const related =
+    d.related ?? (doc === "terms" ? [{ href: "/privacy", label: "Privacy Policy" }] : [{ href: "/terms", label: "Terms & Conditions" }]);
   const [active, setActive] = useState(d.sections[0]?.id);
   // phones: the section menu is folded so the text starts near the top
   const [tocOpen, setTocOpen] = useState(false);
@@ -82,7 +84,7 @@ export function LegalPage({ doc }: { doc: "terms" | "privacy" }) {
             </ol>
           </nav>
           <div className={cn("flex flex-col gap-2 border-t border-line px-2 pt-4", !tocOpen && "max-lg:hidden")}>
-            <p className="text-label-md text-ink">Questions about this policy?</p>
+            <p className="text-label-md text-ink">{d.helpTitle ?? "Questions about this policy?"}</p>
             <Link
               href="/support"
               className="flex h-10 items-center justify-center gap-2 rounded-full border border-brand text-label-md text-brand-text transition-colors hover:bg-brand-subtle"
@@ -95,9 +97,11 @@ export function LegalPage({ doc }: { doc: "terms" | "privacy" }) {
         {/* Content */}
         <article className="flex min-w-0 flex-col gap-8 rounded-xl border border-line bg-surface-card p-5 shadow-sm sm:p-8 lg:p-10">
           <div className="flex flex-wrap items-center gap-2 text-label-sm text-ink-tertiary">
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-surface-subtle px-3 py-1">
-              <Calendar size={14} color="currentColor" /> Last updated {d.updated}
-            </span>
+            {d.updated && (
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-surface-subtle px-3 py-1">
+                <Calendar size={14} color="currentColor" /> Last updated {d.updated}
+              </span>
+            )}
             <span className="inline-flex items-center gap-1.5 rounded-full bg-surface-subtle px-3 py-1">
               <Clock size={14} color="currentColor" /> {d.readMins} min read
             </span>
@@ -120,9 +124,14 @@ export function LegalPage({ doc }: { doc: "terms" | "privacy" }) {
 
           <p className="border-t border-line pt-6 text-body-sm text-ink-tertiary">
             Also read our{" "}
-            <Link href={other.href} className="font-semibold text-brand-text underline-offset-4 hover:underline">
-              {other.label}
-            </Link>
+            {related.map((r, i) => (
+              <React.Fragment key={r.href}>
+                {i > 0 && (i === related.length - 1 ? " and " : ", ")}
+                <Link href={r.href} className="font-semibold text-brand-text underline-offset-4 hover:underline">
+                  {r.label}
+                </Link>
+              </React.Fragment>
+            ))}
             .
           </p>
         </article>

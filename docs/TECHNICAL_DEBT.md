@@ -35,6 +35,8 @@ Bugs go to `BUG_TRACKER.md`; debt goes here. Add an item whenever you knowingly 
 | TD-25 | P2 | API | Edits to an approved profile (name, birth date, photos excepted) are not re-reviewed | A member could change checked details after approval | Planned (03) — re-review of sensitive fields |
 | TD-26 | P1 | API | ID documents stored unencrypted on local disk | Disk access = document access; needs encryption at rest / cloud storage with KMS before launch | Planned (06) |
 | TD-27 | P3 | API | Approved photos load by an unguessable link without login | Links can be shared outside the app | Accepted for now (images in `<img>` can't send a token); revisit with signed URLs |
+| TD-28 | P1 | Web/API | Staff area members, stats, roles and staff accounts run on demo data in development (`lib/adminApi.ts`); the sidebar only knows Admin vs Moderator, not per-role permissions | Pages show "needs the API" in production; custom roles have no effect until the API enforces permissions | Planned (API endpoints in API_GUIDELINES → Planned: admin back office) |
+| TD-29 | P3 | Web | Old staff console `sections/admin/AdminScreen.tsx` (tab UI) is no longer used by any route | Dead code | Open — delete once the new admin pages are approved |
 
 ## Rules
 - Paying down debt is a task in a sprint with acceptance criteria — not a side effect of a feature task.

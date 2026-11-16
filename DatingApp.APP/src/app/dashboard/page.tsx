@@ -10,6 +10,7 @@ import { ProPlanCard } from "@/components/sections/dashboard/ProPlanCard";
 import { PromoteCard, PromoteModal } from "@/components/sections/promote/PromoteFlow";
 import { EditProfileModal } from "@/components/sections/dashboard/EditProfileModal";
 import { RequireMember } from "@/components/auth/RequireMember";
+import { TourWelcomeCard } from "@/components/tour/TourWelcomeCard";
 
 export const metadata: Metadata = { title: "Dashboard | Aura Matrimony" };
 
@@ -33,6 +34,8 @@ export default function DashboardPage() {
           {/* new members: profile review status (pending / changes needed) — hidden once live */}
           <VerificationPanel />
           <DashboardHero />
+          {/* Gold / Platinum: "Welcome to Gold — take a 2-minute tour" until the tour is done */}
+          <TourWelcomeCard />
           {/* paid members with an active promotion: "Your profile is promoted" status right under the hero */}
           <PromoteCard placement="top" />
           {/* approved Free members: allowance + what Gold unlocks (hidden for paid members) */}

@@ -104,6 +104,9 @@ admins promote moderators; branch **`S02-kyc`** (from merged `S01-api-auth`).
 | Payment page: bank transfer + receipt upload (front end) | Completed (front end) | Tested 1440 light / 390 dark: plans → checkout, copy, validation, I’ve paid scroll, photo + PDF upload, submit → status card; `tsc` clean. Needs real bank details + API endpoint + staff review screen |
 | Account settings: take a break (hide) + delete account with SMS code | Completed (front end) | Tested 1440 light / 390 dark: menu → settings, hide/show, reason validation, confirm checkbox, wrong code (attempts), right code → deleted → signed out → home; `tsc` clean. Needs the 3 API endpoints |
 | KYC profile step: WhatsApp typed by member, display name preview, no "Save & finish later" | Completed | Checked 1280 light / 390 dark (isolated step); `tsc` clean |
+| About us page + nav / footer links | Completed | Checked 1440 + 1024 light, 390 dark; footer + phone menu link; top bar fits at 1024 |
+| Gold-only full guide + guided tour popup + dashboard welcome card | Completed (front end) | Tested guest / Free / Gold on How to use; Gold dashboard card → tour (6 steps → done) at 1440 light + 390 dark; Free can’t open; `tsc` clean. Guide text still ships in the JS bundle (see TD) |
+| Staff area redesign: admin sidebar layout, dashboard, members table, roles & staff accounts | Completed (front end) | Tested as Admin at 1440 light / dark and 390: dashboard counts + tables, members search / filter / paging / block with reason, new role created, staff account added → temporary password shown; Moderator has no Roles link; Member is sent to /dashboard; no horizontal scroll at 390; `tsc` clean. Review queue + photos + moderators use the live API; members, stats, roles and staff accounts need the planned endpoints (demo data in development only) |
 
 ## Owner requests
 | Change | Status | Notes |
