@@ -59,6 +59,16 @@ public static class DependencyInjection
         services.AddScoped<IModerationService, ModerationService>();
         services.AddScoped<IStaffService, StaffService>();
 
+        // Plans, usage & search (S03)
+        services.AddScoped<IUsageService, UsageService>();
+        services.AddScoped<ISearchService, SearchService>();
+        services.AddScoped<IProfileViewService, ProfileViewService>();
+        services.AddScoped<IShortlistService, ShortlistService>();
+        services.AddScoped<ISavedSearchService, SavedSearchService>();
+        services.AddScoped<ISafetyService, SafetyService>();
+        services.AddScoped<IReportQueueService, ReportQueueService>();
+        services.AddScoped<IDashboardService, DashboardService>();
+
         return services;
     }
 }

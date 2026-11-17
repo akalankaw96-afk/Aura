@@ -9,10 +9,11 @@ import { Button, ButtonLink } from "@/components/ui/Button";
 import { useToast } from "@/components/ui/Toast";
 import { SegmentedTabs } from "@/components/ui/SegmentedTabs";
 import { useLanguage } from "@/context/LanguageContext";
-import { FRIENDS, MESSAGES, REQUESTS, REQUEST_PROFILES, friendProfileId, type Friend } from "@/content/dashboard";
-import { useAuthSession } from "@/lib/session";
-import { useAddedFriends, useDeclinedInterests, useFavourites } from "@/lib/connections";
-import { requirePaidAction } from "@/lib/usage";
+import { type Friend } from "@/content/dashboard";
+import { requireMember, useAuthSession } from "@/lib/session";
+import { refreshConnections, timeAgo, useAddedFriends, useFavourites, useReceivedInterests } from "@/lib/connections";
+import { respondInterest } from "@/lib/matching";
+import { useDashboard } from "@/lib/dashboard";
 import { ConnectionEmptyState } from "@/components/sections/member/ConnectionEmptyState";
 
 /**
@@ -117,34 +118,42 @@ function RequestsFriendsCard({ empty }: { empty: boolean }) {
   const { t } = useLanguage();
   const toast = useToast();
   const [tab, setTab] = useState<RFTab>("friends");
-  const { profiles: addedFriends, save: addFriend } = useAddedFriends();
-  const { profiles: declinedInterests, save: declineInterest } = useDeclinedInterests();
+  // From the API (S03-T05/T06): matched interests, shortlist and interests waiting for an answer
+  const { profiles: addedFriends } = useAddedFriends();
+  const { profiles: receivedInterests } = useReceivedInterests();
   const { profiles: favourites } = useFavourites();
   const addedIds = new Set(addedFriends.map((profile) => profile.id));
-  const declinedIds = new Set(declinedInterests.map((profile) => profile.id));
-  const [acceptedHere, setAcceptedHere] = useState<string[]>([]);
-  const requests = empty ? [] : REQUESTS.filter((request) =>
-    !declinedIds.has(request.id) && (!addedIds.has(request.id) || acceptedHere.includes(request.id)),
-  );
+  const [acceptedHere, setAcceptedHere] = useState<typeof receivedInterests>([]);
+  const [busyId, setBusyId] = useState<string | null>(null);
+  // just-accepted requests stay in the list (green, "Say hello") until the page is left
+  const requests = empty ? [] : [...acceptedHere, ...receivedInterests.filter((r) => !acceptedHere.some((a) => a.id === r.id))];
   const pending = requests.filter((request) => !addedIds.has(request.id)).length;
-  const friends: Friend[] = empty ? [] : [
-    ...addedFriends.map((profile) => ({ ...profile, isNew: true, lastSeen: t.dashboard.connectedJustNow })),
-    ...FRIENDS.filter((friend) => !addedIds.has(friendProfileId(friend))),
-  ];
+  const friends: Friend[] = empty ? [] : addedFriends.map((profile) => ({
+    ...profile,
+    isNew: acceptedHere.some((a) => a.id === profile.id),
+    lastSeen: acceptedHere.some((a) => a.id === profile.id) ? t.dashboard.connectedJustNow : profile.time,
+  }));
   const members: Friend[] = tab === "favourites" ? favourites : friends;
 
-  function accept(id: string) {
-    const request = REQUEST_PROFILES.find((profile) => profile.id === id);
-    if (!request || !requirePaidAction("interests", "accept a request")) return;
-    if (!addFriend({ ...request, note: "You accepted this interest." })) return;
-    setAcceptedHere((ids) => [...ids, id]);
-    toast.success(`${request.name} is now your friend`, "You can message them from Friends.");
+  async function answer(id: string, accept: boolean) {
+    const request = receivedInterests.find((profile) => profile.id === id);
+    if (!request?.requestId || busyId || !requireMember(accept ? "accept a request" : "decline a request")) return;
+    setBusyId(id);
+    try {
+      await respondInterest(request.requestId, accept); // answering is free on every plan
+      if (accept) {
+        setAcceptedHere((list) => [request, ...list]);
+        toast.success(`${request.name} is now your friend`, "You can message them from Friends.");
+      } else toast.info("Request declined", `${request.name} won’t be notified.`);
+      await refreshConnections();
+    } catch (err) {
+      toast.error("Couldn’t update this request", err instanceof Error ? err.message : "Please try again.");
+    } finally {
+      setBusyId(null);
+    }
   }
-
-  function decline(id: string, name: string) {
-    if (!requirePaidAction("interests", "decline a request") || !declineInterest({ id })) return;
-    toast.info("Request declined", `${name} won’t be notified.`);
-  }
+  const accept = (id: string) => void answer(id, true);
+  const decline = (id: string) => void answer(id, false);
 
   return (
     <Card id="requests">
@@ -185,7 +194,7 @@ function RequestsFriendsCard({ empty }: { empty: boolean }) {
                   i={i}
                   last={i === members.length - 1}
                   highlight={f.isNew}
-                  href={`/friends?tab=${tab}&id=${encodeURIComponent(tab === "friends" ? friendProfileId(f) : f.id)}`}
+                  href={`/friends?tab=${tab}&id=${encodeURIComponent(f.id)}`}
                   linkLabel={`View ${f.name}’s profile`}
                 >
                   <Avatar src={f.photo} hidden={f.photoHidden} online={f.online} />
@@ -207,7 +216,7 @@ function RequestsFriendsCard({ empty }: { empty: boolean }) {
                       {t.dashboard.profile}
                     </span>
                     {tab === "friends" && (
-                      <ButtonLink href={`/messages?c=${encodeURIComponent(f.id)}`} size="sm" className="pointer-events-auto">
+                      <ButtonLink href={`/messages?c=${encodeURIComponent(f.profileId ?? f.id)}`} size="sm" className="pointer-events-auto">
                         {t.dashboard.message}
                       </ButtonLink>
                     )}
@@ -258,15 +267,15 @@ function RequestsFriendsCard({ empty }: { empty: boolean }) {
                     </div>
                     <div className="pointer-events-none relative z-20 flex gap-2 max-sm:w-full max-sm:pl-14">
                       {accepted ? (
-                        <ButtonLink href={`/messages?c=${encodeURIComponent(r.id)}`} size="sm" className="pointer-events-auto">
+                        <ButtonLink href={`/messages?c=${encodeURIComponent(r.profileId ?? r.id)}`} size="sm" className="pointer-events-auto">
                           {t.dashboard.sayHello}
                         </ButtonLink>
                       ) : (
                         <>
-                          <Button size="sm" variant="outline" className="pointer-events-auto" onClick={() => decline(r.id, r.name)}>
+                          <Button size="sm" variant="outline" className="pointer-events-auto" disabled={busyId === r.id} onClick={() => decline(r.id)}>
                             {t.dashboard.decline}
                           </Button>
-                          <Button size="sm" className="pointer-events-auto" onClick={() => accept(r.id)}>
+                          <Button size="sm" className="pointer-events-auto" disabled={busyId === r.id} onClick={() => accept(r.id)}>
                             {t.dashboard.accept}
                           </Button>
                         </>
@@ -290,7 +299,20 @@ function MessagesCard({ empty }: { empty: boolean }) {
   const { t } = useLanguage();
   const [tab, setTab] = useState<MTab>("all");
   const [read, setRead] = useState<string[]>([]);
-  const all = empty ? [] : MESSAGES;
+  // latest conversations from GET /api/me/dashboard (S03-T09); blocked chats aren't included
+  const { data } = useDashboard();
+  const all = empty || !data
+    ? []
+    : data.recentConversations.map((c) => ({
+        id: c.conversationId,
+        name: c.partnerName,
+        preview: c.lastMessageText || "Say hello 👋",
+        time: timeAgo(c.lastMessageTime),
+        unread: c.unreadCount,
+        online: c.partnerOnline,
+        photo: c.partnerPhotoUrl,
+        photoHidden: false,
+      }));
   const unreadOf = (id: string, n: number) => (read.includes(id) ? 0 : n);
   const unreadList = all.filter((m) => unreadOf(m.id, m.unread) > 0);
   const list = tab === "all" ? all : unreadList;

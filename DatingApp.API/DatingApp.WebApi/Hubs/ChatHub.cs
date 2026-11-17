@@ -110,6 +110,26 @@ public class ChatHub : Hub
         });
     });
 
+    /// <summary>The asked member says "not now" — the asker sees it in the chat (S03-T07).</summary>
+    public Task DeclineContactShare(string partnerProfileId) => Guard(async () =>
+    {
+        var delivery = await _chat.DeclineContactShareAsync(UserId, ParseId(partnerProfileId), Context.ConnectionAborted);
+        await Deliver(delivery, "ReceiveMessage");
+        var p = delivery.Participants;
+        await Clients.Users(p.MyUserId.ToString(), p.PartnerUserId.ToString())
+            .SendAsync("ContactShareDeclined", p.ConversationId, p.MyProfileId.ToString());
+    });
+
+    /// <summary>The asker takes the request back (S03-T07).</summary>
+    public Task CancelContactShare(string partnerProfileId) => Guard(async () =>
+    {
+        var delivery = await _chat.CancelContactShareAsync(UserId, ParseId(partnerProfileId), Context.ConnectionAborted);
+        await Deliver(delivery, "ReceiveMessage");
+        var p = delivery.Participants;
+        await Clients.Users(p.MyUserId.ToString(), p.PartnerUserId.ToString())
+            .SendAsync("ContactShareCancelled", p.ConversationId, p.MyProfileId.ToString());
+    });
+
     // ---- helpers ----
 
     /// <summary>Sender gets the message as "mine" (MessageSentConfirmation), the receiver as theirs.</summary>
@@ -141,7 +161,9 @@ public class ChatHub : Hub
         IsFlaggedBySafety = m.IsFlaggedBySafety,
         SafetyFlagReason = m.SafetyFlagReason,
         IsContactShareRequest = m.IsContactShareRequest,
-        IsContactShareAccepted = m.IsContactShareAccepted
+        IsContactShareAccepted = m.IsContactShareAccepted,
+        IsContactShareDeclined = m.IsContactShareDeclined,
+        IsContactShareCancelled = m.IsContactShareCancelled
     };
 
     private static Guid ParseId(string value) =>

@@ -12,11 +12,30 @@ namespace DatingApp.WebApi.Controllers;
 public class ModerationController : BaseApiController
 {
     private readonly IModerationService _moderation;
+    private readonly IReportQueueService _reports;
 
-    public ModerationController(IModerationService moderation)
+    public ModerationController(IModerationService moderation, IReportQueueService reports)
     {
         _moderation = moderation;
+        _reports = reports;
     }
+
+    /// <summary>Member reports (S03-T08). status = open (default, oldest first) · closed · all.</summary>
+    [HttpGet("reports")]
+    [ProducesResponseType(typeof(List<ReportQueueItemDto>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> Reports([FromQuery] string? status, CancellationToken ct) => Ok(await _reports.ListAsync(status, ct));
+
+    /// <summary>
+    /// Handle a report: dismiss · action (handled without suspending) · suspend (note required; suspends the member and
+    /// closes all their open reports). The reporter is told it was reviewed; the decision is kept in the profile history.
+    /// </summary>
+    [HttpPost("reports/{id:guid}/resolve")]
+    [ProducesResponseType(typeof(ReportQueueItemDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> ResolveReport(Guid id, [FromBody] ResolveReportDto dto, CancellationToken ct) =>
+        Ok(await _reports.ResolveAsync(RequireUserId(), id, dto, ct));
 
     /// <summary>Profiles waiting for review, oldest first.</summary>
     [HttpGet("queue")]
@@ -82,11 +101,24 @@ public class ModerationController : BaseApiController
 public class AdminController : BaseApiController
 {
     private readonly IStaffService _staff;
+    private readonly IUsageService _usage;
 
-    public AdminController(IStaffService staff)
+    public AdminController(IStaffService staff, IUsageService usage)
     {
         _staff = staff;
+        _usage = usage;
     }
+
+    /// <summary>Monthly limits per plan and feature (S03-T02). Null = unlimited.</summary>
+    [HttpGet("plan-limits")]
+    [ProducesResponseType(typeof(List<PlanLimitDto>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> PlanLimits(CancellationToken ct) => Ok(await _usage.GetPlanLimitsAsync(ct));
+
+    /// <summary>Change limits — applies at once to everyone on that plan.</summary>
+    [HttpPut("plan-limits")]
+    [ProducesResponseType(typeof(List<PlanLimitDto>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> UpdatePlanLimits([FromBody] UpdatePlanLimitsDto dto, CancellationToken ct) =>
+        Ok(await _usage.UpdatePlanLimitsAsync(RequireUserId(), dto.Limits, ct));
 
     [HttpGet("staff")]
     [ProducesResponseType(typeof(List<StaffUserDto>), StatusCodes.Status200OK)]
@@ -143,4 +175,32 @@ public class NotificationsController : BaseApiController
         await _notifications.MarkAllReadAsync(RequireUserId(), ct);
         return NoContent();
     }
+}
+
+/// <summary>The signed-in member's own counters (S03-T03).</summary>
+[Authorize]
+[Route("api/me")]
+public class MeController : BaseApiController
+{
+    private readonly IUsageService _usage;
+    private readonly IDashboardService _dashboard;
+
+    public MeController(IUsageService usage, IDashboardService dashboard)
+    {
+        _usage = usage;
+        _dashboard = dashboard;
+    }
+
+    /// <summary>
+    /// The dashboard in one call (S03-T09): usage, profile viewers (names for Gold / Platinum), interests, matches,
+    /// members who shortlisted me, unread messages and the latest conversations.
+    /// </summary>
+    [HttpGet("dashboard")]
+    [ProducesResponseType(typeof(DashboardDto), StatusCodes.Status200OK)]
+    public async Task<IActionResult> Dashboard(CancellationToken ct) => Ok(await _dashboard.GetAsync(RequireUserId(), ct));
+
+    /// <summary>This month's searches / profile views / interests / new chats: used, limit (null = unlimited), reset date.</summary>
+    [HttpGet("usage")]
+    [ProducesResponseType(typeof(UsageDto), StatusCodes.Status200OK)]
+    public async Task<IActionResult> Usage(CancellationToken ct) => Ok(await _usage.GetUsageAsync(RequireUserId(), ct));
 }

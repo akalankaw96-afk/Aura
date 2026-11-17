@@ -4,27 +4,27 @@ import React, { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { ArrowLeft, CloseCircle, Crown1, Eye, Heart, Messages2, SearchNormal1, Sms, TickCircle } from "iconsax-react";
-import { allSearchLimitsExhausted, exhaustedSearchLimit, FREE_LIMITS, UPGRADE_EVENT, USAGE_LABEL, useUsage, type UsageKind } from "@/lib/usage";
+import { allSearchLimitsExhausted, UPGRADE_EVENT, USAGE_LABEL, useUsage, type UsageKind } from "@/lib/usage";
 import { useSignedIn } from "@/lib/session";
 import { Button } from "@/components/ui";
 
 /**
- * Upgrade prompt — opens whenever a Free member hits a monthly limit
- * (profile views, searches, interests, chats, messages). Mounted once in the root layout;
- * anything can open it via lib/usage → consume().
+ * Upgrade prompt — opens whenever a Free member hits a monthly limit set by the admin
+ * (searches, profile views, interests, new chats) or tries a Gold feature (asking for contact details).
+ * Mounted once in the root layout; anything can open it via lib/usage → openUpgrade() / handleLimitError().
+ * Numbers come from GET /api/me/usage.
  *
  * Two modes:
- *  • Monthly limit reached (searches, profile views — FREE_LIMITS > 0): hard stop.
+ *  • Browsing used up on /search (searches AND profile views at 0): hard stop.
  *    No close button, Esc does nothing. Upgrade to Gold · Back to Dashboard.
- *  • Gold-only feature (messages, chats, interests — FREE_LIMITS = 0): closable.
- *    Close (X / Esc) · Upgrade to Gold · Close.
+ *  • Any other limit or Gold feature: closable. Close (X / Esc) · Upgrade to Gold · Close.
  */
 const ICON: Record<UsageKind, React.ReactNode> = {
   profileViews: <Eye size={26} color="currentColor" />,
   chats: <Messages2 size={26} color="currentColor" />,
-  messages: <Messages2 size={26} color="currentColor" />,
   searches: <SearchNormal1 size={26} color="currentColor" />,
   interests: <Heart size={26} color="currentColor" />,
+  contactShare: <Sms size={26} color="currentColor" />,
 };
 
 const PERKS = [
@@ -39,13 +39,12 @@ export function UpgradePrompt() {
   const pathname = usePathname();
   const router = useRouter();
   const signedIn = useSignedIn();
-  const { usage, unlimited } = useUsage();
+  const { usage } = useUsage();
   const [promptKind, setPromptKind] = useState<UsageKind | null>(null);
   const dialogRef = useRef<HTMLDialogElement>(null);
-  const searchLimit = signedIn && pathname === "/search"
-    ? exhaustedSearchLimit(usage, unlimited)
-    : undefined;
-  const browsingUsedUp = signedIn && allSearchLimitsExhausted(usage, unlimited);
+  // both browsing allowances used up → the Search page stays behind the prompt
+  const browsingUsedUp = signedIn && allSearchLimitsExhausted(usage);
+  const searchLimit: UsageKind | undefined = browsingUsedUp && pathname === "/search" ? "searches" : undefined;
   const kind = promptKind ?? searchLimit;
   const open = Boolean(kind);
 
@@ -85,11 +84,16 @@ export function UpgradePrompt() {
   }
 
   if (!kind) return null;
-  const limit = FREE_LIMITS[kind];
-  /** Gold-only feature (free allowance is 0) → the member may close it and keep browsing */
-  const goldFeature = limit === 0;
-  const allUsedUp = browsingUsedUp && !goldFeature;
-  const unit = USAGE_LABEL[kind].unit;
+  const limit = kind === "contactShare" ? 0 : usage.limits[kind] ?? 0;
+  const goldOnly = kind === "contactShare" || limit === 0;
+  /** hard stop only when browsing is used up on the Search page; everything else can be closed */
+  const allUsedUp = browsingUsedUp && (kind === "searches" || kind === "profileViews") && pathname === "/search";
+  const goldFeature = !allUsedUp;
+  const label = USAGE_LABEL[kind];
+  const unit = label.unit;
+  const resets = usage.resetsAt
+    ? new Date(usage.resetsAt).toLocaleDateString("en-GB", { day: "numeric", month: "long", timeZone: "UTC" })
+    : "the 1st";
 
   return (
     <dialog
@@ -123,10 +127,18 @@ export function UpgradePrompt() {
               </span>
             </span>
             <h2 id="upgrade-title" className="text-h5 text-ink">
-              {allUsedUp ? "You’ve used your free browsing allowance" : USAGE_LABEL[kind].limitReachedTitle || `You’ve used your ${limit} free ${unit}`}
+              {allUsedUp
+                ? "You’ve used your free browsing allowance"
+                : goldOnly
+                  ? label.goldTitle || `${label.title} is a Gold feature`
+                  : `You’ve used your ${limit} free ${unit}`}
             </h2>
             <p id="upgrade-description" className="text-body-sm text-ink-secondary">
-              {allUsedUp ? "You’ve used all your free searches and profile views this month. Upgrade to keep browsing, or return to your dashboard." : USAGE_LABEL[kind].limitReachedMsg || `Free members get ${limit} ${unit} a month. Your allowance resets on the 1st. Upgrade to keep going right now.`}
+              {allUsedUp
+                ? `You’ve used all your free searches and profile views this month. They come back on ${resets}. Upgrade to keep browsing, or return to your dashboard.`
+                : goldOnly
+                  ? label.goldMsg || `Upgrade to Gold to use ${unit}.`
+                  : `Your plan includes ${limit} ${unit} a month. They come back on ${resets}. Upgrade to Gold to keep going right now.`}
             </p>
           </div>
 

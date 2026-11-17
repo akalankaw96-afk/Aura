@@ -73,6 +73,23 @@ onTokenRefreshed((fresh) => {
 });
 onSessionExpired(() => clearLocalSession());
 
+// Another tab signed in as someone else (or signed out): this tab's screen belongs to the old account, but its next
+// token refresh would use the shared refresh cookie of the new one — e.g. A's chat sending as B. Reload so the page
+// always shows the account it really talks to the API as.
+if (typeof window !== 'undefined') {
+  const userOf = (raw: string | null) => {
+    try {
+      return raw ? ((JSON.parse(raw) as { userId?: string }).userId ?? null) : null;
+    } catch {
+      return null;
+    }
+  };
+  window.addEventListener('storage', (e) => {
+    if (e.key !== SESSION_KEY) return;
+    if (userOf(e.oldValue) !== userOf(e.newValue)) window.location.reload();
+  });
+}
+
 // Older builds stored the access token in localStorage — remove it on load (BUG-017).
 if (typeof window !== 'undefined') {
   try {

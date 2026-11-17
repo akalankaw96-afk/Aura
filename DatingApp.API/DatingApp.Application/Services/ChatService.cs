@@ -22,6 +22,10 @@ public interface IChatService
     Task<ChatReadReceipt?> MarkAsReadAsync(Guid userId, Guid messageId, CancellationToken ct = default);
     Task<ChatDelivery> RequestContactShareAsync(Guid userId, Guid partnerProfileId, CancellationToken ct = default);
     Task<ContactUnlock> AcceptContactShareAsync(Guid userId, Guid partnerProfileId, CancellationToken ct = default);
+    /// <summary>The asked member says "not now" (S03-T07).</summary>
+    Task<ChatDelivery> DeclineContactShareAsync(Guid userId, Guid partnerProfileId, CancellationToken ct = default);
+    /// <summary>The asker takes their request back (S03-T07).</summary>
+    Task<ChatDelivery> CancelContactShareAsync(Guid userId, Guid partnerProfileId, CancellationToken ct = default);
 }
 
 /// <summary>The two sides of a conversation, for routing real-time events to the right users.</summary>
@@ -49,11 +53,13 @@ public class ChatService : IChatService
 
     private readonly IApplicationDbContext _context;
     private readonly IPresenceTracker _presence;
+    private readonly IUsageService _usage;
 
-    public ChatService(IApplicationDbContext context, IPresenceTracker presence)
+    public ChatService(IApplicationDbContext context, IPresenceTracker presence, IUsageService usage)
     {
         _context = context;
         _presence = presence;
+        _usage = usage;
     }
 
     /// <summary>One id per pair, whichever side asks: conv_{smaller}_{larger}.</summary>
@@ -88,11 +94,15 @@ public class ChatService : IChatService
 
         var result = new List<ConversationDto>();
         var seen = new HashSet<Guid>();
+        var iBlocked = await _context.Blocks.Where(b => b.BlockerProfileId == me.Id).Select(b => b.BlockedProfileId).ToListAsync(ct);
+        var blockedMe = await _context.Blocks.Where(b => b.BlockedProfileId == me.Id).Select(b => b.BlockerProfileId).ToListAsync(ct);
 
         foreach (var match in matches)
         {
             var partner = match.SenderProfileId == me.Id ? match.ReceiverProfile : match.SenderProfile;
             if (partner == null || !seen.Add(partner.Id)) continue;
+            // a member who blocked me disappears from my list (they aren't told apart from a removed member)
+            if (blockedMe.Contains(partner.Id) && !iBlocked.Contains(partner.Id)) continue;
 
             var (convId, otherId) = ConversationIds(me.Id, partner.Id);
 
@@ -105,8 +115,8 @@ public class ChatService : IChatService
                 .CountAsync(m => (m.ConversationId == convId || m.ConversationId == otherId) &&
                                  m.ReceiverProfileId == me.Id && !m.IsRead, ct);
 
-            var contactShared = await _context.ChatMessages
-                .AnyAsync(m => (m.ConversationId == convId || m.ConversationId == otherId) && m.IsContactShareAccepted, ct);
+            var shareState = await ShareStateAsync(convId, otherId, me.Id, ct);
+            var contactShared = shareState == "accepted";
 
             string? partnerPhone = null;
             if (contactShared)
@@ -128,7 +138,9 @@ public class ChatService : IChatService
                 LastMessageTime = lastMessage?.CreatedAt ?? match.RespondedAt ?? match.CreatedAt,
                 UnreadCount = unreadCount,
                 IsContactShared = contactShared,
-                PartnerPhoneNumber = partnerPhone
+                PartnerPhoneNumber = partnerPhone,
+                ContactShareState = shareState,
+                IsBlocked = iBlocked.Contains(partner.Id)
             });
         }
 
@@ -170,7 +182,12 @@ public class ChatService : IChatService
 
         var me = await RequireProfileAsync(userId, ct);
         var participants = await RequireMatchAsync(me, receiverProfileId, ct);
+        await EnsureNotBlockedAsync(me.Id, receiverProfileId, ct);
         var (convId, otherId) = ConversationIds(me.Id, receiverProfileId);
+
+        // Starting a conversation counts against the plan (S03-T07); replies and later messages are free
+        var started = await _context.ChatMessages.AnyAsync(m => m.ConversationId == convId || m.ConversationId == otherId, ct);
+        if (!started) await _usage.ConsumeAsync(userId, UsageFeature.NewChat, ct);
 
         // Flow 3 anti-scam & safety scanner
         bool flagged = false;
@@ -229,11 +246,21 @@ public class ChatService : IChatService
     {
         var me = await RequireProfileAsync(userId, ct);
         var participants = await RequireMatchAsync(me, partnerProfileId, ct);
+        await EnsureNotBlockedAsync(me.Id, partnerProfileId, ct);
         var (convId, otherId) = ConversationIds(me.Id, partnerProfileId);
 
-        var alreadyShared = await _context.ChatMessages.AnyAsync(m =>
-            (m.ConversationId == convId || m.ConversationId == otherId) && m.IsContactShareAccepted, ct);
-        if (alreadyShared) throw AppException.Conflict("You have already shared contact details.");
+        // Asking for numbers is a paid feature (TD-24); answering a request is free for everyone
+        var plan = await _usage.GetPlanAsync(userId, ct);
+        if (plan == Plans.Free)
+            throw new AppException(402, ErrorCodes.PlanRequired, "Sharing contact details is part of Gold. Upgrade to ask for numbers.",
+                new Dictionary<string, object?> { ["feature"] = "ContactShare", ["planId"] = plan });
+
+        switch (await ShareStateAsync(convId, otherId, me.Id, ct))
+        {
+            case "accepted": throw AppException.Conflict("You have already shared contact details.");
+            case "sent": throw AppException.Conflict("You have already asked. We'll let you know when they answer.");
+            case "received": throw AppException.Conflict("They have already asked you — accept their request instead.");
+        }
 
         var entity = new ChatMessage
         {
@@ -254,13 +281,11 @@ public class ChatService : IChatService
     {
         var me = await RequireProfileAsync(userId, ct);
         var participants = await RequireMatchAsync(me, partnerProfileId, ct);
+        await EnsureNotBlockedAsync(me.Id, partnerProfileId, ct);
         var (convId, otherId) = ConversationIds(me.Id, partnerProfileId);
 
-        // Only the person who was asked can accept — that is what makes it mutual
-        var requested = await _context.ChatMessages.AnyAsync(m =>
-            (m.ConversationId == convId || m.ConversationId == otherId) &&
-            m.IsContactShareRequest && m.SenderProfileId == partnerProfileId && m.ReceiverProfileId == me.Id, ct);
-        if (!requested)
+        // Only the person who was asked can accept, and only while the request is open — that is what makes it mutual
+        if (await ShareStateAsync(convId, otherId, me.Id, ct) != "received")
             throw AppException.Forbidden("There is no contact-sharing request to accept.");
 
         var entity = new ChatMessage
@@ -287,7 +312,81 @@ public class ChatService : IChatService
             phones.FirstOrDefault(p => p.Id == participants.PartnerUserId)?.PhoneNumber ?? string.Empty);
     }
 
+    public async Task<ChatDelivery> DeclineContactShareAsync(Guid userId, Guid partnerProfileId, CancellationToken ct = default)
+    {
+        var me = await RequireProfileAsync(userId, ct);
+        var participants = await RequireMatchAsync(me, partnerProfileId, ct);
+        var (convId, otherId) = ConversationIds(me.Id, partnerProfileId);
+
+        if (await ShareStateAsync(convId, otherId, me.Id, ct) != "received")
+            throw AppException.Conflict("There is no contact-sharing request to decline.");
+
+        return await AddShareMessageAsync(participants, me.Id, partnerProfileId, convId,
+            "Not ready to share contact details yet.", m => m.IsContactShareDeclined = true, ct);
+    }
+
+    public async Task<ChatDelivery> CancelContactShareAsync(Guid userId, Guid partnerProfileId, CancellationToken ct = default)
+    {
+        var me = await RequireProfileAsync(userId, ct);
+        var participants = await RequireMatchAsync(me, partnerProfileId, ct);
+        var (convId, otherId) = ConversationIds(me.Id, partnerProfileId);
+
+        if (await ShareStateAsync(convId, otherId, me.Id, ct) != "sent")
+            throw AppException.Conflict("There is no contact-sharing request to cancel.");
+
+        return await AddShareMessageAsync(participants, me.Id, partnerProfileId, convId,
+            "Contact-sharing request cancelled.", m => m.IsContactShareCancelled = true, ct);
+    }
+
     // ---- helpers ----
+
+    /// <summary>
+    /// Where contact sharing stands, from my side: accepted (ever) · sent (my request is open) · received (theirs is open) · none.
+    /// A request is open until it is accepted, declined or cancelled.
+    /// </summary>
+    private async Task<string> ShareStateAsync(string convId, string otherId, Guid myProfileId, CancellationToken ct)
+    {
+        var events = await _context.ChatMessages.AsNoTracking()
+            .Where(m => (m.ConversationId == convId || m.ConversationId == otherId) &&
+                        (m.IsContactShareRequest || m.IsContactShareAccepted || m.IsContactShareDeclined || m.IsContactShareCancelled))
+            .Select(m => new { m.SenderProfileId, m.IsContactShareRequest, m.IsContactShareAccepted, m.CreatedAt })
+            .ToListAsync(ct);
+
+        if (events.Any(e => e.IsContactShareAccepted)) return "accepted";
+        var last = events.OrderByDescending(e => e.CreatedAt).FirstOrDefault();
+        if (last == null || !last.IsContactShareRequest) return "none";
+        return last.SenderProfileId == myProfileId ? "sent" : "received";
+    }
+
+    private async Task<ChatDelivery> AddShareMessageAsync(ChatParticipants participants, Guid myProfileId, Guid partnerProfileId,
+        string convId, string text, Action<ChatMessage> flag, CancellationToken ct)
+    {
+        var entity = new ChatMessage
+        {
+            SenderProfileId = myProfileId,
+            ReceiverProfileId = partnerProfileId,
+            ConversationId = convId,
+            MessageText = text,
+            CreatedAt = DateTime.UtcNow
+        };
+        flag(entity);
+        _context.ChatMessages.Add(entity);
+        await _context.SaveChangesAsync(ct);
+        return new ChatDelivery(participants, await LoadDtoAsync(entity.Id, convId, myProfileId, ct));
+    }
+
+    /// <summary>Blocked either way → no messages. The blocker is told why; the blocked member just sees "not available".</summary>
+    private async Task EnsureNotBlockedAsync(Guid myProfileId, Guid partnerProfileId, CancellationToken ct)
+    {
+        var blocks = await _context.Blocks.AsNoTracking()
+            .Where(b => (b.BlockerProfileId == myProfileId && b.BlockedProfileId == partnerProfileId) ||
+                        (b.BlockerProfileId == partnerProfileId && b.BlockedProfileId == myProfileId))
+            .Select(b => b.BlockerProfileId).ToListAsync(ct);
+        if (blocks.Contains(myProfileId))
+            throw AppException.Forbidden("You blocked this member. Unblock to chat again.", ErrorCodes.Blocked);
+        if (blocks.Count > 0)
+            throw AppException.NotFound("This member is no longer available.");
+    }
 
     private async Task<CandidateProfile> RequireProfileAsync(Guid userId, CancellationToken ct)
     {
@@ -339,6 +438,8 @@ public class ChatService : IChatService
         IsFlaggedBySafety = m.IsFlaggedBySafety,
         SafetyFlagReason = m.SafetyFlagReason,
         IsContactShareRequest = m.IsContactShareRequest,
-        IsContactShareAccepted = m.IsContactShareAccepted
+        IsContactShareAccepted = m.IsContactShareAccepted,
+        IsContactShareDeclined = m.IsContactShareDeclined,
+        IsContactShareCancelled = m.IsContactShareCancelled
     };
 }

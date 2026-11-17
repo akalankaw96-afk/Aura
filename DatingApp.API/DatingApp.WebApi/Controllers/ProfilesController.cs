@@ -10,12 +10,28 @@ public class ProfilesController : BaseApiController
 {
     private readonly IProfileService _profileService;
     private readonly IReviewService _review;
+    private readonly ISearchService _search;
+    private readonly IProfileViewService _views;
 
-    public ProfilesController(IProfileService profileService, IReviewService review)
+    public ProfilesController(IProfileService profileService, IReviewService review, ISearchService search, IProfileViewService views)
     {
         _profileService = profileService;
         _review = review;
+        _search = search;
+        _views = views;
     }
+
+    /// <summary>
+    /// Paged search of approved members (S03-T01): gender, ageFrom/ageTo, religion, community, location, country,
+    /// profession (category or text), horoscope, q, sort (newest · ageAsc · ageDesc), page, pageSize (≤ 50).
+    /// Signed-in members: page 1 counts as one search — 402 LIMIT_REACHED when the plan's monthly searches are used.
+    /// Guests: first page only, without member-only details.
+    /// </summary>
+    [HttpGet("search")]
+    [ProducesResponseType(typeof(PagedResult<ProfileDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status402PaymentRequired)]
+    public async Task<IActionResult> Search([FromQuery] ProfileSearchDto filter, CancellationToken ct) =>
+        Ok(await _search.SearchAsync(CurrentUserId, filter, ct));
 
     /// <summary>Update the "about me" text (≥ 50 characters, no phone numbers / e-mails / links).</summary>
     [Authorize]
@@ -62,13 +78,21 @@ public class ProfilesController : BaseApiController
         return Ok(profile);
     }
 
+    /// <summary>
+    /// An approved profile. For signed-in members this records a view (S03-T04) and counts one profile view against
+    /// the plan — 402 LIMIT_REACHED when used up. Re-opening the same profile this month, your own profile and members
+    /// you share an interest with are free. Guests see the public card only.
+    /// </summary>
     [HttpGet("{id:guid}")]
     [ProducesResponseType(typeof(ProfileDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status402PaymentRequired)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetProfileById(Guid id, CancellationToken ct)
     {
         var profile = await _profileService.GetProfileByIdAsync(id, ct, includeMemberDetails: CurrentUserId.HasValue);
         if (profile == null) throw AppException.NotFound("This profile was not found.");
+
+        if (CurrentUserId.HasValue) await _views.RecordViewAsync(CurrentUserId.Value, id, ct);
 
         return Ok(profile);
     }

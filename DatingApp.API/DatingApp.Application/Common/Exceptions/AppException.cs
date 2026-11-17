@@ -59,4 +59,8 @@ public static class ErrorCodes
     public const string ProfileRequired = "PROFILE_REQUIRED";
     public const string NotMatched = "NOT_MATCHED";
     public const string PhoneNotVerified = "PHONE_NOT_VERIFIED";
+    public const string LimitReached = "LIMIT_REACHED";
+    public const string KycRequired = "KYC_REQUIRED";
+    public const string PlanRequired = "PLAN_REQUIRED";
+    public const string Blocked = "BLOCKED";
 }

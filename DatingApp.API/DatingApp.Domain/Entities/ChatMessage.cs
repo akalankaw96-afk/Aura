@@ -23,4 +23,8 @@ public class ChatMessage : BaseEntity
     // Flow 3: Mutual Phone/Contact Share Gate fields
     public bool IsContactShareRequest { get; set; } = false;
     public bool IsContactShareAccepted { get; set; } = false;
+    /// <summary>The asked member said "not now" (S03-T07).</summary>
+    public bool IsContactShareDeclined { get; set; } = false;
+    /// <summary>The asker took the request back (S03-T07).</summary>
+    public bool IsContactShareCancelled { get; set; } = false;
 }

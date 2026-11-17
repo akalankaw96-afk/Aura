@@ -74,7 +74,7 @@ export function BestMatches() {
         <div className="reveal">
           <Marquee key={filter}>
             {list.map((p) => (
-              <ProfilePhotoCard key={p.id} profile={p} variant="card" href={`/search?for=${p.gender}&id=${p.id}&from=dashboard`} />
+              <ProfilePhotoCard key={p.id} profile={p} variant="card" href={`/search?for=${p.gender}&id=${p.profileId ?? p.id}&from=dashboard`} />
             ))}
           </Marquee>
         </div>

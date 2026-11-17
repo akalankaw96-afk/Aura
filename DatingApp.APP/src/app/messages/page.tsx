@@ -27,7 +27,8 @@ import { useLanguage } from "@/context/LanguageContext";
 import { BackButton } from "@/components/ui/BackButton";
 import { KycGuard } from "@/components/auth/KycGuard";
 import { RequireMember } from "@/components/auth/RequireMember";
-import { requirePaidAction } from "@/lib/usage";
+import { canUse, handleHubLimitError, refreshUsage } from "@/lib/usage";
+import { blockMember, getBlocked, reportMember as reportMemberApi, reportReasonFor, unblockMember } from "@/lib/matching";
 import { FilterChip } from "@/components/ui/FilterChip";
 import { useToast } from "@/components/ui/Toast";
 import {
@@ -78,7 +79,7 @@ export default function MessagesPage() {
   const [filter, setFilter] = useState<"all" | "unread" | "blocked">("all");
   const toast = useToast();
   // Block / mute state (Figma: Messages — Blocked list / Block confirm).
-  // TODO(api): persist via the backend once block/report endpoints exist.
+  // Blocks live on the server (S03-T07): conversations carry isBlocked, GET /api/blocks gives the reason + date.
   const [blocked, setBlocked] = useState<Record<string, BlockInfo>>({});
   const [muted, setMuted] = useState<Record<string, boolean>>({});
   const [blockTargetId, setBlockTargetId] = useState<string | null>(null);
@@ -88,7 +89,8 @@ export default function MessagesPage() {
   const [mobileChatOpen, setMobileChatOpen] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>("disconnected");
   const [partnerTyping, setPartnerTyping] = useState<string | null>(null);
-  // Share contact details — per conversation (mutual consent). TODO(api): persist decline / cancel on the server.
+  // Share contact details — per conversation (mutual consent). State comes from the server (contactShareState);
+  // "declined" is shown for the rest of the visit after a "not now".
   const [shareByConv, setShareByConv] = useState<Record<string, ContactShareStatus>>({});
   const [partnerPhones, setPartnerPhones] = useState<Record<string, string>>({});
   const shareCardRef = useRef<HTMLDivElement>(null);
@@ -120,15 +122,45 @@ export default function MessagesPage() {
     // No profile yet → no conversations. The server works out whose chats these are from the token.
     const list = currentProfileCode ? await getConversations() : [];
     setConversations(list || []);
+    // contact-share state from the server; keep a "declined" note shown this visit
+    setShareByConv((s) => {
+      const next = { ...s };
+      for (const c of list || []) {
+        const server = (c.contactShareState ?? (c.isContactShared ? "accepted" : "none")) as ContactShareStatus;
+        next[c.conversationId] = server === "none" && s[c.conversationId]?.startsWith("declined") ? s[c.conversationId] : server;
+      }
+      return next;
+    });
+    // blocked chats (I blocked them) with the reason and date from GET /api/blocks
+    const blockedConvs = (list || []).filter((c) => c.isBlocked);
+    if (blockedConvs.length === 0) setBlocked({});
+    else {
+      const details = await getBlocked().catch(() => []);
+      setBlocked(
+        Object.fromEntries(
+          blockedConvs.map((c) => {
+            const b = details.find((d) => d.profileId === c.partnerProfileId);
+            const date = b ? new Date(`${b.blockedAt}Z`).toLocaleDateString(lang === "si" ? "si-LK" : "en-GB", { day: "numeric", month: "short" }) : "";
+            return [c.conversationId, { date, reason: b?.reason ?? "" }];
+          }),
+        ),
+      );
+    }
     if (list && list.length > 0) {
-      if (!list.some((c) => c.conversationId === activeConvId)) {
+      // ?c= from the dashboard / Friends: a conversation id or the partner's profile id (first load only)
+      const wanted = typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("c") : null;
+      const target = wanted && !activeConvId ? list.find((c) => c.conversationId === wanted || c.partnerProfileId === wanted) : undefined;
+      if (target) {
+        setActiveConvId(target.conversationId);
+        setMobileChatOpen(true);
+      } else if (!list.some((c) => c.conversationId === activeConvId)) {
         setActiveConvId(list[0].conversationId);
       }
     } else {
       setActiveConvId("");
       setMessages([]);
     }
-  }, [currentProfileCode, activeConvId]);
+  }, [currentProfileCode, activeConvId, lang]);
 
   // Load chat history when active conversation changes
   const loadActiveHistory = useCallback(async (convId: string) => {
@@ -140,11 +172,19 @@ export default function MessagesPage() {
     if (history && history.length > 0) {
       setMessages(history);
 
-      // Contact-share state from history (server keeps the request / accept messages)
-      const unlockedMsg = history.find((m) => m.isContactShareAccepted);
-      const shareReq = history.find((m) => m.isContactShareRequest && !m.isContactShareAccepted);
-      if (unlockedMsg) setShareByConv((s) => ({ ...s, [convId]: "accepted" }));
-      else if (shareReq) setShareByConv((s) => (s[convId] ? s : { ...s, [convId]: shareReq.isMe ? "sent" : "received" }));
+      // Contact-share state from history: shared once = shared; otherwise the latest request / answer decides
+      const events = history.filter((m) => m.isContactShareRequest || m.isContactShareAccepted || m.isContactShareDeclined || m.isContactShareCancelled);
+      const last = events[events.length - 1];
+      const state: ContactShareStatus | null = events.some((m) => m.isContactShareAccepted)
+        ? "accepted"
+        : !last
+          ? null
+          : last.isContactShareRequest
+            ? last.isMe ? "sent" : "received"
+            : last.isContactShareDeclined
+              ? last.isMe ? "declined-by-me" : "declined-by-them"
+              : "none";
+      if (state) setShareByConv((s) => ({ ...s, [convId]: state }));
     } else {
       setMessages([]);
     }
@@ -216,6 +256,18 @@ export default function MessagesPage() {
       if (newMsg.isContactShareAccepted) {
         setShare(newMsg.conversationId, "accepted");
       }
+      if (newMsg.isContactShareDeclined) {
+        setShare(newMsg.conversationId, newMsg.senderProfileId === currentProfileId ? "declined-by-me" : "declined-by-them");
+      }
+      if (newMsg.isContactShareCancelled) {
+        setShare(newMsg.conversationId, "none");
+      }
+    });
+
+    const unsubShareClosed = signalrService.onContactShareClosed((convId, byProfileId, how) => {
+      if (!mounted) return;
+      if (how === "cancelled") setShare(convId, "none");
+      else setShare(convId, byProfileId === currentProfileId ? "declined-by-me" : "declined-by-them");
     });
 
     const unsubTyping = signalrService.onUserTyping((indicator: TypingIndicatorDto) => {
@@ -266,6 +318,7 @@ export default function MessagesPage() {
       unsubRead();
       unsubContactReq();
       unsubContactUnlocked();
+      unsubShareClosed();
       signalrService.leaveConversation(activeConvId);
     };
   }, [loadData, activeConvId, currentProfileId]);
@@ -303,7 +356,9 @@ export default function MessagesPage() {
     e?.preventDefault();
     const textToSend = customText ?? inputText;
     if (!textToSend.trim() || !activeConv) return;
-    if (!requirePaidAction("messages", "send a message")) return;
+    // The first message of a conversation counts as a new chat on the server (402-style LIMIT_REACHED at the limit)
+    const startsChat = messages.length === 0;
+    if (startsChat && !canUse("chats")) return;
 
     if (!customText) setInputText("");
 
@@ -345,40 +400,71 @@ export default function MessagesPage() {
       activeConv.conversationId
     );
 
-    // If SignalR was offline or failed, the optimistic message remains visible
-    if (!sent) {
-      console.log("Sent optimistically in offline mode");
+    if (sent.ok) {
+      if (startsChat) void refreshUsage();
+      return;
     }
+    // not delivered → take the optimistic copy back and say why
+    setMessages((prev) => prev.filter((m) => m.id !== tempId));
+    if (!customText) setInputText(textToSend);
+    if (handleHubLimitError(sent.error)) return;
+    toast.error("Message not sent", sent.error.replace(/^[A-Z_]+:\s*/, ""));
   };
 
   // Share contact details — request (Gold), accept / decline (anyone in the chat), cancel
   const handleRequestContact = async () => {
     if (!activeConv) return;
-    if (!requirePaidAction("messages", "share contact details")) return;
-    setShare(activeConv.conversationId, "sent");
-    toast.success("Request sent", `We’ll let you know when ${activeConv.partnerName.split(" ")[0]} accepts.`);
-    await signalrService.requestContactShare(activeConv.conversationId, currentProfileId, activeConv.partnerProfileId);
+    if (!canUse("contactShare")) return; // asking is a Gold feature (the server checks too)
+    const convId = activeConv.conversationId;
+    const before = shareByConv[convId] ?? "none";
+    setShare(convId, "sent");
+    const r = await signalrService.requestContactShare(convId, currentProfileId, activeConv.partnerProfileId);
+    if (r.ok) {
+      toast.success("Request sent", `We’ll let you know when ${activeConv.partnerName.split(" ")[0]} accepts.`);
+      return;
+    }
+    setShare(convId, before);
+    if (!handleHubLimitError(r.error)) toast.error("Request not sent", r.error.replace(/^[A-Z_]+:\s*/, ""));
   };
 
+  // Answering is free on every plan
   const handleAcceptContact = async () => {
     if (!activeConv) return;
-    setShare(activeConv.conversationId, "accepted");
-    toast.success("Contact details shared", `You can now call or WhatsApp ${activeConv.partnerName.split(" ")[0]}.`);
-    await signalrService.acceptContactShare(activeConv.conversationId, currentProfileId, activeConv.partnerProfileId);
+    const convId = activeConv.conversationId;
+    setShare(convId, "accepted");
+    const r = await signalrService.acceptContactShare(convId, currentProfileId, activeConv.partnerProfileId);
+    if (r.ok) {
+      toast.success("Contact details shared", `You can now call or WhatsApp ${activeConv.partnerName.split(" ")[0]}.`);
+      return;
+    }
+    setShare(convId, "received");
+    toast.error("Couldn’t share", r.error.replace(/^[A-Z_]+:\s*/, ""));
   };
 
-  const handleDeclineContact = () => {
+  const handleDeclineContact = async () => {
     if (!activeConv) return;
-    setShare(activeConv.conversationId, "declined-by-me");
-    toast.info("Not shared", "Your number stays private. You can share later.");
-    // TODO(api): POST decline so the requester sees "not ready yet"
+    const convId = activeConv.conversationId;
+    setShare(convId, "declined-by-me");
+    const r = await signalrService.declineContactShare(activeConv.partnerProfileId);
+    if (r.ok) {
+      toast.info("Not shared", "Your number stays private. You can share later.");
+      return;
+    }
+    setShare(convId, "received");
+    toast.error("Couldn’t answer", r.error.replace(/^[A-Z_]+:\s*/, ""));
   };
 
-  const handleCancelContact = () => {
+  const handleCancelContact = async () => {
     if (!activeConv) return;
-    setShare(activeConv.conversationId, "none");
-    toast.info("Request cancelled");
-    // TODO(api): DELETE the pending request
+    const convId = activeConv.conversationId;
+    setShare(convId, "none");
+    const r = await signalrService.cancelContactShare(activeConv.partnerProfileId);
+    if (r.ok) {
+      toast.info("Request cancelled");
+      return;
+    }
+    setShare(convId, "sent");
+    toast.error("Couldn’t cancel", r.error.replace(/^[A-Z_]+:\s*/, ""));
   };
 
   const scrollToShareCard = () => shareCardRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
@@ -436,18 +522,42 @@ export default function MessagesPage() {
   const todayLabel = () =>
     new Date().toLocaleDateString(lang === "si" ? "si-LK" : "en-GB", { day: "numeric", month: "short" });
 
-  const confirmBlock = (opts: { reason: string; report: boolean }) => {
+  // PUT /api/blocks/{profileId} (+ POST /api/reports when "also report" is ticked)
+  const confirmBlock = async (opts: { reason: string; report: boolean }) => {
     const target = blockTarget;
     setBlockTargetId(null);
     if (!target) return;
+    try {
+      await blockMember(target.partnerProfileId, opts.reason);
+    } catch (err) {
+      toast.error("Couldn’t block", err instanceof Error ? err.message : "Please try again.");
+      return;
+    }
     markSafetyEvent(); // no feedback popup for 7 days
     setBlocked((b) => ({ ...b, [target.conversationId]: { date: todayLabel(), reason: opts.reason } }));
     setActiveConvId(target.conversationId);
-    toast.success(t.messages.blockedToast(target.partnerName), opts.report ? t.messages.reportedToast : undefined);
+    let reported = false;
+    if (opts.report) {
+      try {
+        await reportMemberApi(target.partnerProfileId, reportReasonFor(opts.reason), opts.reason || "Reported from chat", target.conversationId);
+        reported = true;
+      } catch {
+        reported = false; // already reported, or the report failed — the block still stands
+      }
+    }
+    toast.success(t.messages.blockedToast(target.partnerName), reported ? t.messages.reportedToast : undefined);
   };
 
-  const unblock = (id: string) => {
+  const unblock = async (id: string) => {
     const conv = conversations.find((c) => c.conversationId === id);
+    if (conv) {
+      try {
+        await unblockMember(conv.partnerProfileId);
+      } catch (err) {
+        toast.error("Couldn’t unblock", err instanceof Error ? err.message : "Please try again.");
+        return;
+      }
+    }
     const done = () => {
       setBlocked((b) => {
         const next = { ...b };
@@ -463,9 +573,16 @@ export default function MessagesPage() {
     } else done();
   };
 
-  const reportMember = () => {
-    markSafetyEvent();
-    toast.info(t.messages.reportedToast);
+  // Report without blocking (chat menu) — POST /api/reports, reaches the staff area
+  const reportMember = async () => {
+    if (!activeConv) return;
+    try {
+      await reportMemberApi(activeConv.partnerProfileId, "Other", "Reported from chat", activeConv.conversationId);
+      markSafetyEvent();
+      toast.info(t.messages.reportedToast);
+    } catch (err) {
+      toast.error("Report not sent", err instanceof Error ? err.message : "Please try again.");
+    }
   };
 
   const toggleMute = (id: string) => {

@@ -56,6 +56,7 @@ export function toMarquee(p: Profile): MarqueeProfile {
   const firstName = (p.details?.displayName || p.name || "").split(" ")[0] || f.id;
   return {
     id: f.id,
+    profileId: p.id,
     city: p.location,
     country: f.country,
     age: p.age,
@@ -98,13 +99,16 @@ export function useMemberProfiles(filters?: Parameters<typeof apiService.getProf
   return state;
 }
 
-/** Sends an interest to a member (POST /api/match-requests). The caller shows the result. */
-export async function sendInterest(p: { id: string; profileId?: string }, note?: string): Promise<{ ok: boolean; message: string }> {
+/**
+ * Sends an interest to a member (POST /api/match-requests). The caller shows the result;
+ * `error` is kept so a 402 (monthly interests used up) can open the Upgrade prompt.
+ */
+export async function sendInterest(p: { id: string; profileId?: string }, note?: string): Promise<{ ok: boolean; message: string; error?: unknown }> {
   if (!p.profileId) return { ok: false, message: "This profile can’t receive interests yet." };
   try {
     await apiService.sendMatchRequest(p.profileId, note);
     return { ok: true, message: `${p.id} will be notified. We’ll tell you when they reply.` };
   } catch (err: unknown) {
-    return { ok: false, message: err instanceof Error ? err.message : "We couldn’t send your interest. Please try again." };
+    return { ok: false, error: err, message: err instanceof Error ? err.message : "We couldn’t send your interest. Please try again." };
   }
 }
