@@ -15,7 +15,7 @@ import {
   type MemberAction,
   type MemberStatus,
 } from "@/lib/adminApi";
-import { AdminPageHeader, DemoBanner } from "./AdminShell";
+import { AdminPageHeader, DemoBanner, useAdmin } from "./AdminShell";
 import { MemberCell, PlanChip } from "./AdminDashboard";
 
 /**
@@ -253,6 +253,8 @@ export function AdminMembers() {
 
 function RowActions({ member, onPick }: Readonly<{ member: AdminMember; onPick: (a: MemberAction | "reset") => void }>) {
   const [open, setOpen] = useState(false);
+  // block / deactivate / password reset are Admin-only on the API (S04-T07)
+  const { isAdmin } = useAdmin();
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (!open) return;
@@ -305,11 +307,11 @@ function RowActions({ member, onPick }: Readonly<{ member: AdminMember; onPick: 
               <Eye size={16} color="currentColor" className="text-icon-brand" /> {s === "PendingReview" ? "Review profile" : "View profile"}
             </Link>
           )}
-          {(s === "Deactivated" || s === "Blocked") && item(s === "Blocked" ? "Unblock" : "Activate", TickCircle, () => onPick(s === "Blocked" ? "unblock" : "activate"))}
-          {s !== "Deactivated" && s !== "Blocked" && item("Deactivate", UserMinus, () => onPick("deactivate"))}
-          {item("Reset password", Key, () => onPick("reset"))}
-          {s !== "Blocked" && <div className="my-1 border-t border-line" />}
-          {s !== "Blocked" && item("Block member", Slash, () => onPick("block"), true)}
+          {isAdmin && (s === "Deactivated" || s === "Blocked") && item(s === "Blocked" ? "Unblock" : "Activate", TickCircle, () => onPick(s === "Blocked" ? "unblock" : "activate"))}
+          {isAdmin && s !== "Deactivated" && s !== "Blocked" && item("Deactivate", UserMinus, () => onPick("deactivate"))}
+          {isAdmin && item("Reset password", Key, () => onPick("reset"))}
+          {isAdmin && s !== "Blocked" && <div className="my-1 border-t border-line" />}
+          {isAdmin && s !== "Blocked" && item("Block member", Slash, () => onPick("block"), true)}
         </div>
       )}
     </div>

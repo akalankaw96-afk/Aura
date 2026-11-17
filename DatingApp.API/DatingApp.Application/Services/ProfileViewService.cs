@@ -87,7 +87,7 @@ public class ProfileViewService : IProfileViewService
         // only viewers who are themselves visible (approved) are listed or counted
         var viewerIds = views.Select(v => v.ViewerUserId).ToList();
         var profiles = await _context.CandidateProfiles.AsNoTracking()
-            .Where(p => viewerIds.Contains(p.UserId) && p.Status == ProfileStatus.Approved)
+            .Where(p => viewerIds.Contains(p.UserId) && p.Status == ProfileStatus.Approved && !p.IsHidden)
             .ToDictionaryAsync(p => p.UserId, ct);
 
         var hidden = await _context.HiddenProfileIdsAsync(myProfileId.Value, ct);
@@ -115,7 +115,7 @@ public class ProfileViewService : IProfileViewService
 
         var ids = views.Select(v => v.ViewedProfileId).ToList();
         var profiles = await _context.CandidateProfiles.AsNoTracking()
-            .Where(p => ids.Contains(p.Id) && p.Status == ProfileStatus.Approved)
+            .Where(p => ids.Contains(p.Id) && p.Status == ProfileStatus.Approved && !p.IsHidden)
             .ToDictionaryAsync(p => p.Id, ct);
 
         var me = await _context.ProfileIdOfAsync(userId, ct);

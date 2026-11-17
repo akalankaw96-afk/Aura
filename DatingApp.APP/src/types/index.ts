@@ -31,6 +31,8 @@ export interface Profile {
   community: string;
   verified: boolean;
   premium: boolean;
+  /** Running boost (S04-T05) — shown first in search with a “Promoted” badge */
+  promoted?: boolean;
   photoUrl: string;
   bio: string;
   aboutFamily: string;

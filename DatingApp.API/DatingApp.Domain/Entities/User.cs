@@ -12,7 +12,16 @@ public class User : BaseEntity
     /// <summary>E.164 format, e.g. +94771234567 (see Identifiers.NormalizePhone).</summary>
     public string PhoneNumber { get; set; } = string.Empty;
     public string Role { get; set; } = Roles.Member;
+    /// <summary>False = blocked by staff (S04-T07): can't sign in.</summary>
     public bool IsActive { get; set; } = true;
+    /// <summary>Account deactivated (S04-T07 / T08): profile hidden, sessions ended. Signing in again brings it back.</summary>
+    public DateTime? DeactivatedAt { get; set; }
+    /// <summary>Why staff blocked or deactivated the account (staff only).</summary>
+    public string? StatusReason { get; set; }
+    /// <summary>The member deleted their account (S04-T08): can't sign in; data erased after 30 days.</summary>
+    public DateTime? DeletionRequestedAt { get; set; }
+    /// <summary>When the personal data was erased (payment records are kept).</summary>
+    public DateTime? ErasedAt { get; set; }
 
     // Security (S01)
     public bool PhoneVerified { get; set; }

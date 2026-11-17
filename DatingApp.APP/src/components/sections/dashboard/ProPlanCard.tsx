@@ -20,7 +20,8 @@ import {
 } from "iconsax-react";
 import { cn } from "@/lib/cn";
 import { ButtonLink } from "@/components/ui/Button";
-import { readMembership, useAccess } from "@/lib/verification";
+import { useAccess, useMembership } from "@/lib/verification";
+import { PaymentHistory } from "@/components/sections/dashboard/PaymentStatus";
 
 /**
  * Pro membership card — approved Gold / Platinum members (replaces the Free usage card).
@@ -50,8 +51,9 @@ const ALLOWANCES = [
 const fmt = (d: Date) => d.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
 
 export function ProPlanCard() {
-  const { locked, isPaid, plan } = useAccess();
-  const [m, setM] = useState<ReturnType<typeof readMembership>>(null);
+  const { locked, isPaid } = useAccess();
+  // plan period from GET /api/me/subscription (S04-T06)
+  const { membership: m } = useMembership();
   const [bar, setBar] = useState(0);
   // collapsed by default to save space — the choice is remembered
   const [open, setOpen] = useState(false);
@@ -69,29 +71,19 @@ export function ProPlanCard() {
     });
 
   useEffect(() => {
-    let t = 0;
-    const update = () => {
-      const next = readMembership();
-      setM(next);
-      setBar(0);
-      if (!next) return;
-      const used = Math.max(3, Math.min(100, Math.round(((next.totalDays - next.daysLeft) / next.totalDays) * 100)));
-      window.clearTimeout(t);
-      t = window.setTimeout(() => setBar(used), 250);
-    };
-    update();
-    window.addEventListener("vk-plan-change", update);
-    return () => {
-      window.clearTimeout(t);
-      window.removeEventListener("vk-plan-change", update);
-    };
-  }, [plan]);
+    setBar(0);
+    if (!m) return;
+    const used = Math.max(3, Math.min(100, Math.round(((m.totalDays - m.daysLeft) / m.totalDays) * 100)));
+    const t = window.setTimeout(() => setBar(used), 250);
+    return () => window.clearTimeout(t);
+  }, [m]);
 
   if (locked || !isPaid || !m) return null;
 
   const platinum = m.plan === "platinum";
   const name = platinum ? "Platinum" : "Gold";
-  const soon = m.daysLeft <= 7;
+  // no renewal reminder once a renewal is bought (its days are already in "Valid until")
+  const soon = m.daysLeft <= 7 && !m.renewed;
   const included = FEATURES.filter((f) => platinum || !f.platinum);
   const extras = platinum ? [] : FEATURES.filter((f) => f.platinum);
 
@@ -113,7 +105,7 @@ export function ProPlanCard() {
               </span>
             </div>
             <p className="text-body-sm text-[rgba(255,255,255,0.8)]">
-              {m.months}-month plan · Member since {fmt(m.start)}
+              {m.months}-month plan · Started {fmt(m.start)}{m.renewed ? " · Renewal bought" : ""}
             </p>
           </div>
         </div>
@@ -214,9 +206,11 @@ export function ProPlanCard() {
           </div>
         )}
 
+        <PaymentHistory />
+
         <div className="flex flex-wrap items-center gap-3 border-t border-line pt-4">
           <p className="min-w-[200px] flex-1 text-body-sm text-ink-tertiary">
-            Paid {fmt(m.start)} · Renew any time to add {m.months} more month{m.months > 1 ? "s" : ""} from {fmt(m.expires)}.
+            Renew any time — the new months start on {fmt(m.expires)}, so you never lose days.
           </p>
           {!platinum && (
             <ButtonLink href="/plans" variant="secondary" size="md" leftIcon={<Crown1 size={18} color="currentColor" />}>

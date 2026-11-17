@@ -47,6 +47,7 @@ public static class ErrorCodes
     public const string InvalidCredentials = "INVALID_CREDENTIALS";
     public const string AccountLocked = "ACCOUNT_LOCKED";
     public const string AccountSuspended = "ACCOUNT_SUSPENDED";
+    public const string AccountDeleted = "ACCOUNT_DELETED";
     public const string AlreadyExists = "ALREADY_EXISTS";
     public const string NotFound = "NOT_FOUND";
     public const string RateLimited = "RATE_LIMITED";
@@ -63,4 +64,6 @@ public static class ErrorCodes
     public const string KycRequired = "KYC_REQUIRED";
     public const string PlanRequired = "PLAN_REQUIRED";
     public const string Blocked = "BLOCKED";
+    public const string PaymentUnderReview = "PAYMENT_UNDER_REVIEW";
+    public const string PaymentAlreadyUsed = "PAYMENT_ALREADY_USED";
 }

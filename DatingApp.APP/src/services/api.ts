@@ -131,6 +131,8 @@ export interface AuthSession {
   profileStatus?: string;
   isPremium?: boolean;
   planId?: string;
+  /** "Take a break": profile hidden from search (S04-T08) */
+  profileHidden?: boolean;
   photoUrl?: string;
 }
 

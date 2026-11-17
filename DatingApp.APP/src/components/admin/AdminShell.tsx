@@ -17,6 +17,7 @@ import {
   Flag,
   Chart,
   MoneyRecive,
+  Wallet,
 } from "iconsax-react";
 import { cn } from "@/lib/cn";
 import { LanguageSwitch, Logo, ThemeToggle } from "@/components/ui/Brand";
@@ -39,6 +40,7 @@ const NAV = [
   { href: "/admin/photos", label: "New photos", Icon: Gallery, admin: false },
   { href: "/admin/users", label: "Members", Icon: People, admin: false },
   { href: "/admin/reports", label: "Reports", Icon: Flag, admin: false },
+  { href: "/admin/payments", label: "Payments", Icon: Wallet, admin: false },
   { href: "/admin/limits", label: "Plan limits", Icon: Chart, admin: true },
   { href: "/admin/prices", label: "Prices", Icon: MoneyRecive, admin: true },
   { href: "/admin/roles", label: "Roles & staff", Icon: SecurityUser, admin: true },

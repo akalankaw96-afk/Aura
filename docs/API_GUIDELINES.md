@@ -22,6 +22,10 @@ https://claude.ai/artifact/LP2mSaiPiJYZCij2bLU1p6 — this file holds the conven
 | `AdminController` `/api/admin` | `GET/PUT prices`, `GET/POST members/{userId}/subscriptions`, `POST subscriptions/{id}/cancel` (S04), `GET staff`, `GET users?phone=`, `PUT users/{id}/role`, `GET plan-limits`, `PUT plan-limits` (`{ limits: [{ planId, feature, monthlyLimit }] }`, null = unlimited) | `Admin` policy | S02-T08; plan limits S03-T02 |
 | `PlansController` `/api/plans` | `GET` → `[{ product, planId, months, days, amountCents, amount, currency, savePercent }]` | anonymous | S04-T01 |
 | `MeController` `/api/me` | `GET subscription` (S04-T02), `GET usage` → `{ planId, periodStart, resetsAt, items: [{ feature, used, limit, remaining }] }`; `GET dashboard` → usage + viewers, interests, matches, shortlistedBy, unread, recentConversations | all | S03-T03, S03-T09 |
+| `BoostsController` `/api/boosts` | `GET me` → `{ active, startsAt, endsAt, daysLeft, totalDays, views, interests, canBuy }` | all | S04-T05 — search results carry `promoted` and list promoted profiles first |
+| `PaymentsController` `/api/payments` | `GET bank-account` (anonymous, from appsettings `BankTransfer`), `POST bank-transfer` `{ product?: plan·boost, planId, months, days? }` (boost: approved + Gold / Platinum, else 403 `KYC_REQUIRED` / 402 `PLAN_REQUIRED`) → `PaymentDto { id, product, planId, months, days, amountCents, amount, currency, reference, status: Pending·AwaitingReview·Approved·Rejected, hasReceipt, receiptFileName, paidOn, memberNote, createdAt, submittedAt, reviewedAt, reviewNote }`, `POST {id}/receipt` (multipart `receipt` ≤ 10 MB, `paidOn` yyyy-mm-dd, `note?`), `GET mine`, `GET {id}/receipt` | all but `bank-account` (receipt: owner / staff, staff views logged) | S04-T03 — 409 `PAYMENT_UNDER_REVIEW` when a receipt is already waiting |
+| `PaymentsQueueController` `/api/moderation/payments` | `GET ?status=review·pending·approved·rejected·all`, `POST {id}/approve` `{ note? }`, `POST {id}/reject` `{ reason }` → `StaffPaymentDto` (+ member name, code, phone, current plan, reviewedBy) | `Staff` policy | S04-T04 — approve once (409 `PAYMENT_ALREADY_USED`); member told in-app + SMS |
+| `AccountController` `/api/account` | `POST visibility`, `POST delete/send-code`, `POST delete` | all | S04-T08 — see below |
 | `NotificationsController` `/api/notifications` | `GET`, `GET unread-count`, `POST {id}/read`, `POST read-all` | all | S02-T12 |
 | `ContentController` `/api/content` | `GET home`, `GET stories`, `GET plans`, `GET faqs` | anonymous (correct) | — |
 | `ChatHub` `/hubs/chat` | `JoinConversation(conversationId)`, `LeaveConversation`, `SendMessage(receiverProfileId, text)`, `SendTyping(conversationId, isTyping)`, `MarkAsRead(messageId)`, `RequestContactShare(partnerProfileId)`, `AcceptContactShare(partnerProfileId)`, `DeclineContactShare(partnerProfileId)`, `CancelContactShare(partnerProfileId)` | all — `?access_token=`; matched members only; errors as `HubException` "CODE: message" | S03-T07: first message of a conversation counts a NewChat (`LIMIT_REACHED`); `RequestContactShare` needs Gold (`PLAN_REQUIRED`); events `ContactShareDeclined` / `ContactShareCancelled`; blocked → `BLOCKED` / `NOT_FOUND` |
@@ -63,7 +67,7 @@ https://claude.ai/artifact/LP2mSaiPiJYZCij2bLU1p6 — this file holds the conven
 | 402 | Plan limit / paid feature | `LIMIT_REACHED`, `PLAN_REQUIRED` | upgrade popup |
 | 403 | Forbidden / KYC not approved / blocked | `KYC_REQUIRED`, `FORBIDDEN` | KYC banner / alert |
 | 404 | Not found or not visible to caller | `NOT_FOUND` | empty state |
-| 409 | Conflict (duplicate request, already submitted) | `ALREADY_EXISTS` | toast |
+| 409 | Conflict (duplicate request, already submitted) | `ALREADY_EXISTS`, `PAYMENT_UNDER_REVIEW`, `PAYMENT_ALREADY_USED` | toast |
 | 429 | Rate limited | `RATE_LIMITED` | toast with retry time |
 | 500 | Unhandled | `SERVER_ERROR` | generic error + retry; no details |
 
@@ -84,36 +88,26 @@ One global exception handler produces these (TD-12). Never leak stack traces or 
 4. Thin controller action with `[Authorize]`/roles and `ProducesResponseType`. 5. ProblemDetails codes from §4.
 6. Web client function in `src/services/` using the typed fetch helper (TD-04). 7. Update §1 table + `CHANGELOG.md`.
 
-## Planned: bank transfer payments (front end ready 2026-11-15)
-- `POST /api/payments/bank-transfer` — multipart: `plan` (gold|platinum), `months` (1|3|6), `amount` (LKR, server
-  must recompute from its own price list), `reference`, `paidOn` (yyyy-mm-dd), `note?`, `receipt` (JPG/PNG/WEBP/PDF
-  ≤ 10 MB). Returns `{ id, status: "Pending" }`. Store receipts privately (same rules as ID documents, TD-26).
-- `GET /api/payments/mine` — latest request + status (Pending / Approved / Rejected + reason), so the Payment page
-  and dashboard can show it across devices (replaces localStorage `vk-payment-pending`).
-- Staff: list pending receipts, approve (activates the plan, sets start/expiry, SMS) or reject with a reason.
+## Bank transfer payments — built 2026-11-16 (S04-T03 / T04)
+The earlier plan (one multipart call with a reference made in the browser) changed: the order comes first so the
+**server** sets the amount and the reference the member types into the transfer. See `PaymentsController` above.
 
-## Planned: account visibility and deletion (front end ready 2026-11-15)
-- `POST /api/account/visibility` `{ hidden: boolean, reason? }` → 204. Hidden profiles drop out of search and Best
-  matches; friends, chats and plan stay. Return the flag in the session/profile so every device agrees.
-- `POST /api/account/delete/send-code` `{}` → `{ resendAvailableInSeconds }`. SMS to the verified mobile; same limits as
-  login codes (6 digits, 60 s resend, 5 attempts, expiry).
-- `POST /api/account/delete` `{ code, reason, comment? }` → 204, or 400 ProblemDetails `{ code: CODE_INVALID |
-  CODE_EXPIRED | TOO_MANY_ATTEMPTS, attemptsLeft }`. On success: hide the profile at once, end all sessions (clear
-  the refresh cookie), schedule erasure of profile, photos, chats, ID documents within 30 days (keep legally required
-  payment records), and store the reason/comment anonymously for reporting.
+## Account visibility and deletion — built 2026-11-17 (S04-T08)
+- `POST /api/account/visibility` `{ hidden, reason? }` → 204. Hidden = out of search and best matches; friends, chats,
+  plan and the profile page for friends stay. The session carries `profileHidden`.
+- `POST /api/account/delete/send-code` `{}` → `OtpResponseDto` (`resendAvailableInSeconds` …); same limits as login codes.
+- `POST /api/account/delete` `{ code, reason, comment? }` → 204 (refresh cookie cleared), or 400 `{ code: CODE_INVALID |
+  CODE_EXPIRED | TOO_MANY_ATTEMPTS, attemptsLeft }`. Sign-in afterwards: 403 `ACCOUNT_DELETED`. Personal data is erased
+  by the hourly job 30 days later; payment records are kept.
 
-## Planned: admin back office (front end ready 2026-11-16)
-All under the `Staff` policy; each call also checks the permission below. Every change is written to an audit log
-(who, what, when, reason). Front end: `lib/adminApi.ts`.
-- `GET /api/admin/stats` → `{ totalMembers, newThisWeek, activeMembers, pendingReview, kycUpdates, halfRegistered,
-  paidMembers, blocked }` (`dashboard.view`).
-- `GET /api/admin/members?search=&status=&page=&pageSize=` → paged `{ items: [{ userId, fullName, code?, phoneNumber,
-  email?, gender?, plan, status: Active | PendingReview | Incomplete | Deactivated | Blocked, joinedAt, lastActiveAt? }],
-  total }` (`members.view`). Search matches name, mobile, email, MP code.
-- `POST /api/admin/members/{id}/status` `{ action: activate | deactivate | block | unblock, reason? }` → 204
-  (`members.status`). Reason required for deactivate / block; block and deactivate end all the member's sessions.
-- `POST /api/admin/members/{id}/reset-password` → 204 (`members.resetPassword`). Staff never see or type a member's
-  password: this ends their sessions and sends an SMS so the member sets a new one with a code.
+## Admin back office — members built 2026-11-17 (S04-T07); roles & staff accounts planned
+Built (`AdminMembersController`): `GET /api/admin/stats` → `{ totalMembers, newThisWeek, activeMembers, pendingReviews,
+kycUpdates, incompleteRegistrations, paidMembers, blocked }` and `GET /api/admin/members?search=&status=&page=&pageSize=`
+→ `{ items: [{ userId, profileId, code, fullName, phoneNumber, email, gender, plan, status, statusReason, joinedAt,
+lastActiveAt }], total, page, pageSize }` (`Staff` policy); `POST /api/admin/members/{id}/status` `{ action: activate |
+deactivate | block | unblock, reason? }` → 204 and `POST /api/admin/members/{id}/reset-password` → 204 (`Admin` policy;
+reason required for deactivate / block; both end the member's sessions; every change in `AuditLogs`).
+Still planned (owner postponed custom roles, 2026-11-16):
 - `GET /api/admin/roles` · `POST /api/admin/roles` · `PUT /api/admin/roles/{id}` · `DELETE /api/admin/roles/{id}`
   (`staff.manage`). Role `{ id, name, description?, permissions[], builtIn, staffCount }`. Admin (all permissions,
   read-only) and Moderator are built-in; a role in use can't be deleted (409).

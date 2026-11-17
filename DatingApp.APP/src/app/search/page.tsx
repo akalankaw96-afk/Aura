@@ -66,6 +66,8 @@ interface CandidateProposal extends FeaturedProfile {
   district?: string;
   countryName?: string;
   details?: Profile["details"];
+  /** running boost (S04-T05) */
+  promoted?: boolean;
 }
 
 const COUNTRY_LABEL: Partial<Record<CountryCode, string>> = Object.fromEntries(
@@ -134,6 +136,7 @@ const toProposal = (p: Profile): CandidateProposal => ({
   community: p.community,
   aboutFamily: p.aboutFamily,
   professionCategory: p.professionCategory,
+  promoted: p.promoted ?? false,
 });
 
 /**
@@ -324,8 +327,8 @@ function SearchPageContent() {
     return sorted;
   }, [candidatePool, applied, extrasById]);
 
-  // Promoted = members with an active boost. Boosts need the payments API (Sprint 04), so none yet.
-  const promotedIds = useMemo(() => new Set<string>(), []);
+  // Promoted = members with a running boost (the API flags them and lists them first — S04-T05)
+  const promotedIds = useMemo(() => new Set(results.filter((p) => p.promoted).map((p) => p.id)), [results]);
   const promoted = results.filter((p) => promotedIds.has(p.id));
   const pool = view === "grid" ? results.filter((p) => !promotedIds.has(p.id)) : [...promoted, ...results.filter((p) => !promotedIds.has(p.id))];
   const size = PAGE_SIZE[view];

@@ -100,8 +100,9 @@ export function useAuthSession() {
   const profileCode = profile?.code || (session?.profileId ? `AM-${session.profileId.slice(0, 6).toUpperCase()}` : "");
   const isVerified = profile?.verified ?? session?.isVerified ?? false;
   const isUnderReview = session?.isUnderReview ?? (!isVerified && Boolean(profile || session?.hasCompletedProfile));
-  const isPaid = profile?.premium ?? session?.isPremium ?? false;
-  const planId = profile?.premium ? "premium" : (session?.planId || "free");
+  // plan from the server session (S04: subscriptions); the profile's premium flag is the same cache
+  const planId = session?.planId === "gold" || session?.planId === "platinum" ? session.planId : "free";
+  const isPaid = planId !== "free" || (profile?.premium ?? false);
   const hasCompletedProfile = Boolean(profile || session?.hasCompletedProfile);
 
   return {

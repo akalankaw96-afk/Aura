@@ -24,7 +24,7 @@ Baseline: 22 issues found during the analysis on 2026-11-11 (5 critical · 6 hig
 | BUG-008 | High | API · Auth | 7-day JWT with no refresh, logout or revocation | Closed (verified 2026-11-14) | 01 |
 | BUG-009 | High | API · Profiles | `CreateOrUpdateProfile` sets `Verified = true` (KYC bypass) | Closed (verified 2026-11-14) | 01 |
 | BUG-010 | High | Web · Admin | "Staff Admin Panel" link shown to every member; `/admin` accepts any password | Closed (verified 2026-11-14) | 01 |
-| BUG-011 | High | Web · Business | Plan, KYC, usage and boost state trusted from localStorage (self-upgrade) | In Progress — KYC from server (S02); usage limits server-enforced (S03, verified 2026-11-16); plan/boost S04 | 02–04 |
+| BUG-011 | High | Web · Business | Plan, KYC, usage and boost state trusted from localStorage (self-upgrade) | **Verified** 2026-11-17 — KYC from server (S02); usage limits server-enforced (S03); plan from subscriptions + bank-transfer approval (S04-T02–T04); boost from the server (S04-T05); dashboard plan card / payments from the API (S04-T06). Browser values are only a cache of the session | 02–04 |
 | BUG-012 | Medium | Web · Routing | `/dashboard` has no guest guard; `KycGuard` treats missing state as approved | Closed (verified 2026-11-14) | 01 |
 | BUG-013 | Medium | API · DB | InMemory DB is the default (config key missing); `EnsureCreated`, no migrations | Closed (verified 2026-11-14) | 01 |
 | BUG-014 | Medium | API + Web | Services/clients swallow errors and serve fallback or mock data | In Progress — Search, Friends, Dashboard, staff area on the API with error states (S03-T10); left: chat REST helpers return [] on error | 03–05 |

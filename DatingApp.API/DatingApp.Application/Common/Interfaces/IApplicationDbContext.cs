@@ -35,6 +35,10 @@ public interface IApplicationDbContext
     DbSet<Report> Reports { get; }
     DbSet<PlanPrice> PlanPrices { get; }
     DbSet<Subscription> Subscriptions { get; }
+    DbSet<Payment> Payments { get; }
+    DbSet<Boost> Boosts { get; }
+    DbSet<AuditLog> AuditLogs { get; }
+    DbSet<AccountClosureFeedback> AccountClosureFeedback { get; }
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }

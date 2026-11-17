@@ -7,6 +7,7 @@ import { VerificationPanel } from "@/components/sections/dashboard/VerificationP
 import { FeatureGate } from "@/components/sections/dashboard/FeatureGate";
 import { PlanUsageCard } from "@/components/sections/dashboard/PlanUsageCard";
 import { ProPlanCard } from "@/components/sections/dashboard/ProPlanCard";
+import { PaymentStatusNotice } from "@/components/sections/dashboard/PaymentStatus";
 import { PromoteCard, PromoteModal } from "@/components/sections/promote/PromoteFlow";
 import { EditProfileModal } from "@/components/sections/dashboard/EditProfileModal";
 import { RequireMember } from "@/components/auth/RequireMember";
@@ -34,6 +35,8 @@ export default function DashboardPage() {
           {/* new members: profile review status (pending / changes needed) — hidden once live */}
           <VerificationPanel />
           <DashboardHero />
+          {/* bank-transfer receipt being checked / not accepted (S04-T06) */}
+          <PaymentStatusNotice />
           {/* Gold / Platinum: "Welcome to Gold — take a 2-minute tour" until the tour is done */}
           <TourWelcomeCard />
           {/* paid members with an active promotion: "Your profile is promoted" status right under the hero */}

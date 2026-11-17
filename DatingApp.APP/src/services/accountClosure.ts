@@ -1,20 +1,19 @@
 /**
  * Account settings: take a break (hide profile) and delete account with an SMS code.
  *
- * Planned endpoints (docs/API_GUIDELINES.md — not built on the server yet):
+ * Endpoints (S04-T08):
  *   POST /api/account/visibility            { hidden: boolean, reason? }        → 204
  *   POST /api/account/delete/send-code      {}                                  → { resendAvailableInSeconds }
  *   POST /api/account/delete                { code, reason, comment? }          → 204 | 400 { code, attemptsLeft }
- *
- * Until the server has them: in development builds a 404 switches to a clearly labelled demo
- * (code 123456) so the screens can be tested. In production a 404 shows "not available yet".
+ * The "hidden" flag comes from the session (profileHidden), so every device agrees.
+ * An API without these endpoints (404) still switches to the labelled demo in development builds only.
  */
-import { apiRequest } from "@/lib/http";
+import { SESSION_KEY, apiRequest } from "@/lib/http";
+import { apiService } from "@/services/api";
 
 export const DELETE_RULES = { codeLength: 6, resendSeconds: 60, maxAttempts: 5 } as const;
 export const DEMO_CODE = "123456";
 const DEV = process.env.NODE_ENV !== "production";
-const HIDDEN_KEY = "vk-profile-hidden";
 
 export type DeleteVerify = { ok: true } | { ok: false; reason: "incorrect" | "expired" | "too-many"; attemptsLeft: number };
 
@@ -54,16 +53,16 @@ async function fail(res: Response, fallback: string): Promise<never> {
 export async function setProfileHidden(hidden: boolean, reason?: string): Promise<{ demo: boolean }> {
   const res = await post("/account/visibility", { hidden, reason });
   if (res !== "demo" && !res.ok) await fail(res, "We couldn’t update your profile. Please try again.");
-  try {
-    localStorage.setItem(HIDDEN_KEY, hidden ? "1" : "0");
-  } catch {}
+  if (res !== "demo") await apiService.refreshSession(); // session.profileHidden follows the server
   window.dispatchEvent(new Event("vk-visibility-change"));
   return { demo: res === "demo" };
 }
 
+/** From the session the API returned (login / refresh / GET /auth/me). */
 export function readProfileHidden(): boolean {
   try {
-    return localStorage.getItem(HIDDEN_KEY) === "1";
+    const s = JSON.parse(localStorage.getItem(SESSION_KEY) || "{}") as { profileHidden?: boolean };
+    return s.profileHidden === true;
   } catch {
     return false;
   }

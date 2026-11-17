@@ -9,6 +9,8 @@ public record DetectedFile(string ContentType, string Extension);
 public static class FileRules
 {
     public const long MaxBytes = 8 * 1024 * 1024;
+    /// <summary>Bank receipts (S04-T03) may be a little bigger — PDFs from bank apps; matches the Payment page (10 MB).</summary>
+    public const long MaxReceiptBytes = 10 * 1024 * 1024;
     public const int MaxPhotos = 6;
 
     public static readonly DetectedFile Jpeg = new("image/jpeg", ".jpg");
@@ -25,18 +27,19 @@ public static class FileRules
         return null;
     }
 
-    /// <summary>Reads the upload into memory (≤ 8 MB), checks size and type, and returns the bytes + detected type.</summary>
-    public static async Task<(byte[] Bytes, DetectedFile Type)> ReadAndCheckAsync(Stream content, long declaredLength, bool allowPdf, CancellationToken ct)
+    /// <summary>Reads the upload into memory (≤ 8 MB, or <paramref name="maxBytes"/>), checks size and type, and returns the bytes + detected type.</summary>
+    public static async Task<(byte[] Bytes, DetectedFile Type)> ReadAndCheckAsync(Stream content, long declaredLength, bool allowPdf, CancellationToken ct, long maxBytes = MaxBytes)
     {
+        var tooBig = $"Files can be up to {maxBytes / (1024 * 1024)} MB.";
         if (declaredLength <= 0) throw AppException.Validation("Choose a file to upload.", "file");
-        if (declaredLength > MaxBytes) throw AppException.Validation("Files can be up to 8 MB.", "file");
+        if (declaredLength > maxBytes) throw AppException.Validation(tooBig, "file");
 
         using var buffer = new MemoryStream();
         var chunk = new byte[81920];
         int read;
         while ((read = await content.ReadAsync(chunk, ct)) > 0)
         {
-            if (buffer.Length + read > MaxBytes) throw AppException.Validation("Files can be up to 8 MB.", "file");
+            if (buffer.Length + read > maxBytes) throw AppException.Validation(tooBig, "file");
             buffer.Write(chunk, 0, read);
         }
 

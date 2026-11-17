@@ -3,9 +3,10 @@
 /**
  * Admin back office — members, statistics, roles and staff accounts.
  *
- * Planned endpoints (docs/API_GUIDELINES.md → "Planned: admin back office"). They are NOT on the server yet:
- * in development builds a missing endpoint (404 / server not running) falls back to clearly labelled
- * demo data so the screens can be reviewed; in production the page shows "needs API".
+ * Stats, members list, member status and password reset are on the server (S04-T07 — /api/admin/stats,
+ * /api/admin/members…). Roles and staff accounts are still planned (postponed by the owner): in development builds a
+ * missing endpoint (404 / server not running) falls back to clearly labelled demo data; in production the page shows
+ * "needs API".
  * Review queue, photos and moderator roles use the real endpoints in lib/staff.ts.
  */
 import { apiRequest } from "@/lib/http";

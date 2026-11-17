@@ -34,7 +34,7 @@ public class SearchService : ISearchService
         var pageSize = Math.Clamp(f.PageSize <= 0 ? 20 : f.PageSize, 1, MaxPageSize);
         if (!viewerUserId.HasValue) page = 1; // guests: first page only
 
-        var query = _context.CandidateProfiles.AsNoTracking().Where(p => p.Status == ProfileStatus.Approved);
+        var query = _context.CandidateProfiles.AsNoTracking().Where(p => p.Status == ProfileStatus.Approved && !p.IsHidden && p.HiddenByMemberAt == null);
         if (viewerUserId.HasValue)
         {
             query = query.Where(p => p.UserId != viewerUserId.Value);
@@ -89,12 +89,15 @@ public class SearchService : ISearchService
             query = query.Where(p => p.FullName.Contains(q) || p.Code.Contains(q) || p.Profession.Contains(q));
         }
 
+        // promoted profiles (running boost, S04-T05) come first, then the chosen order
+        var now = DateTime.UtcNow;
+        var ordered = query.OrderByDescending(p => p.PromotedUntil != null && p.PromotedUntil > now);
         query = (f.Sort ?? "newest").ToLowerInvariant() switch
         {
             // younger first = later birth date first
-            "ageasc" => query.OrderByDescending(p => p.DateOfBirth).ThenBy(p => p.Age),
-            "agedesc" => query.OrderBy(p => p.DateOfBirth).ThenByDescending(p => p.Age),
-            _ => query.OrderByDescending(p => p.CreatedAt)
+            "ageasc" => ordered.ThenByDescending(p => p.DateOfBirth).ThenBy(p => p.Age),
+            "agedesc" => ordered.ThenBy(p => p.DateOfBirth).ThenByDescending(p => p.Age),
+            _ => ordered.ThenByDescending(p => p.CreatedAt)
         };
 
         // One search per new filtered query (page 1) for members; plain browsing (Bride / Groom, newest first) is free.

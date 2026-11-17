@@ -65,7 +65,13 @@ public enum ReviewAction
     /// <summary>A report about this profile was dismissed (S03-T08).</summary>
     ReportDismissed = 8,
     /// <summary>A report about this profile was acted on (S03-T08).</summary>
-    ReportActioned = 9
+    ReportActioned = 9,
+    /// <summary>Staff opened a member's bank receipt (S04-T04).</summary>
+    PaymentReceiptViewed = 10,
+    /// <summary>Staff approved a bank-transfer payment (S04-T04).</summary>
+    PaymentApproved = 11,
+    /// <summary>Staff rejected a bank-transfer payment (S04-T04).</summary>
+    PaymentRejected = 12
 }
 
 /// <summary>Things a plan can limit per month (S03-T02). Stored as numbers — never renumber.</summary>
@@ -105,4 +111,17 @@ public enum SubscriptionStatus
     Active = 1,
     Expired = 2,
     Cancelled = 3
+}
+
+/// <summary>
+/// A bank-transfer order (S04-T03). Pending = order made, no receipt yet · AwaitingReview = receipt uploaded ·
+/// Approved / Rejected by staff (S04-T04) · Cancelled = replaced by a newer order before a receipt was sent.
+/// </summary>
+public enum PaymentStatus
+{
+    Pending = 1,
+    AwaitingReview = 2,
+    Approved = 3,
+    Rejected = 4,
+    Cancelled = 5
 }

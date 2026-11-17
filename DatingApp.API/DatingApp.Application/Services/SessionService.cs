@@ -43,6 +43,14 @@ public class SessionService : ISessionService
     public async Task<AuthResult> StartAsync(User user, ClientInfo client, CancellationToken ct = default)
     {
         var now = DateTime.UtcNow;
+        // a deactivated account comes back when the member signs in again (S04-T07); blocked accounts never get here
+        if (user.DeactivatedAt != null)
+        {
+            user.DeactivatedAt = null;
+            user.UpdatedAt = now;
+            var profile = user.Profile ?? await _context.CandidateProfiles.FirstOrDefaultAsync(p => p.UserId == user.Id, ct);
+            if (profile != null) profile.IsHidden = false;
+        }
         var (entity, raw) = NewRefreshToken(user.Id, Guid.NewGuid(), now, now, client);
         _context.RefreshTokens.Add(entity);
         await _context.SaveChangesAsync(ct);
@@ -166,6 +174,7 @@ public class SessionService : ISessionService
             IsPremium = profile != null && profile.PlanId != Plans.Free && profile.PlanEndsAt > DateTime.UtcNow,
             PlanId = profile != null && profile.PlanId != Plans.Free && profile.PlanEndsAt > DateTime.UtcNow ? profile.PlanId : Plans.Free,
             PlanEndsAt = profile != null && profile.PlanId != Plans.Free && profile.PlanEndsAt > DateTime.UtcNow ? profile.PlanEndsAt : null,
+            ProfileHidden = profile?.HiddenByMemberAt != null,
             PhotoUrl = profile?.PhotoUrl
         };
     }

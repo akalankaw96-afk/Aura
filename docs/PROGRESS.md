@@ -3,16 +3,16 @@
 **Status values:** Not Started · In Progress · Testing · Completed · Blocked · Deferred.
 "Completed" only when acceptance criteria pass and tests/manual checks are recorded (`TESTING_GUIDELINES.md` §6).
 
-_Last updated: 2026-11-16 — Sprint 03 T01–T10 **completed** (owner verified in the web app: limits, search, profile views, interests, shortlist, saved searches, new chats, contact share, block, report, staff reports queue, dashboard). T11 (final `dotnet test` run + docs) waiting for the owner's confirmation; then Sprint 03 closes._
+_Last updated: 2026-11-17 — Sprint 04 **completed** (T01–T08 owner verified in the browser; T09: `dotnet test` 72 / 72 green, owner run 2026-11-17). Next: merge `S04-Pay`, then Sprint 05._
 
 ## Overall
 | Area | State |
 |---|---|
-| Web UI (screens, design system) | Largely built against Figma; most screens run on demo/localStorage data |
-| API | Auth, profiles, review / KYC, staff area, search, plan limits + usage, profile views, interests, shortlist, saved searches, blocks, reports, dashboard — verified 2026-11-16 |
-| Security | Sprint 01 critical/high issues closed; KYC (S02) and usage limits (S03) now enforced by the server; BUG-011 left only for plan / boost (Sprint 04) |
-| Tests / CI | `DatingApp.Tests` (xUnit, 53 tests) + CI workflow (owner adds `.github/workflows/ci.yml`) |
-| Current sprint | **03 — Match & talk** (branch `S03-match`) — T01–T10 completed, T11 closing · 02 completed on `S02-kyc` |
+| Web UI (screens, design system) | Largely built against Figma; member features, plans, payments and the admin members area use the API (roles & staff accounts still demo — TD-28) |
+| API | Auth, profiles, review / KYC, staff area, search, plan limits + usage, profile views, interests, shortlist, saved searches, blocks, reports, dashboard (S03); prices, subscriptions, bank-transfer payments, boosts, admin members + audit log, take a break / delete account (S04) — verified 2026-11-17 |
+| Security | Sprint 01 critical/high issues closed; KYC, usage limits, plan and boost all enforced by the server — BUG-011 verified 2026-11-17 |
+| Tests / CI | `DatingApp.Tests` (xUnit, 72 tests) + CI workflow (owner adds `.github/workflows/ci.yml`) |
+| Current sprint | **04 — Earn** completed on `S04-Pay` (ready to merge) · next: 05 — Cleanup & front-end debt |
 
 ## Sprint 01 — Foundation & critical security
 | Task | Status | Notes |
@@ -36,19 +36,20 @@ _Last updated: 2026-11-16 — Sprint 03 T01–T10 **completed** (owner verified 
 
 ## Sprint 04 — Earn
 Planned 2026-11-16 (see `SPRINT_PLAN.md`): bank transfer only, Plans-page prices in the DB, no auto-renew; branch **`S04-pay`**.
-Branch `S04-Pay` created 2026-11-16 (from main with Sprint 03). Started with T01–T02.
+Branch `S04-Pay` created 2026-11-16 (from main with Sprint 03). Started with T01–T02, then T03–T04.
+**Decision (owner, 2026-11-16):** Roles & staff (custom roles, staff usernames) wait for a later sprint — Admin and Moderator only for now; the Roles page stays on demo data (TD-28).
 
 | Task | Status | Notes |
 |---|---|---|
 | S04-T01 Plans and prices in the DB | Testing | `PlanPrice` (cents) seeded with the Plans-page prices; `GET /api/plans` (public, with saving %); `GET/PUT /api/admin/prices`; staff area **Prices** tab; Plans page reads the API. Built 2026-11-16 — awaiting owner test (migration `Sprint04Billing`) |
 | S04-T02 Subscriptions + expiry + reminder | Testing | `Subscription` is the source of the plan (limits, contact share, session); profile keeps a cache (`PlanId`, `PlanEndsAt`, `Premium`); early renewal queues after the current end, Platinum starts at once; hourly job expires periods and sends the 3-day reminder (in-app + SMS) once; `GET /api/me/subscription`; admin grant / cancel with a note; old Premium flags moved to a one-month Gold period at start-up. Built 2026-11-16 — awaiting owner test |
-| S04-T03 Bank-transfer orders + slip upload | Not Started | |
-| S04-T04 Staff payments queue | Not Started | |
-| S04-T05 Boosts on the server | Not Started | |
-| S04-T06 Web: pay, plan, boost from the API | Not Started | |
-| S04-T07 Admin back office (members, payments, audit) | Not Started | |
-| S04-T08 Account deactivate / delete | Not Started | |
-| S04-T09 Tests + docs | Not Started | |
+| S04-T03 Bank-transfer orders + slip upload | Completed | New `Payment`: `POST /api/payments/bank-transfer` makes (or reuses) an order — amount from the price list, reference made by the server (`VK-G3-7K2QXM`); `POST /api/payments/{id}/receipt` (JPG / PNG / WebP / PDF ≤ 10 MB, `paidOn`, note; sending again replaces it); `GET /api/payments/mine`; `GET /api/payments/{id}/receipt` (owner + staff, staff views logged); bank details from appsettings `BankTransfer` (`GET /api/payments/bank-account`). Checkout page now uses the API — no more localStorage. Built 2026-11-16; `dotnet test` green 2026-11-17 (PaymentTests 4/4); migration `Sprint04Payments`; owner tested order → receipt → approve / reject in the browser 2026-11-17 |
+| S04-T04 Staff payments queue | Completed | `/api/moderation/payments` (Admin + Moderator): list (to check / no receipt / approved / rejected), approve → starts or extends the plan once (guard + unique index on `Subscriptions.PaymentId`), member gets in-app + SMS; reject needs a reason (in-app + SMS). Every view / decision in the member's review history. Admin page **Payments** (`/admin/payments`). Built 2026-11-16 — owner tested 2026-11-17 |
+| S04-T05 Boosts on the server | Completed | New `Boost` (profile, starts, ends, payment); buying = `POST /api/payments/bank-transfer` `{ product: "boost" }` (approved profile + Gold / Platinum, else 403 `KYC_REQUIRED` / 402 `PLAN_REQUIRED`; reference `VK-B7-…`); staff approve → boost starts now or after the current one (one payment = one boost), in-app + SMS. Profile cache `PromotedUntil`; search lists promoted profiles first with `promoted: true`; `GET /api/boosts/me` (days left, views and interests since it started). Web: promote dialog → bank-transfer checkout (`?product=boost`), dashboard card and search "Promoted" row from the API, boost price from the API. Built 2026-11-17; migration `Sprint04Boosts`; owner tested 2026-11-17 |
+| S04-T06 Web: pay, plan, boost from the API | Completed | Dashboard plan card reads `GET /api/me/subscription` (plan, started, valid until incl. renewals, days left, "Renewal bought" — no renew reminder then); payment history in the plan card (`GET /api/payments/mine`, status, reject reason, open receipt); banner under the hero while a receipt is checked or after one was turned down ("Try again" → checkout); session plan comes only from the API's `planId`. Checkout (plans + boost), promote dialog and Plans prices were moved to the API in T03–T05. Built 2026-11-17 — owner tested 2026-11-17 |
+| S04-T07 Admin back office (members, payments, audit) | Completed | `GET /api/admin/stats` and `GET /api/admin/members` (search name / mobile / e-mail / code, status filter, plan, last active) for Admin + Moderator; `POST /api/admin/members/{id}/status` (block · unblock · deactivate · activate, reason required to block / deactivate) and `POST …/reset-password` for Admin only. Block: can't sign in, profile hidden, sessions ended. Deactivate: profile hidden, sessions ended, signing in again brings it back. Hidden profiles drop out of search, profile pages, interests, shortlists, viewers, dashboard counts and public photos. New `AuditLogs` table for staff account actions. Members / Dashboard admin pages now use the real API (actions hidden from moderators). Not in this step: member detail page and payments CSV export. Built 2026-11-17; migration `Sprint04Admin`; owner tested 2026-11-17 |
+| S04-T08 Account deactivate / delete | Completed | Take a break: `POST /api/account/visibility` hides the profile from search and best matches only (friends, chats, plan stay); session `profileHidden` so every device agrees. Delete: `POST /api/account/delete/send-code` (SMS code, same limits as login codes) → `POST /api/account/delete` `{ code, reason, comment? }` — profile hidden everywhere at once, pending interests withdrawn, sessions ended, refresh cookie cleared, sign-in refused (403 `ACCOUNT_DELETED`); reason stored with no link to the member. The hourly job erases the personal data after 30 days (photos, ID documents, chats, interests, shortlists, blocks, views, notifications, name / phone / e-mail; payments, subscriptions and staff logs kept; the mobile number is free again). Admin list shows deleted accounts as Deactivated ("Deleted by the member…"), locked. Web: account settings use the API (no localStorage flag). Built 2026-11-17; migration `Sprint04Account`; owner tested 2026-11-17 |
+| S04-T09 Tests + docs | Completed | 72 xUnit tests — Sprint 04 adds `BillingTests` (prices, grant, renewal dates, expiry, reminder, cancel), `PaymentTests` (orders, receipts, approve once, reject, boost order + search position, price change vs. history), `AdminMembersTests`, `AccountTests`. Docs updated 2026-11-17 (PROGRESS, CHANGELOG, API / DATABASE guidelines, BUG_TRACKER, TECHNICAL_DEBT, SPRINT_PLAN). Not built from the plan: admin member detail page + payments CSV (TD-32). Owner ran `dotnet test` 2026-11-17: 72 / 72 green |
 
 ## Sprint 03 — Match & talk
 Decisions (owner, 2026-11-14): Free plan starts at 3 searches · 5 profile views · 3 interests · 2 new chats per month
@@ -66,7 +67,7 @@ Decisions (owner, 2026-11-14): Free plan starts at 3 searches · 5 profile views
 | S03-T08 Staff reports queue | Completed | `GET /api/moderation/reports?status=open|closed|all`, `POST /api/moderation/reports/{id}/resolve` (dismiss · action · suspend — suspend needs a note, closes all the member's open reports); reporter notified "reviewed", decision in profile history; staff area **Reports** tab. Owner verified 2026-11-16 (no migration) |
 | S03-T09 Dashboard summary | Completed | `GET /api/me/dashboard` (usage, viewers + this week, names for paid, interests received / waiting / sent, matches, shortlisted-by, unread, latest chats); dashboard stat tiles, "Who viewed you" and Messages card use it; `/messages?c=` opens a chat. Owner verified 2026-11-16 |
 | S03-T10 Web wiring (Search, Friends, Messages, Dashboard) | Completed | Built 2026-11-15 (done before T08/T09 so the owner can test in the browser): usage from `/api/me/usage` (dashboard meters, Upgrade prompt, 402 handling), admin **Plan limits** tab, Search on `/api/profiles/search` (Load more, saved searches), profile opens via `GET /api/profiles/{id}` (views counted), shortlist / Friends / Received / Sent / Withdraw on the API, Messages: new-chat limit, contact share decline / cancel on the hub, block / unblock / report on the API. Owner verified 2026-11-16 (Tests 1–10: limits, search + filters, views, interests, saved searches, new chats, contact share, block, report). Still static: dashboard stats + Messages card (T09) |
-| S03-T11 Tests + docs | Testing | 53 xUnit tests (search filters + paging, limits + 402, profile views, interests lifecycle, shortlist, saved searches, new-chat limit, contact share, block, report, reports queue, dashboard). Docs updated 2026-11-16 (PROGRESS, CHANGELOG, API / DATABASE guidelines, BUG_TRACKER, TECHNICAL_DEBT). Waiting for the owner's `dotnet test` result |
+| S03-T11 Tests + docs | Completed | 53 xUnit tests (search filters + paging, limits + 402, profile views, interests lifecycle, shortlist, saved searches, new-chat limit, contact share, block, report, reports queue, dashboard). Docs updated 2026-11-16 (PROGRESS, CHANGELOG, API / DATABASE guidelines, BUG_TRACKER, TECHNICAL_DEBT). Owner ran `dotnet test` 2026-11-17: 63 / 63 green (Sprint 03 + Sprint 04 tests) |
 
 ## Sprint 02 — Join & get approved
 Decisions (owner, 2026-11-14): files on **local disk** behind `IFileStorage` (cloud later); first **Admin from user-secrets**,

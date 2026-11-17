@@ -76,6 +76,9 @@ public class SubscriptionService : ISubscriptionService
 
         var profile = await _context.CandidateProfiles.FirstOrDefaultAsync(p => p.UserId == userId, ct)
             ?? throw AppException.NotFound("This member has no profile yet.");
+        // a payment starts one period only (S04-T04); the unique index on PaymentId backs this up
+        if (paymentId.HasValue && await _context.Subscriptions.AnyAsync(s => s.PaymentId == paymentId, ct))
+            throw AppException.Conflict("This payment has already started a plan.", ErrorCodes.PaymentAlreadyUsed);
 
         var now = DateTime.UtcNow;
         // a new period starts now, or when the running periods of the same or a better plan end (renewing early adds time)
@@ -102,12 +105,14 @@ public class SubscriptionService : ISubscriptionService
 
         var name = planId == Plans.Platinum ? "Platinum" : "Gold";
         var upcoming = startsAt > now.AddMinutes(1);
+        // a confirmed bank payment also goes out by SMS (S04-T04); staff grants stay in-app only
+        var paid = paymentId.HasValue ? "Payment confirmed. " : string.Empty;
         await _notifications.NotifyAsync(userId, "plan.started",
             upcoming ? $"{name} renewed" : $"You're on {name}",
             upcoming
-                ? $"Your {name} plan continues until {sub.EndsAt:d MMM yyyy}."
-                : $"{name} is active until {sub.EndsAt:d MMM yyyy}. Enjoy unlimited searches, views, interests and chats.",
-            "/dashboard", sms: false, ct);
+                ? $"{paid}Your {name} plan continues until {sub.EndsAt:d MMM yyyy}."
+                : $"{paid}{name} is active until {sub.EndsAt:d MMM yyyy}. Enjoy unlimited searches, views, interests and chats.",
+            "/dashboard", sms: paymentId.HasValue, ct);
         await _context.SaveChangesAsync(ct);
         return ToDto(sub, now);
     }

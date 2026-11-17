@@ -33,7 +33,7 @@ public class ProfileService : IProfileService
     public async Task<List<ProfileDto>> GetProfilesAsync(ProfileFilterDto? filter = null, CancellationToken ct = default, bool includeMemberDetails = false)
     {
         // Other members see approved profiles only (S02-T01)
-        var query = _context.CandidateProfiles.AsNoTracking().Where(p => p.Status == ProfileStatus.Approved);
+        var query = _context.CandidateProfiles.AsNoTracking().Where(p => p.Status == ProfileStatus.Approved && !p.IsHidden && p.HiddenByMemberAt == null);
 
         if (filter != null)
         {
@@ -88,7 +88,7 @@ public class ProfileService : IProfileService
     public async Task<ProfileDto?> GetProfileByIdAsync(Guid id, CancellationToken ct = default, bool includeMemberDetails = false)
     {
         var profile = await _context.CandidateProfiles.AsNoTracking()
-            .FirstOrDefaultAsync(p => p.Id == id && p.Status == ProfileStatus.Approved, ct);
+            .FirstOrDefaultAsync(p => p.Id == id && p.Status == ProfileStatus.Approved && !p.IsHidden, ct);
         return profile == null ? null : MapToDto(profile, includeMemberDetails);
     }
 
@@ -325,6 +325,7 @@ public class ProfileService : IProfileService
             Verified = p.Status == ProfileStatus.Approved,
             Status = owner ? p.Status.ToString() : null,
             Premium = p.Premium,
+            Promoted = p.PromotedUntil > DateTime.UtcNow,
             PhotoUrl = p.PhotoUrl,
             Bio = p.Bio,
             AboutFamily = p.AboutFamily,

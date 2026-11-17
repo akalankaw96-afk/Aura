@@ -34,6 +34,10 @@ public class ApplicationDbContext : DbContext, IApplicationDbContext
     public DbSet<Report> Reports => Set<Report>();
     public DbSet<PlanPrice> PlanPrices => Set<PlanPrice>();
     public DbSet<Subscription> Subscriptions => Set<Subscription>();
+    public DbSet<Payment> Payments => Set<Payment>();
+    public DbSet<Boost> Boosts => Set<Boost>();
+    public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
+    public DbSet<AccountClosureFeedback> AccountClosureFeedback => Set<AccountClosureFeedback>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

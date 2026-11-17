@@ -22,7 +22,9 @@ import { cn } from "@/lib/cn";
 import { MemberShell } from "@/components/layout/MemberShell";
 import { Button, ButtonLink, Input, LoveSticker, PinNote, Textarea, useToast } from "@/components/ui";
 import { PhotoSlot } from "@/components/ui/PhotoSlot";
-import { SESSION_KEY } from "@/lib/http";
+import { ApiError } from "@/lib/http";
+import { BOOST } from "@/lib/promotion";
+import { createBankTransfer, createBoostTransfer, getBankAccount, getMyPayments, uploadReceipt, type BankAccount, type Payment } from "@/lib/billing";
 import {
   BANK_ACCOUNT,
   PERIODS,
@@ -37,51 +39,82 @@ import {
 } from "@/content/payment";
 
 /**
- * Payment page (/plans/checkout?plan=gold&months=3) — phase 1: bank transfer only.
- * 1. Order summary + the member's payment reference
- * 2. Bank account card with copy buttons ("Copy all" too)
+ * Payment page (/plans/checkout?plan=gold&months=3, or ?product=boost) — phase 1: bank transfer only (S04-T03, T05).
+ * 1. Order summary + the member's payment reference (order made by the API: amount from the price list)
+ * 2. Bank account card with copy buttons ("Copy all" too) — details from GET /api/payments/bank-account
  * 3. How to pay — pinned notes, same style as Home → How it works
- * 4. Upload the bank receipt (photo or PDF) — highlighted step, shared PhotoSlot for images
- * After submit the member sees "Payment under review". Demo: kept in localStorage until
- * POST /api/payments/bank-transfer exists (docs/API_GUIDELINES.md).
+ * 4. Upload the bank receipt (photo or PDF) → POST /api/payments/{id}/receipt
+ * After submit the member sees "Payment under review" on every device (GET /api/payments/mine).
  */
-const PENDING_KEY = "vk-payment-pending";
+type Pending = { title: string; outcome: string; amount: number; reference: string; fileName: string };
 
-type Pending = { plan: PaidPlan; months: Period; amount: number; reference: string; fileName: string; paidOn: string; submittedAt: string };
+/** "Gold · 3 months" / "Profile boost · 7 days" */
+const productTitle = (p: Pick<Payment, "product" | "planId" | "months" | "days">) =>
+  p.product === "boost"
+    ? `Profile boost · ${p.days} days`
+    : `${PLAN_NAME[p.planId === "platinum" ? "platinum" : "gold"]} · ${p.months} month${p.months > 1 ? "s" : ""}`;
 
-function readSession(): { userId?: string; phoneNumber?: string; fullName?: string } {
-  try {
-    return JSON.parse(localStorage.getItem(SESSION_KEY) || "{}");
-  } catch {
-    return {};
-  }
-}
-
-/** Short code the member types into the transfer's "reference / remarks" so we can match the payment */
-function makeReference(plan: PaidPlan, months: Period) {
-  const s = readSession();
-  const tail = (s.phoneNumber || s.userId || "000000").replace(/\W/g, "").slice(-6).toUpperCase();
-  return `VK-${plan === "gold" ? "G" : "P"}${months}-${tail}`;
-}
+const toPending = (p: Payment): Pending => ({
+  title: productTitle(p),
+  outcome: p.product === "boost" ? "Profile promoted" : `${PLAN_NAME[p.planId === "platinum" ? "platinum" : "gold"]} activated`,
+  amount: p.amount,
+  reference: p.reference,
+  fileName: p.receiptFileName || "Receipt",
+});
 
 export function BankTransferScreen() {
   const params = useSearchParams();
-  const plan: PaidPlan = params.get("plan") === "platinum" ? "platinum" : "gold";
+  const toast = useToast();
+  const isBoost = params.get("product") === "boost";
+  const wantedPlan: PaidPlan = params.get("plan") === "platinum" ? "platinum" : "gold";
   const m = Number(params.get("months"));
-  const months: Period = (PERIODS as number[]).includes(m) ? (m as Period) : 3;
-  const amount = PLAN_PRICES[plan][months];
+  const wantedMonths: Period = (PERIODS as number[]).includes(m) ? (m as Period) : 3;
 
-  const [reference, setReference] = useState("VK-…");
-  const [pending, setPending] = useState<Pending | null>(null);
+  const [order, setOrder] = useState<Payment | null>(null);
+  const [bank, setBank] = useState<BankAccount>(BANK_ACCOUNT);
+  const [underReview, setUnderReview] = useState<Payment | null>(null);
+  const [rejected, setRejected] = useState<Payment | null>(null);
+  const [replacing, setReplacing] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [flash, setFlash] = useState(false);
   const uploadRef = useRef<HTMLElement>(null);
 
   useEffect(() => {
-    setReference(makeReference(plan, months));
-    try {
-      setPending(JSON.parse(localStorage.getItem(PENDING_KEY) || "null"));
-    } catch {}
-  }, [plan, months]);
+    let cancelled = false;
+    try { localStorage.removeItem("vk-payment-pending"); } catch {} // old demo record
+    getBankAccount().then((b) => { if (!cancelled) setBank(b); }).catch(() => {});
+    (async () => {
+      try {
+        const mine = (await getMyPayments()).filter((p) => p.product === (isBoost ? "boost" : "plan"));
+        if (cancelled) return;
+        const waiting = mine.find((p) => p.status === "AwaitingReview");
+        if (waiting) {
+          setUnderReview(waiting);
+          setOrder(waiting);
+          return;
+        }
+        const last = mine[0];
+        if (last?.status === "Rejected") setRejected(last);
+        const created = isBoost ? await createBoostTransfer(BOOST.days) : await createBankTransfer(wantedPlan, wantedMonths);
+        if (!cancelled) setOrder(created);
+      } catch (err) {
+        if (cancelled) return;
+        if (err instanceof ApiError && err.code === "PAYMENT_UNDER_REVIEW") {
+          window.location.reload();
+          return;
+        }
+        setLoadError(err instanceof Error ? err.message : "We couldn’t start your payment. Please try again.");
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [isBoost, wantedPlan, wantedMonths]);
+
+  // while a receipt is being checked the page shows that order, whatever the link asked for
+  const plan: PaidPlan = order?.planId === "platinum" ? "platinum" : order ? "gold" : wantedPlan;
+  const months: Period = order && (PERIODS as number[]).includes(order.months) ? (order.months as Period) : wantedMonths;
+  const amount = order?.amount ?? (isBoost ? BOOST.price : PLAN_PRICES[plan][months]);
+  const title = order ? productTitle(order) : isBoost ? `Profile boost · ${BOOST.days} days` : productTitle({ product: "plan", planId: plan, months, days: 0 });
+  const reference = order?.reference ?? "VK-…";
 
   const goToUpload = () => {
     uploadRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -89,35 +122,57 @@ export function BankTransferScreen() {
     window.setTimeout(() => setFlash(false), 2200);
   };
 
+  const showSubmitted = underReview && !replacing;
+
   return (
-    <MemberShell back="/plans" crumb="Payment" title="Complete your payment" subtitle="Pay by bank transfer, then upload your receipt. We’ll activate your plan as soon as we confirm it.">
-      {pending ? (
-        <SubmittedCard pending={pending} onReplace={() => { try { localStorage.removeItem(PENDING_KEY); } catch {} setPending(null); }} />
+    <MemberShell
+      back={isBoost ? "/dashboard" : "/plans"}
+      crumb="Payment"
+      title="Complete your payment"
+      subtitle={`Pay by bank transfer, then upload your receipt. We’ll ${isBoost ? "promote your profile" : "activate your plan"} as soon as we confirm it.`}
+    >
+      {showSubmitted ? (
+        <SubmittedCard pending={toPending(underReview)} onReplace={() => setReplacing(true)} />
       ) : (
         <div className="flex flex-col gap-10">
+          {loadError && (
+            <div role="alert" className="flex flex-col gap-3 rounded-lg border border-error-line bg-error-bg p-4 text-body-sm text-error-fg sm:flex-row sm:items-center">
+              <p className="flex-1 font-semibold">{loadError}</p>
+              <Button variant="outline" size="sm" onClick={() => window.location.reload()}>
+                Try again
+              </Button>
+            </div>
+          )}
+          {rejected && (
+            <div role="status" className="rounded-lg border border-warning-line bg-warning-bg p-4 text-body-sm text-warning-fg">
+              <p className="font-semibold">We couldn’t confirm your last payment ({rejected.reference})</p>
+              {rejected.reviewNote && <p className="mt-1">{rejected.reviewNote}</p>}
+              <p className="mt-1">Please pay with the new reference below, or contact support if you think this is a mistake.</p>
+            </div>
+          )}
           {/* top: bank details + order summary (summary first on phones) */}
           <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_380px]">
-            <BankCard amount={amount} reference={reference} onPaid={goToUpload} />
+            <BankCard bank={bank} amount={amount} reference={reference} onPaid={goToUpload} isBoost={isBoost} />
             <div className="order-first lg:order-none lg:sticky lg:top-28">
-              <OrderSummary plan={plan} months={months} amount={amount} reference={reference} />
+              <OrderSummary title={title} isBoost={isBoost} amount={amount} reference={reference} />
             </div>
           </div>
           <HowToPay />
           <ReceiptUpload
-              sectionRef={uploadRef}
-              flash={flash}
-              plan={plan}
-              months={months}
-              amount={amount}
-              reference={reference}
-              onDone={(p) => {
-                try {
-                  localStorage.setItem(PENDING_KEY, JSON.stringify(p));
-                } catch {}
-                setPending(p);
-                window.scrollTo({ top: 0, behavior: "smooth" });
-              }}
-            />
+            sectionRef={uploadRef}
+            flash={flash}
+            order={order}
+            amount={amount}
+            reference={reference}
+            onDone={(p) => {
+              setUnderReview(p);
+              setOrder(p);
+              setReplacing(false);
+              setRejected(null);
+              toast.success("Receipt sent", isBoost ? "We’ll check it and promote your profile." : "We’ll check it and activate your plan.");
+              window.scrollTo({ top: 0, behavior: "smooth" });
+            }}
+          />
         </div>
       )}
     </MemberShell>
@@ -170,7 +225,7 @@ function CopyButton({ done, onClick, label, onBrand = false }: Readonly<{ done: 
 
 /* ─────────────────────────── Order summary ─────────────────────────── */
 
-function OrderSummary({ plan, months, amount, reference }: Readonly<{ plan: PaidPlan; months: Period; amount: number; reference: string }>) {
+function OrderSummary({ title, isBoost, amount, reference }: Readonly<{ title: string; isBoost: boolean; amount: number; reference: string }>) {
   const { copied, copy } = useCopy();
   return (
     <section aria-label="Order summary" className="flex flex-col gap-4 rounded-xl border border-premium-line bg-surface-card p-5 shadow-sm sm:p-6">
@@ -179,10 +234,8 @@ function OrderSummary({ plan, months, amount, reference }: Readonly<{ plan: Paid
           <Crown1 size={22} color="currentColor" variant="Bold" />
         </span>
         <div className="min-w-0 flex-1">
-          <p className="text-label-sm text-ink-tertiary">You’re upgrading to</p>
-          <h2 className="text-h5 text-ink">
-            {PLAN_NAME[plan]} · {months} month{months > 1 ? "s" : ""}
-          </h2>
+          <p className="text-label-sm text-ink-tertiary">{isBoost ? "You’re buying" : "You’re upgrading to"}</p>
+          <h2 className="text-h5 text-ink">{title}</h2>
         </div>
         <Link href="/plans" className="text-label-sm font-semibold text-brand-text underline-offset-4 hover:underline">
           Change
@@ -218,20 +271,20 @@ function OrderSummary({ plan, months, amount, reference }: Readonly<{ plan: Paid
 
 /* ─────────────────────────── Bank account card ─────────────────────────── */
 
-function BankCard({ amount, reference, onPaid }: Readonly<{ amount: number; reference: string; onPaid: () => void }>) {
+function BankCard({ bank, amount, reference, onPaid, isBoost }: Readonly<{ bank: BankAccount; amount: number; reference: string; onPaid: () => void; isBoost: boolean }>) {
   const { copied, copy } = useCopy();
   const rows: { key: string; label: string; value: string; big?: boolean }[] = [
-    { key: "acc", label: "Account number", value: BANK_ACCOUNT.accountNumber, big: true },
-    { key: "name", label: "Account name", value: BANK_ACCOUNT.accountName },
-    { key: "bank", label: "Bank", value: BANK_ACCOUNT.bankName },
-    { key: "branch", label: "Branch", value: BANK_ACCOUNT.branch },
-    { key: "swift", label: "SWIFT (from overseas)", value: BANK_ACCOUNT.swift },
+    { key: "acc", label: "Account number", value: bank.accountNumber, big: true },
+    { key: "name", label: "Account name", value: bank.accountName },
+    { key: "bank", label: "Bank", value: bank.bankName },
+    { key: "branch", label: "Branch", value: bank.branch },
+    { key: "swift", label: "SWIFT (from overseas)", value: bank.swift },
   ];
   const all = [
-    `Bank: ${BANK_ACCOUNT.bankName}`,
-    `Account name: ${BANK_ACCOUNT.accountName}`,
-    `Account number: ${BANK_ACCOUNT.accountNumber}`,
-    `Branch: ${BANK_ACCOUNT.branch}`,
+    `Bank: ${bank.bankName}`,
+    `Account name: ${bank.accountName}`,
+    `Account number: ${bank.accountNumber}`,
+    `Branch: ${bank.branch}`,
     `Amount: ${lkr(amount)}`,
     `Reference: ${reference}`,
   ].join("\n");
@@ -280,7 +333,7 @@ function BankCard({ amount, reference, onPaid }: Readonly<{ amount: number; refe
       </dl>
 
       <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-center">
-        <p className="flex-1 text-body-sm text-[rgba(255,255,255,0.85)]">Transferred the money? Upload the receipt so we can activate your plan.</p>
+        <p className="flex-1 text-body-sm text-[rgba(255,255,255,0.85)]">Transferred the money? Upload the receipt so we can {isBoost ? "promote your profile" : "activate your plan"}.</p>
         <Button variant="white" size="md" className="bg-white text-rose-700 hover:bg-rose-50" onClick={onPaid} rightIcon={<DocumentUpload size={18} color="currentColor" />}>
           I’ve paid, upload receipt
         </Button>
@@ -333,21 +386,18 @@ function HowToPay() {
 function ReceiptUpload({
   sectionRef,
   flash,
-  plan,
-  months,
+  order,
   amount,
   reference,
   onDone,
 }: Readonly<{
   sectionRef: React.RefObject<HTMLElement | null>;
   flash: boolean;
-  plan: PaidPlan;
-  months: Period;
+  order: Payment | null;
   amount: number;
   reference: string;
-  onDone: (p: Pending) => void;
+  onDone: (p: Payment) => void;
 }>) {
-  const toast = useToast();
   const fileRef = useRef<HTMLInputElement>(null);
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
@@ -393,13 +443,23 @@ function ReceiptUpload({
       setError("Upload your bank receipt to continue.");
       return;
     }
+    if (!paidOn) {
+      setError("Enter the date you paid.");
+      return;
+    }
+    if (!order) {
+      setError("Your order isn’t ready yet. Wait a moment and try again.");
+      return;
+    }
     setSending(true);
-    // Waits for the API: POST /api/payments/bank-transfer (see API_GUIDELINES → Planned: bank transfer payments)
-    // (multipart: plan, months, amount, reference, paidOn, note, receipt)
-    await new Promise((r) => setTimeout(r, 700));
-    setSending(false);
-    toast.success("Receipt sent", "We’ll check it and activate your plan.");
-    onDone({ plan, months, amount, reference, paidOn, fileName: file.name, submittedAt: new Date().toISOString() });
+    try {
+      const saved = await uploadReceipt(order.id, file, paidOn, note);
+      onDone(saved);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "We couldn’t upload your receipt. Please try again.");
+    } finally {
+      setSending(false);
+    }
   };
 
   const isPdf = file?.type === "application/pdf";
@@ -489,7 +549,7 @@ function ReceiptUpload({
           </p>
         )}
 
-        <Button type="submit" size="lg" fullWidth loading={sending} leftIcon={<DocumentUpload size={20} color="currentColor" />}>
+        <Button type="submit" size="lg" fullWidth loading={sending} disabled={!order} leftIcon={<DocumentUpload size={20} color="currentColor" />}>
           Submit receipt
         </Button>
       </form>
@@ -521,7 +581,7 @@ function SubmittedCard({ pending, onReplace }: Readonly<{ pending: Pending; onRe
   const steps = [
     { label: "Receipt received", done: true },
     { label: "Our team checks the payment", done: false, current: true },
-    { label: `${PLAN_NAME[pending.plan]} activated`, done: false },
+    { label: pending.outcome, done: false },
   ];
   return (
     <section aria-label="Payment under review" className="mx-auto flex w-full max-w-[640px] flex-col items-center gap-6 rounded-xl border border-line bg-surface-card p-6 text-center shadow-sm sm:p-10">
@@ -534,7 +594,7 @@ function SubmittedCard({ pending, onReplace }: Readonly<{ pending: Pending; onRe
       <div className="flex flex-col gap-2">
         <h2 className="text-h3 text-ink">Thank you, your receipt is with us</h2>
         <p className="text-body-md text-ink-secondary">
-          We’ll check your {lkr(pending.amount)} payment and activate {PLAN_NAME[pending.plan]} ({pending.months} month{pending.months > 1 ? "s" : ""}) {REVIEW_TIME}. You’ll get an SMS when it’s ready.
+          We’ll check your {lkr(pending.amount)} payment for {pending.title} {REVIEW_TIME}. You’ll get an SMS when it’s ready.
         </p>
       </div>
 
