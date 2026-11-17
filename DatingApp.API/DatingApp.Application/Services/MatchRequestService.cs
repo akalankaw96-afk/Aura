@@ -48,7 +48,7 @@ public class MatchRequestService : IMatchRequestService
             throw AppException.Forbidden("Your profile must be approved before you can send interests.", ErrorCodes.KycRequired);
 
         var receiver = await _context.CandidateProfiles
-            .FirstOrDefaultAsync(p => p.Id == dto.ReceiverProfileId && p.Status == ProfileStatus.Approved, ct)
+            .FirstOrDefaultAsync(p => p.Id == dto.ReceiverProfileId && p.Status == ProfileStatus.Approved && !p.IsHidden, ct)
             ?? throw AppException.NotFound("This member is no longer available.");
         if (await _context.IsBlockedEitherWayAsync(senderProfileId, receiver.Id, ct))
             throw AppException.NotFound("This member is no longer available.");
@@ -154,7 +154,7 @@ public class MatchRequestService : IMatchRequestService
 
         return rows
             .Select(r => new { Request = r, Sent = r.SenderProfileId == profileId, Other = r.SenderProfileId == profileId ? r.ReceiverProfile : r.SenderProfile })
-            .Where(x => x.Other != null && x.Other.Status == ProfileStatus.Approved && !hidden.Contains(x.Other.Id)) // suspended / blocked drop out
+            .Where(x => x.Other != null && x.Other.Status == ProfileStatus.Approved && !x.Other.IsHidden && !hidden.Contains(x.Other.Id)) // suspended / blocked drop out
             .Select(x => new InterestDto
             {
                 Id = x.Request.Id,

@@ -37,6 +37,23 @@ public static class TestDb
         return (user, profile);
     }
 
+    /// <summary>A running Gold (or Platinum) period, as if a payment had been approved (S04-T02).</summary>
+    public static async Task MakePaidAsync(ApplicationDbContext db, Guid userId, string planId = "gold")
+    {
+        db.Subscriptions.Add(new Subscription
+        {
+            UserId = userId,
+            PlanId = planId,
+            StartsAt = DateTime.UtcNow.AddMinutes(-1),
+            EndsAt = DateTime.UtcNow.AddMonths(1)
+        });
+        var profile = await db.CandidateProfiles.FirstAsync(p => p.UserId == userId);
+        profile.Premium = true;
+        profile.PlanId = planId;
+        profile.PlanEndsAt = DateTime.UtcNow.AddMonths(1);
+        await db.SaveChangesAsync();
+    }
+
     public static async Task MatchAsync(ApplicationDbContext db, CandidateProfile a, CandidateProfile b)
     {
         db.MatchRequests.Add(new MatchRequest

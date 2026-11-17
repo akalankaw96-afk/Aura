@@ -2,27 +2,28 @@
 
 import React, { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
-import {
-  Card as CardIcon,
-  Chart,
-  CloseCircle,
-  Crown1,
-  Eye,
-  Heart,
-  Location,
-  Profile2User,
-  RecordCircle,
-  ScanBarcode,
-  TickCircle,
-  Timer1,
-  Wallet2,
-} from "iconsax-react";
+import { useRouter } from "next/navigation";
+import { Bank, Chart, CloseCircle, Crown1, Eye, Heart, Location, Profile2User, RecordCircle, Timer1 } from "iconsax-react";
 import { cn } from "@/lib/cn";
 import { Button } from "@/components/ui/Button";
-import { useToast } from "@/components/ui/Toast";
 import { useAuthSession } from "@/lib/session";
 import { useAccess } from "@/lib/verification";
 import { BOOST, OPEN_PROMOTE_EVENT, openPromote, useBoost } from "@/lib/promotion";
+import { getPlans } from "@/lib/billing";
+
+/** Boost price from the API (admin can change it); BOOST.price until it loads. */
+function useBoostPrice() {
+  const [price, setPrice] = useState<number>(BOOST.price);
+  useEffect(() => {
+    getPlans()
+      .then((all) => {
+        const b = all.find((p) => p.product === "boost" && p.days === BOOST.days);
+        if (b) setPrice(b.amount);
+      })
+      .catch(() => {});
+  }, []);
+  return price;
+}
 
 const fmt = (d: Date) => d.toLocaleDateString("en-GB", { day: "numeric", month: "short" });
 const lkr = (n: number) => `LKR ${n.toLocaleString("en-LK")}`;
@@ -44,6 +45,7 @@ const PERKS = [
 export function PromoteCard({ placement }: { placement?: "top" | "offer" } = {}) {
   const { locked, isPaid } = useAccess();
   const boost = useBoost();
+  const price = useBoostPrice();
   const [bar, setBar] = useState(0);
 
   useEffect(() => {
@@ -86,7 +88,7 @@ export function PromoteCard({ placement }: { placement?: "top" | "offer" } = {})
 
         <div className="grid grid-cols-2 gap-3 lg:w-[300px]">
           {[
-            { Icon: Eye, value: boost.views, label: "Extra views" },
+            { Icon: Eye, value: boost.views, label: "Profile views" },
             { Icon: Heart, value: boost.interests, label: "New interests" },
           ].map(({ Icon, value, label }) => (
             <div key={label} className="flex flex-col gap-1 rounded-[16px] bg-surface-card p-3 shadow-xs">
@@ -118,7 +120,7 @@ export function PromoteCard({ placement }: { placement?: "top" | "offer" } = {})
       </div>
       <div className="flex shrink-0 items-center gap-4 max-md:justify-between">
         <span className="flex flex-col items-end leading-tight">
-          <span className="text-h5 text-ink">{lkr(BOOST.price)}</span>
+          <span className="text-h5 text-ink">{lkr(price)}</span>
           <span className="text-caption text-ink-tertiary">{BOOST.days} days · one-time</span>
         </span>
         <Button size="md" onClick={openPromote} leftIcon={<Crown1 size={18} color="currentColor" />}>
@@ -130,25 +132,15 @@ export function PromoteCard({ placement }: { placement?: "top" | "offer" } = {})
 }
 
 /* ------------------------------------------------------------------ */
-/* Promote flow — review → pay → promoted                             */
+/* Promote flow — review → bank transfer (/plans/checkout?product=boost) */
 /* ------------------------------------------------------------------ */
-type Step = "review" | "paying" | "done";
-const METHODS = [
-  { id: "saved", Icon: CardIcon, label: "Visa •••• 4242", hint: "Saved card" },
-  { id: "qr", Icon: ScanBarcode, label: "LankaQR", hint: "Any banking app" },
-  { id: "ez", Icon: Wallet2, label: "eZ Cash", hint: "Dialog wallet" },
-];
-
 export function PromoteModal() {
-  const toast = useToast();
+  const router = useRouter();
   const { locked, isPaid } = useAccess();
   const boost = useBoost();
+  const price = useBoostPrice();
   const [open, setOpen] = useState(false);
   const [closing, setClosing] = useState(false);
-  const [step, setStep] = useState<Step>("review");
-  const [method, setMethod] = useState("saved");
-  // snapshot of what was bought (the boost state changes right after paying)
-  const [paid, setPaid] = useState<{ extending: boolean; start: Date; end: Date } | null>(null);
   const { profileCode, photoUrl } = useAuthSession();
   const memberId = profileCode || "Your Profile";
   const memberPhoto = photoUrl || "/brand/couple.png";
@@ -156,8 +148,6 @@ export function PromoteModal() {
   // open from the card, from ?promote=1 (Search → "Promote your profile"), or the event
   useEffect(() => {
     const show = () => {
-      setStep("review");
-      setMethod("saved");
       setClosing(false);
       setOpen(true);
     };
@@ -174,14 +164,14 @@ export function PromoteModal() {
   useEffect(() => {
     if (!open) return;
     document.body.style.overflow = "hidden";
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && step !== "paying" && close();
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && close();
     document.addEventListener("keydown", onKey);
     return () => {
       document.body.style.overflow = "";
       document.removeEventListener("keydown", onKey);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, step]);
+  }, [open]);
 
   if (!open || typeof document === "undefined") return null;
   // only approved Pro members can promote
@@ -195,14 +185,15 @@ export function PromoteModal() {
   const startDate = extending && boost.ends ? boost.ends : new Date();
   const endDate = new Date(startDate.getTime() + BOOST.days * 86_400_000);
 
-  // No payment gateway yet (Sprint 04): never activate a boost without a real payment.
+  // Paid by bank transfer like plans; the boost starts when our team confirms the receipt (S04-T05)
   const pay = () => {
-    toast.info("Online payment is coming soon", "Contact our support team and we’ll promote your profile for you.");
+    document.body.style.overflow = "";
+    router.push("/plans/checkout?product=boost");
   };
 
   return createPortal(
     <div className="fixed inset-0 z-[100] flex items-end justify-center sm:items-center sm:p-4">
-      <div aria-hidden onClick={() => step !== "paying" && close()} className={cn("absolute inset-0 bg-black/40 backdrop-blur-[2px] transition-opacity duration-200", closing ? "opacity-0" : "animate-fade-in")} />
+      <div aria-hidden onClick={close} className={cn("absolute inset-0 bg-black/40 backdrop-blur-[2px] transition-opacity duration-200", closing ? "opacity-0" : "animate-fade-in")} />
       <div
         role="dialog"
         aria-modal="true"
@@ -212,34 +203,11 @@ export function PromoteModal() {
           closing ? "translate-y-4 opacity-0" : "animate-dialog-in",
         )}
       >
-        {step !== "paying" && (
-          <button type="button" aria-label="Close" onClick={close} className={cn("absolute right-4 top-4 z-10 transition-colors", step === "done" ? "text-ink-tertiary hover:text-ink" : "text-[rgba(255,255,255,0.8)] hover:text-white")}>
-            <CloseCircle size={24} color="currentColor" />
-          </button>
-        )}
+        <button type="button" aria-label="Close" onClick={close} className="absolute right-4 top-4 z-10 text-[rgba(255,255,255,0.8)] transition-colors hover:text-white">
+          <CloseCircle size={24} color="currentColor" />
+        </button>
 
-        {step === "done" ? (
-          <div className="flex shrink-0 flex-col items-center gap-4 p-8 text-center">
-            <span className="kyc-pop flex h-20 w-20 items-center justify-center rounded-full bg-[linear-gradient(135deg,var(--gold-300),var(--gold-500))] text-gold-900 shadow-lg">
-              <Crown1 size={40} color="currentColor" />
-            </span>
-            <h2 id="promote-title" className="text-h4 text-ink">
-              {paid?.extending ? "Promotion extended!" : "You’re promoted!"}
-            </h2>
-            <p className="max-w-[360px] text-body-md text-ink-secondary">
-              {memberId} now appears at the top of matching searches until <span className="font-semibold text-ink">{fmt(paid?.end ?? endDate)}</span>. We’ll show your extra views and interests on your dashboard.
-            </p>
-            <div className="flex w-full flex-col gap-2 rounded-[16px] bg-surface-subtle p-4 text-left text-body-sm">
-              <Row label="Paid" value={`${lkr(BOOST.price)} · ${METHODS.find((m) => m.id === method)?.label}`} />
-              <Row label="Promoted" value={`${fmt(paid?.start ?? startDate)} – ${fmt(paid?.end ?? endDate)}`} />
-              <Row label="Receipt" value="Sent to your email" />
-            </div>
-            <Button className="w-full" onClick={close}>
-              Done
-            </Button>
-          </div>
-        ) : (
-          <>
+        <>
             {/* Header with preview */}
             <div className="relative shrink-0 overflow-hidden rounded-t-xl bg-[linear-gradient(120deg,var(--gold-900)_0%,var(--gold-700)_55%,var(--gold-500)_100%)] px-6 pb-6 pt-7 text-white">
               <p className="flex items-center gap-1.5 text-label-sm uppercase tracking-wide text-[rgba(255,255,255,0.8)]">
@@ -291,59 +259,25 @@ export function PromoteModal() {
                     {extending && " · added after your current boost"}
                   </p>
                 </div>
-                <span className="text-h5 text-ink">{lkr(BOOST.price)}</span>
+                <span className="text-h5 text-ink">{lkr(price)}</span>
               </div>
 
-              {/* Payment method */}
-              <fieldset className="flex flex-col gap-2" disabled={step === "paying"}>
-                <legend className="mb-2 text-label-md text-ink">Pay with</legend>
-                <div className="grid grid-cols-3 gap-2">
-                  {METHODS.map(({ id, Icon, label, hint }) => (
-                    <button
-                      key={id}
-                      type="button"
-                      aria-pressed={method === id}
-                      onClick={() => setMethod(id)}
-                      className={cn(
-                        "relative flex flex-col items-start gap-1 rounded-[14px] border p-3 text-left transition-colors",
-                        method === id ? "border-brand bg-brand-subtle ring-1 ring-inset ring-brand" : "border-line hover:border-brand-focus",
-                      )}
-                    >
-                      <Icon size={20} color="currentColor" className={method === id ? "text-brand" : "text-ink-tertiary"} />
-                      <span className="text-label-sm text-ink">{label}</span>
-                      <span className="text-caption text-ink-tertiary">{hint}</span>
-                      {method === id && <TickCircle size={16} color="currentColor" variant="Bold" className="absolute right-2 top-2 text-brand" />}
-                    </button>
-                  ))}
-                </div>
-              </fieldset>
+              {/* Payment */}
+              <div className="flex items-start gap-3 rounded-[16px] bg-surface-subtle p-4 text-body-sm text-ink-secondary">
+                <Bank size={20} color="currentColor" className="mt-0.5 shrink-0 text-brand" />
+                <p>
+                  Pay by bank transfer and upload the receipt. Your profile is promoted as soon as our team confirms it, usually within 24 hours.
+                  {extending && " The 7 days are added after your current boost."}
+                </p>
+              </div>
 
-              <Button size="lg" className="w-full" disabled={step === "paying"} onClick={pay}>
-                {step === "paying" ? (
-                  <>
-                    <span className="h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent" /> Processing payment…
-                  </>
-                ) : (
-                  <>
-                    <Crown1 size={20} color="currentColor" /> Pay {lkr(BOOST.price)} & promote
-                  </>
-                )}
+              <Button size="lg" className="w-full" onClick={pay}>
+                <Crown1 size={20} color="currentColor" /> Pay {lkr(price)} by bank transfer
               </Button>
-              <p className="-mt-2 text-center text-caption text-ink-tertiary">Online payment is coming soon — our support team can promote your profile meanwhile.</p>
             </div>
-          </>
-        )}
+        </>
       </div>
     </div>,
     document.body,
-  );
-}
-
-function Row({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="flex justify-between gap-3">
-      <span className="text-ink-tertiary">{label}</span>
-      <span className="text-right font-semibold text-ink">{value}</span>
-    </div>
   );
 }

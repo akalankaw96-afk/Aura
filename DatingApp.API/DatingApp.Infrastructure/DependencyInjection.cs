@@ -68,6 +68,12 @@ public static class DependencyInjection
         services.AddScoped<ISafetyService, SafetyService>();
         services.AddScoped<IReportQueueService, ReportQueueService>();
         services.AddScoped<IDashboardService, DashboardService>();
+        services.AddScoped<IPricingService, PricingService>();
+        services.AddScoped<ISubscriptionService, SubscriptionService>();
+        services.AddScoped<IBoostService, BoostService>();
+        services.AddScoped<IAdminMembersService, AdminMembersService>();
+        services.AddScoped<IAccountService, AccountService>();
+        services.AddScoped<IPaymentService, PaymentService>();
 
         return services;
     }

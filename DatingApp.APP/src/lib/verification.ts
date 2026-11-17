@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { apiService } from "@/services/api";
+import { getMySubscription, type MySubscription } from "@/lib/billing";
 
 /**
  * Profile verification (KYC) status and membership plan — read ONLY from the session the API returned
@@ -76,17 +77,78 @@ export function readPlan(): Plan {
   return s.planId === "platinum" ? "platinum" : "gold";
 }
 
-/** Plan start / expiry. The API doesn't return subscriptions yet (Sprint 04), so this is null for now. */
+/** The paid plan running now, from GET /api/me/subscription (S04-T06). */
 export interface MembershipInfo {
   plan: Exclude<Plan, "free">;
+  /** start of the period running now */
   start: Date;
+  /** end of the last period bought (renewals included) */
   expires: Date;
   totalDays: number;
   daysLeft: number;
+  /** length of the period running now */
   months: number;
+  /** a renewal is already bought */
+  renewed: boolean;
 }
+
+const MEMBERSHIP_EVENT = "vk-membership-change";
+let membership: MembershipInfo | null = null;
+
+function toMembership(s: MySubscription): MembershipInfo | null {
+  if (s.planId === "free" || !s.endsAt) return null;
+  const now = Date.now();
+  const current = s.items.find((i) => i.status === "Active" && i.planId === s.planId && new Date(i.startsAt).getTime() <= now);
+  if (!current) return null;
+  const start = new Date(current.startsAt);
+  const expires = new Date(s.endsAt);
+  const day = 86_400_000;
+  return {
+    plan: s.planId,
+    start,
+    expires,
+    totalDays: Math.max(1, Math.round((expires.getTime() - start.getTime()) / day)),
+    daysLeft: s.daysLeft,
+    months: Math.max(1, Math.round((new Date(current.endsAt).getTime() - start.getTime()) / (30.44 * day))),
+    renewed: s.items.some((i) => i.status === "Upcoming"),
+  };
+}
+
+/** Last membership loaded from the API (null for Free, or until it has loaded). */
 export function readMembership(): MembershipInfo | null {
-  return null;
+  return membership;
+}
+
+/** GET /api/me/subscription → membership (also kept for readMembership()). */
+export async function loadMembership(): Promise<MembershipInfo | null> {
+  try {
+    membership = toMembership(await getMySubscription());
+  } catch {
+    membership = null;
+  }
+  window.dispatchEvent(new Event(MEMBERSHIP_EVENT));
+  return membership;
+}
+
+/** The member's paid plan from the API; reloads when the session's plan changes. */
+export function useMembership(): { membership: MembershipInfo | null; loaded: boolean } {
+  const { isPaid, plan } = useAccess();
+  const [state, setState] = useState<{ membership: MembershipInfo | null; loaded: boolean }>({ membership: null, loaded: false });
+  useEffect(() => {
+    if (!isPaid) {
+      membership = null;
+      setState({ membership: null, loaded: true });
+      return;
+    }
+    let alive = true;
+    void loadMembership().then((m) => {
+      if (alive) setState({ membership: m, loaded: true });
+    });
+    return () => {
+      alive = false;
+    };
+  }, [isPaid, plan]);
+  return state;
 }
 
 function useSessionValue<T>(read: () => T, initial: T, events: string[]): T {

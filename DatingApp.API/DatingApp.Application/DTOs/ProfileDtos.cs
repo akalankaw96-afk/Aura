@@ -23,6 +23,8 @@ public class ProfileDto
     /// <summary>Review state — only in the member's own profile.</summary>
     public string? Status { get; set; }
     public bool Premium { get; set; }
+    /// <summary>Has a running boost (S04-T05): shown first in search with a "Promoted" badge.</summary>
+    public bool Promoted { get; set; }
     public string PhotoUrl { get; set; } = string.Empty;
     public string Bio { get; set; } = string.Empty;
     public string AboutFamily { get; set; } = string.Empty;

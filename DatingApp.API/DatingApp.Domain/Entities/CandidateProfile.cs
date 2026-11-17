@@ -36,6 +36,27 @@ public class CandidateProfile : BaseEntity
     public DateTime? ReviewedAt { get; set; }
     public Guid? ReviewedByUserId { get; set; }
     public bool Premium { get; set; } = false;
+    /// <summary>
+    /// Cached from the member's subscriptions (S04-T02) for sessions and badges: "free", "gold" or "platinum".
+    /// The subscriptions are the source of truth — only SubscriptionService writes these (and Premium).
+    /// </summary>
+    public string PlanId { get; set; } = "free";
+    public DateTime? PlanEndsAt { get; set; }
+    /// <summary>
+    /// Cached end of the member's boosts (S04-T05): promoted while this is in the future. Boosts follow on from each
+    /// other, so one date is enough. Only BoostService writes it.
+    /// </summary>
+    public DateTime? PromotedUntil { get; set; }
+    /// <summary>
+    /// Hidden from other members (S04-T07): the account is blocked or deactivated. Search, profile pages, interests,
+    /// shortlists and viewer lists leave hidden profiles out, like unapproved ones.
+    /// </summary>
+    public bool IsHidden { get; set; }
+    /// <summary>
+    /// "Take a break" (S04-T08): the member hid their profile from search and best matches. Friends, chats and the
+    /// plan stay — unlike <see cref="IsHidden"/>, which hides the profile everywhere.
+    /// </summary>
+    public DateTime? HiddenByMemberAt { get; set; }
     public string PhotoUrl { get; set; } = string.Empty;
     public string Interests { get; set; } = string.Empty; // Comma-separated list
     public string? SubmittedDetailsJson { get; set; }

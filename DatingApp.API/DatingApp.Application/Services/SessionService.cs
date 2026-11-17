@@ -43,6 +43,14 @@ public class SessionService : ISessionService
     public async Task<AuthResult> StartAsync(User user, ClientInfo client, CancellationToken ct = default)
     {
         var now = DateTime.UtcNow;
+        // a deactivated account comes back when the member signs in again (S04-T07); blocked accounts never get here
+        if (user.DeactivatedAt != null)
+        {
+            user.DeactivatedAt = null;
+            user.UpdatedAt = now;
+            var profile = user.Profile ?? await _context.CandidateProfiles.FirstOrDefaultAsync(p => p.UserId == user.Id, ct);
+            if (profile != null) profile.IsHidden = false;
+        }
         var (entity, raw) = NewRefreshToken(user.Id, Guid.NewGuid(), now, now, client);
         _context.RefreshTokens.Add(entity);
         await _context.SaveChangesAsync(ct);
@@ -162,8 +170,11 @@ public class SessionService : ISessionService
             IsVerified = profile?.Status == ProfileStatus.Approved,
             IsUnderReview = profile?.Status is ProfileStatus.Submitted or ProfileStatus.Resubmitted,
             ProfileStatus = profile?.Status.ToString() ?? "None",
-            IsPremium = profile?.Premium ?? false,
-            PlanId = (profile?.Premium ?? false) ? "premium" : "free",
+            // plan cache kept by SubscriptionService (S04-T02); an ended plan reads as free even before the hourly job
+            IsPremium = profile != null && profile.PlanId != Plans.Free && profile.PlanEndsAt > DateTime.UtcNow,
+            PlanId = profile != null && profile.PlanId != Plans.Free && profile.PlanEndsAt > DateTime.UtcNow ? profile.PlanId : Plans.Free,
+            PlanEndsAt = profile != null && profile.PlanId != Plans.Free && profile.PlanEndsAt > DateTime.UtcNow ? profile.PlanEndsAt : null,
+            ProfileHidden = profile?.HiddenByMemberAt != null,
             PhotoUrl = profile?.PhotoUrl
         };
     }

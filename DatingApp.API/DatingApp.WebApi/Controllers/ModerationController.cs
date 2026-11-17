@@ -1,3 +1,4 @@
+using DatingApp.Application.Common.Exceptions;
 using DatingApp.Application.DTOs;
 using DatingApp.Application.Services;
 using DatingApp.WebApi.Auth;
@@ -102,11 +103,51 @@ public class AdminController : BaseApiController
 {
     private readonly IStaffService _staff;
     private readonly IUsageService _usage;
+    private readonly IPricingService _pricing;
+    private readonly ISubscriptionService _subscriptions;
 
-    public AdminController(IStaffService staff, IUsageService usage)
+    public AdminController(IStaffService staff, IUsageService usage, IPricingService pricing, ISubscriptionService subscriptions)
     {
         _staff = staff;
         _usage = usage;
+        _pricing = pricing;
+        _subscriptions = subscriptions;
+    }
+
+    /// <summary>Plan and boost prices (S04-T01), amounts in cents.</summary>
+    [HttpGet("prices")]
+    [ProducesResponseType(typeof(List<PlanPriceDto>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> Prices(CancellationToken ct) => Ok(await _pricing.GetPricesAsync(ct));
+
+    /// <summary>Change prices: <c>{ prices: [{ product: plan|boost, planId, months, days, amountCents }] }</c>. Applies at once.</summary>
+    [HttpPut("prices")]
+    [ProducesResponseType(typeof(List<PlanPriceDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> UpdatePrices([FromBody] UpdatePricesDto dto, CancellationToken ct) =>
+        Ok(await _pricing.UpdatePricesAsync(RequireUserId(), dto.Prices, ct));
+
+    /// <summary>A member's plan periods (S04-T02).</summary>
+    [HttpGet("members/{userId:guid}/subscriptions")]
+    [ProducesResponseType(typeof(MySubscriptionDto), StatusCodes.Status200OK)]
+    public async Task<IActionResult> MemberSubscriptions(Guid userId, CancellationToken ct) => Ok(await _subscriptions.GetMineAsync(userId, ct));
+
+    /// <summary>Give a plan without a payment (complimentary or a correction). A note is required; it adds after any running period.</summary>
+    [HttpPost("members/{userId:guid}/subscriptions")]
+    [ProducesResponseType(typeof(SubscriptionDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> GrantSubscription(Guid userId, [FromBody] GrantSubscriptionDto dto, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(dto.Note)) throw AppException.Validation("Say why this plan is given.", "note");
+        return Ok(await _subscriptions.GrantAsync(userId, dto.PlanId, dto.Months, null, RequireUserId(), dto.Note, ct));
+    }
+
+    /// <summary>End a plan period early (e.g. refunded). A note is required.</summary>
+    [HttpPost("subscriptions/{id:guid}/cancel")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    public async Task<IActionResult> CancelSubscription(Guid id, [FromBody] CancelSubscriptionDto dto, CancellationToken ct)
+    {
+        await _subscriptions.CancelAsync(id, RequireUserId(), dto.Note, ct);
+        return NoContent();
     }
 
     /// <summary>Monthly limits per plan and feature (S03-T02). Null = unlimited.</summary>
@@ -184,12 +225,19 @@ public class MeController : BaseApiController
 {
     private readonly IUsageService _usage;
     private readonly IDashboardService _dashboard;
+    private readonly ISubscriptionService _subscriptions;
 
-    public MeController(IUsageService usage, IDashboardService dashboard)
+    public MeController(IUsageService usage, IDashboardService dashboard, ISubscriptionService subscriptions)
     {
         _usage = usage;
         _dashboard = dashboard;
+        _subscriptions = subscriptions;
     }
+
+    /// <summary>My plan now (free · gold · platinum), when it ends (renewals included) and my plan history (S04-T02).</summary>
+    [HttpGet("subscription")]
+    [ProducesResponseType(typeof(MySubscriptionDto), StatusCodes.Status200OK)]
+    public async Task<IActionResult> Subscription(CancellationToken ct) => Ok(await _subscriptions.GetMineAsync(RequireUserId(), ct));
 
     /// <summary>
     /// The dashboard in one call (S03-T09): usage, profile viewers (names for Gold / Platinum), interests, matches,

@@ -45,7 +45,7 @@ public class DashboardService : IDashboardService
             .Where(v => v.ViewedProfileId == me.Value && v.ViewerUserId != userId && v.LastViewedAt >= weekAgo)
             .Select(v => v.ViewerUserId).ToListAsync(ct);
         dto.ProfileViewersThisWeek = await _context.CandidateProfiles.AsNoTracking()
-            .CountAsync(p => weekViewerUserIds.Contains(p.UserId) && p.Status == ProfileStatus.Approved && !hidden.Contains(p.Id), ct);
+            .CountAsync(p => weekViewerUserIds.Contains(p.UserId) && p.Status == ProfileStatus.Approved && !p.IsHidden && !hidden.Contains(p.Id), ct);
 
         // interests and matches (other side still visible to me)
         var interests = await _context.MatchRequests.AsNoTracking()
@@ -68,7 +68,7 @@ public class DashboardService : IDashboardService
         var shortlisterUserIds = await _context.Shortlists.AsNoTracking()
             .Where(s => s.ProfileId == me.Value).Select(s => s.UserId).ToListAsync(ct);
         dto.ShortlistedBy = await _context.CandidateProfiles.AsNoTracking()
-            .CountAsync(p => shortlisterUserIds.Contains(p.UserId) && p.Status == ProfileStatus.Approved && !hidden.Contains(p.Id), ct);
+            .CountAsync(p => shortlisterUserIds.Contains(p.UserId) && p.Status == ProfileStatus.Approved && !p.IsHidden && !hidden.Contains(p.Id), ct);
 
         // messages — blocked chats don't count
         var conversations = (await _chat.GetConversationsAsync(userId, ct)).Where(c => !c.IsBlocked).ToList();

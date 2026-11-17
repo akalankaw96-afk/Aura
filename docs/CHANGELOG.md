@@ -5,7 +5,103 @@ Sections: Added · Changed · Fixed · Security · Removed · Breaking.
 
 ## [Unreleased]
 
+### Fixed
+- 2026-11-16 — **Merge of `main` (new admin area) into `S04-Pay` checked.** Resolved the conflicts left by `git stash
+  pop`: `PlansScreen.tsx` (main's checkout button and "How do I pay?" + database prices + real Free limits) and
+  `TECHNICAL_DEBT.md` (both sides used TD-28 / TD-29 — main keeps them; the search-filter item is now **TD-30** and "no
+  online gateway" **TD-31**). Fixed a silent bad merge in `PlanUsageCard.tsx` (main's collapsible card still used the
+  old browser limits `FREE_LIMITS` → now the server limits). The new admin sidebar had dropped three working screens —
+  added back as pages: **Reports** (`/admin/reports`, S03-T08), **Plan limits** (`/admin/limits`, admin) and **Prices**
+  (`/admin/prices`, admin). Files: `components/auth/PlansScreen.tsx`, `components/sections/dashboard/PlanUsageCard.tsx`,
+  `components/admin/AdminShell.tsx`, `components/sections/admin/StaffConsole.tsx` (exports), `app/admin/{reports,limits,prices}/page.tsx`.
+
 ### Added
+- 2026-11-17 — **Sprint 04 closing (S04-T09).** New test: an open order takes the admin's new price, an approved
+  payment keeps what was paid (`PaymentTests`). 72 tests in total — owner ran `dotnet test` 2026-11-17: 72 / 72 green, **Sprint 04 completed**. Docs: PROGRESS (T01–T08 completed), TECHNICAL_DEBT
+  (TD-11 money part done, TD-13 count, new TD-32 — admin member detail page + payments CSV not built), SPRINT_PLAN.
+- 2026-11-17 — **Take a break and delete account (S04-T08).** `POST /api/account/visibility` `{ hidden }` (new
+  `CandidateProfiles.HiddenByMemberAt`: out of search and best matches, friends / chats / plan kept; session field
+  `profileHidden`). `POST /api/account/delete/send-code` (own SMS text) and `POST /api/account/delete` `{ code, reason,
+  comment? }`: `Users.DeletionRequestedAt`, sign-in refused with 403 `ACCOUNT_DELETED`, profile hidden everywhere,
+  pending interests withdrawn, sessions ended and refresh cookie cleared; the reason goes to `AccountClosureFeedback`
+  with no member link. The hourly maintenance job erases accounts 30 days later (`Users.ErasedAt`): photos and ID
+  files, chats, interests, shortlists, blocks, views, saved searches, notifications, codes, sessions, name / mobile /
+  e-mail / profile text — payments (member note cleared), subscriptions, boosts and staff decision logs stay. Admin
+  members list shows these as Deactivated with "Deleted by the member…" and refuses changes. Web:
+  `services/accountClosure.ts` reads the hidden flag from the session. Files: `AccountService.cs`,
+  `AccountController.cs`, `AdminDtos.cs` (account DTOs), `User.cs`, `CandidateProfile.cs`, `AuditEntities.cs`,
+  `AuthEnums.cs`, `OtpService.cs`, `AuthService.cs`, `AppException.cs`, `AuthDtos.cs`, `SessionService.cs`,
+  `SearchService.cs`, `ProfileService.cs`, `AdminMembersService.cs`, configurations, db context, DI,
+  `BillingMaintenanceService.cs`, `AccountTests.cs`; web `services/accountClosure.ts`, `services/api.ts`.
+- 2026-11-17 — **Staff back office: counts, members, block / deactivate, password reset (S04-T07).**
+  `GET /api/admin/stats` (members, new this week, active in 30 days, waiting review, re-sent after changes, incomplete,
+  blocked, paid) and `GET /api/admin/members?search=&status=&page=&pageSize=` (name, mobile in 077… or +94… form,
+  e-mail, profile code; Active · PendingReview · Incomplete · Deactivated · Blocked; plan; last active) for Admin +
+  Moderator. Admin only: `POST /api/admin/members/{id}/status` `{ action, reason }` — block (can't sign in, profile
+  hidden, sessions ended), unblock (also reinstates a suspended profile), deactivate (hidden, sessions ended; signing in
+  again brings the account back), activate — and `POST /api/admin/members/{id}/reset-password` (old password stops
+  working, sessions end, SMS tells the member to use "Forgot password"). New `Users.DeactivatedAt` / `StatusReason`,
+  `CandidateProfiles.IsHidden` (hidden profiles drop out of search, profile pages, interests, shortlists, viewers,
+  dashboard counts and public photos) and an `AuditLogs` table (who, action, member, reason, when). Web: the Members and
+  Dashboard admin pages use the real API; block / deactivate / reset are shown to admins only. Files: `User.cs`,
+  `CandidateProfile.cs`, `AuditEntities.cs`, configurations, db context, DI, `SessionService.cs`,
+  `AdminMembersService.cs`, `AdminDtos.cs`, `AdminMembersController.cs`, visibility checks in Search / Profile /
+  MatchRequest / Shortlist / ProfileView / Dashboard / Media services, `AdminMembersTests.cs`; web
+  `components/admin/AdminMembers.tsx`, `lib/adminApi.ts`.
+- 2026-11-17 — **Dashboard plan and payments from the API (S04-T06).** `lib/verification.ts`: `useMembership()` /
+  `loadMembership()` read `GET /api/me/subscription` (plan running now, start, valid until with renewals, days left,
+  renewal bought) — `readMembership()` returns the last loaded value (feedback popup). `ProPlanCard` uses it (no renew
+  reminder once a renewal is bought) and shows a **payment history** (`GET /api/payments/mine`: status, reject reason,
+  receipt). New `PaymentStatusNotice` under the dashboard hero: "we're checking your payment" while a receipt waits,
+  "we couldn't confirm your payment" + reason + Try again for 14 days after a rejection. `lib/session.ts`: the plan is
+  the session's `planId` only (was "premium" when the profile flag was set). Files: `lib/verification.ts`,
+  `lib/session.ts`, `components/sections/dashboard/{ProPlanCard,PaymentStatus}.tsx`, `app/dashboard/page.tsx`.
+- 2026-11-17 — **Profile boosts on the server (S04-T05).** New `Boosts` table and `CandidateProfiles.PromotedUntil`
+  (cache written only by `BoostService`). A boost is bought like a plan: `POST /api/payments/bank-transfer` `{ product:
+  "boost", days: 7 }` — only for approved profiles on Gold / Platinum (403 `KYC_REQUIRED`, 402 `PLAN_REQUIRED`); price
+  from the price list (LKR 500), reference `VK-B7-…`; plan and boost orders are separate. When staff approve the
+  receipt the boost starts now, or right after the current one (extending), once per payment (unique index on
+  `Boosts.PaymentId`); member told in-app + SMS. Search lists promoted profiles first (any sort) and returns
+  `promoted: true`. `GET /api/boosts/me` → `{ active, startsAt, endsAt, daysLeft, totalDays, views, interests, canBuy }`.
+  Web: `lib/promotion.ts` reads the API; the promote dialog sends members to the bank-transfer checkout
+  (`/plans/checkout?product=boost`) instead of the fake card / LankaQR / eZ Cash buttons; the checkout page handles
+  boosts; the search page's "Promoted profiles" row uses the API flag. Files: `BillingEntities.cs` (`Boost`),
+  `CandidateProfile.cs`, `BillingConfigurations.cs`, `BillingDtos.cs`, `ProfileDtos.cs`, `BoostService.cs`,
+  `PaymentService.cs`, `SearchService.cs`, `ProfileService.cs`, `BoostsController.cs`, DI, db context, `PaymentTests.cs`;
+  web `lib/promotion.ts`, `lib/billing.ts`, `components/sections/promote/PromoteFlow.tsx`,
+  `components/sections/payment/BankTransferScreen.tsx`, `app/search/page.tsx`, `types/index.ts`.
+- 2026-11-16 — **Bank-transfer payments and the staff payments queue (S04-T03, T04).** New `Payments` table. Members:
+  `POST /api/payments/bank-transfer` `{ planId, months }` makes an order (amount from the price list, reference made by
+  the server, e.g. `VK-G3-7K2QXM`; asking again reuses it, a different choice replaces an order with no receipt; 409
+  `PAYMENT_UNDER_REVIEW` while a receipt is being checked), `POST /api/payments/{id}/receipt` (multipart `receipt` JPG /
+  PNG / WebP / PDF up to 10 MB checked by its bytes, `paidOn`, `note`), `GET /api/payments/mine`, `GET
+  /api/payments/{id}/receipt` (owner + staff), `GET /api/payments/bank-account` (from appsettings `BankTransfer` —
+  placeholders until the owner sends the real account). Staff (`/api/moderation/payments`, Admin + Moderator): list,
+  approve (starts or extends the plan exactly once — check in `SubscriptionService` + unique index on
+  `Subscriptions.PaymentId`, 409 `PAYMENT_ALREADY_USED`; in-app + SMS "Payment confirmed"), reject with a reason the
+  member sees (in-app + SMS). Receipt views and decisions go to the member's review history (`ReviewAction` 10–12).
+  Web: the checkout page uses the API (order, bank details, upload, "under review" on every device, last rejection shown)
+  instead of localStorage and a reference made in the browser; new admin page **Payments** (`/admin/payments`).
+  Files: `BillingEntities.cs` (`Payment`), `Enums.cs` (`PaymentStatus`, `ReviewAction`), `BillingConfigurations.cs`,
+  `BillingDtos.cs`, `FileRules.cs` (receipt limit), `AppException.cs` (codes), `PaymentService.cs`,
+  `SubscriptionService.cs`, `PaymentsController.cs`, `DependencyInjection.cs`, `appsettings.json`,
+  `PaymentTests.cs`; web `lib/billing.ts`, `components/sections/payment/BankTransferScreen.tsx`,
+  `components/admin/AdminPayments.tsx`, `components/admin/AdminShell.tsx`, `app/admin/payments/page.tsx`, `content/payment.ts`.
+  Decision: Roles & staff postponed (Admin and Moderator only for now).
+- 2026-11-16 — **Prices in the database and real subscriptions (S04-T01, T02).** New `PlanPrices` (amounts in cents,
+  LKR; seeded with the Plans-page prices — Gold 2,500 / 6,375 / 11,250, Platinum 6,500 / 16,575 / 29,250, boost 500 for
+  7 days) with `GET /api/plans` (public, saving % per length) and `GET/PUT /api/admin/prices`; staff area **Prices** tab;
+  the Plans page reads the API. New `Subscriptions`: the member's plan is the best period running now — plan limits,
+  "asking for numbers needs Gold" and the session (`planId` gold / platinum, new `planEndsAt`) all use it instead of the
+  `Premium` flag (now a cache with `PlanId` / `PlanEndsAt` on the profile). Renewing early adds a period after the
+  current one; Platinum starts at once. An hourly background job ends finished periods and sends the "ends in 3 days"
+  reminder (in-app + SMS, once, not when a renewal follows). `GET /api/me/subscription`; admin `GET/POST
+  /api/admin/members/{userId}/subscriptions` (give a plan, note required) and `POST /api/admin/subscriptions/{id}/cancel`.
+  At start-up, profiles that only had the old `Premium` flag get a one-month Gold period. Files: `BillingEntities.cs`,
+  `BillingConfigurations.cs`, `BillingDtos.cs`, `PricingService.cs`, `SubscriptionService.cs` (+ `SubscriptionRules`),
+  `UsageService`, `SessionService`, `AuthDtos`, initialiser, `PlansController`, `AdminController` / `MeController`,
+  `WebApi/Billing/BillingMaintenanceService.cs`, `Program.cs`; web `lib/billing.ts`, `PlansScreen.tsx`, `StaffConsole.tsx`;
+  tests `BillingTests` (+ older tests now use real subscriptions). Migration `Sprint04Billing` (owner generates).
 - 2026-11-16 — **Staff reports queue (S03-T08).** `GET /api/moderation/reports?status=open|closed|all` and
   `POST /api/moderation/reports/{id}/resolve` with `dismiss`, `action` (handled without suspending) or `suspend` (note
   required; suspends the member and closes all their open reports). The reporter gets an in-app "We reviewed your report"
@@ -39,7 +135,7 @@ Sections: Added · Changed · Fixed · Security · Removed · Breaking.
   admin's limits and reset date; the Upgrade prompt opens on any 402 (`LIMIT_REACHED` / `PLAN_REQUIRED`) and is closable
   except when searches and views are both used up on /search. Free members can now send interests and start chats up to
   their limits (they were Gold-only in the browser). Search uses `GET /api/profiles/search` (48 per API page, "Load
-  more"; multi-selects, height, countries and "More" filters narrow the loaded results — TD-28) and opens profiles
+  more"; multi-selects, height, countries and "More" filters narrow the loaded results — TD-30) and opens profiles
   through `GET /api/profiles/{id}`, so views are counted; deep links accept the profile UUID. Saved searches are real
   (chips above the results). Favourites = server shortlist; Friends, Received and Sent tabs and the dashboard
   requests card read `/api/match-requests/matched · received · sent`; accept / decline / **Withdraw** call the API.

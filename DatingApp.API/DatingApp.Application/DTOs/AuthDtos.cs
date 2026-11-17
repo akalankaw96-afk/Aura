@@ -126,6 +126,10 @@ public class AuthResponseDto
     public string ProfileStatus { get; set; } = "None";
     public bool IsPremium { get; set; }
     public string PlanId { get; set; } = "free";
+    /// <summary>When the paid plan ends (renewals included); null on Free (S04-T02).</summary>
+    public DateTime? PlanEndsAt { get; set; }
+    /// <summary>"Take a break": the member hid their profile from search (S04-T08).</summary>
+    public bool ProfileHidden { get; set; }
     public string? PhotoUrl { get; set; }
 }
 

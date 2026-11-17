@@ -76,8 +76,8 @@ public class SearchAndUsageTests
     public async Task Paid_members_and_staff_are_unlimited()
     {
         using var db = TestDb.Create();
-        var (gold, goldProfile) = await TestDb.AddMemberAsync(db, "Gold", "+94770000001");
-        goldProfile.Premium = true;
+        var (gold, _) = await TestDb.AddMemberAsync(db, "Gold", "+94770000001");
+        await TestDb.MakePaidAsync(db, gold.Id);
         var staff = new User { FullName = "Mod", PhoneNumber = "+94770000099", Role = Roles.Moderator };
         db.Users.Add(staff);
         await db.SaveChangesAsync();

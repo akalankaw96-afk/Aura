@@ -2,8 +2,8 @@
  * Plan prices + bank transfer details (Plans page and Payment page).
  * Phase 1 = bank transfer only; card / LankaQR / eZ Cash come after the business is registered.
  *
- * ⚠️ BANK_ACCOUNT values in [square brackets] are placeholders — replace them with the real account
- * before launch (they are copied by the members, so they must be exact).
+ * The real bank account comes from the API (appsettings "BankTransfer", GET /api/payments/bank-account — S04-T03);
+ * BANK_ACCOUNT below is only shown until that loads. Prices come from GET /api/plans; PLAN_PRICES is the fallback.
  */
 export type PaidPlan = "gold" | "platinum";
 export type Period = 1 | 3 | 6;

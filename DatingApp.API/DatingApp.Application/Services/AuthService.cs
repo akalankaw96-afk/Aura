@@ -141,7 +141,7 @@ public class AuthService : IAuthService
         }
 
         // Only reveal suspension to someone who knows the password.
-        if (!user.IsActive) throw Suspended();
+        if (!user.IsActive) throw Suspended(user);
 
         // Sign-up isn't finished until the mobile number is confirmed by SMS.
         if (!user.PhoneVerified && user.GoogleSubject == null && user.PhoneNumber.Length > 0)
@@ -188,7 +188,7 @@ public class AuthService : IAuthService
         }
         else
         {
-            if (!user.IsActive) throw Suspended();
+            if (!user.IsActive) throw Suspended(user);
             user.GoogleSubject ??= identity.Subject; // link an existing e-mail account (Google verified the address)
             if (user.Profile != null && string.IsNullOrWhiteSpace(user.Profile.PhotoUrl) && !string.IsNullOrWhiteSpace(identity.PictureUrl))
             {
@@ -228,7 +228,7 @@ public class AuthService : IAuthService
         }
         else if (!user.IsActive)
         {
-            throw Suspended();
+            throw Suspended(user);
         }
 
         user.PhoneVerified = true;
@@ -262,6 +262,7 @@ public class AuthService : IAuthService
     private static AppException InvalidCredentials() =>
         new(401, ErrorCodes.InvalidCredentials, "Invalid email, mobile number or password.");
 
-    private static AppException Suspended() =>
-        new(403, ErrorCodes.AccountSuspended, "This account is suspended. Please contact support.");
+    private static AppException Suspended(User user) => user.DeletionRequestedAt != null
+        ? new(403, ErrorCodes.AccountDeleted, "This account was deleted. You can sign up again once it has been erased (within 30 days).")
+        : new(403, ErrorCodes.AccountSuspended, "This account is suspended. Please contact support.");
 }

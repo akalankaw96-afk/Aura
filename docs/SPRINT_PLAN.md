@@ -80,10 +80,27 @@ interests and chat at once — one shared usage service, tested.
 | S03-T10 | Web wiring: Search, profile page, Friends, Messages, Dashboard on these APIs; remove remaining mock fallbacks | BUG-014 | No sample data or browser-only state for these features |
 | S03-T11 | Tests (search filters, limits, interests, block) + docs | TD-13 | `dotnet test` green; docs updated |
 
-## Sprint 04 — Earn (B/U/X, AD)
-Plans from DB with money in cents (TD-11); hosted payment gateway checkout + webhook (idempotent); subscriptions and
-expiry; boosts (LKR 500 / 7 days, extend) server-side (BUG-011 done); admin back office: members, payments, reports,
-audit log; account deactivate/delete and retention.
+## Sprint 04 — Earn (B/U/X, AD) — completed 2026-11-17
+**Goal:** members can pay for Gold / Platinum and boosts, the server decides who is paid (no more client-trusted plan
+or boost), and staff can see and manage members and payments.
+**Dependencies:** Sprint 03 (plan limits read the member's plan). **Decisions (owner, 2026-11-16):** payment by **bank
+transfer only for now** — the member gets an order reference and the bank details, uploads the slip, staff approve it
+(an online gateway such as PayHere comes later, TD-31); **prices as on the Plans page**, stored in the database and
+editable by the admin: Gold LKR 2,500 / 6,375 / 11,250 and Platinum 6,500 / 16,575 / 29,250 for 1 / 3 / 6 months,
+boost LKR 500 for 7 days; **no auto-renew** — a reminder 3 days before the end, renewing early adds to the end date;
+branch **`S04-pay`**. Roles & staff (custom roles, staff usernames) postponed to a later sprint (owner, 2026-11-16). **Risk:** money and entitlements — amounts in cents, every approval audited, idempotent decisions.
+
+| ID | Task | Fixes | Acceptance criteria |
+|---|---|---|---|
+| S04-T01 | Plans and prices in the database (`PlanPrice`: plan, months, amount in cents, LKR; boost product); `GET /api/plans`; admin edits prices (staff area) | TD-11 | Plans page shows prices from the API; admin change shows at once; money never stored as text |
+| S04-T02 | Subscriptions (`Subscription`: plan, starts, ends, status, payment); the plan comes from the active subscription (replaces `Premium`); expiry; reminder (in-app + SMS) 3 days before; `GET /api/me/subscription` | BUG-011 (plan) | Gold ends on its date → back to Free limits; early renewal extends; reminder sent once |
+| S04-T03 | Bank-transfer orders (`Payment`: product, plan / months or boost, amount, reference `VK-G3-XXXXXX` made by the server, status, slip); create order, upload slip (JPEG / PNG / WebP / PDF ≤ 10 MB to match the Payment page, `IFileStorage`), my payments; bank details from configuration | — | Member sees the amount, reference and bank details; slip upload is private (owner + staff) |
+| S04-T04 | Staff payments queue: awaiting review, view slip (logged), approve → starts / extends the plan or boost, reject with a reason; member notified (in-app + SMS) | — | Approval is one-time (no double plan); every decision recorded with staff + time |
+| S04-T05 | Boosts on the server (`Boost`: profile, starts, ends, payment); paid + approved members; extend by 7 days; promoted profiles first in search with a "Promoted" flag; `GET /api/boosts/me` | BUG-011 (boost) | Boost shows only after approval and ends on its date |
+| S04-T06 | Web: Plans → "Pay by bank transfer" (order → bank details + reference → upload slip → waiting), payment history, dashboard plan card and expiry from the API, boost flow from the API; remove localStorage plan / boost; Plans copy matches the real Free limits | BUG-011 | Editing localStorage gives nothing; whole flow works in the browser |
+| S04-T07 | Admin back office: members list / search (mobile, code, name), member detail (plan, payments, reports, review history, role), payments list + CSV export, audit log | — | Admin finds a member and sees their full history in one place |
+| S04-T08 | Account: deactivate (hidden, can come back) and delete request (data anonymised after 30 days); retention rules documented | — | Deactivated members vanish from search / lists; deletion runs after 30 days |
+| S04-T09 | Tests (prices, subscription dates, approve once, expiry, boost order in search) + docs | TD-13 | `dotnet test` green; docs updated |
 
 ## Sprint 05 — Cleanup & front-end debt
 Remove dead legacy UI (TD-01) and remaining palette violations (BUG-019); shared `Modal` and migrate 9 dialogs (TD-02);

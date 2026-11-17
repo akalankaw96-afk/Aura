@@ -117,8 +117,7 @@ public class ReportsAndDashboardTests
         Assert.Equal("Bimal", Assert.Single(free.RecentConversations).PartnerName);
         Assert.Equal("free", free.Usage.PlanId);
 
-        me.Premium = true;
-        await db.SaveChangesAsync();
+        await TestDb.MakePaidAsync(db, meUser.Id);
         var gold = await service.GetAsync(meUser.Id);
         Assert.False(gold.ViewersLocked);
         Assert.Equal(2, gold.RecentViewers.Count);

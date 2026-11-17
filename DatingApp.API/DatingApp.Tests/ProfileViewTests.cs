@@ -66,8 +66,7 @@ public class ProfileViewTests
         Assert.Equal(1, free.Total);
         Assert.Empty(free.Items);
 
-        mine.Premium = true;
-        await db.SaveChangesAsync();
+        await TestDb.MakePaidAsync(db, me.Id);
         var gold = await views.GetViewersAsync(me.Id);
         Assert.False(gold.Locked);
         Assert.Equal("Viewer", Assert.Single(gold.Items).Profile.Name);

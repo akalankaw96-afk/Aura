@@ -35,7 +35,7 @@ public class ShortlistService : IShortlistService
 
         var ids = rows.Select(r => r.ProfileId).ToList();
         var profiles = await _context.CandidateProfiles.AsNoTracking()
-            .Where(p => ids.Contains(p.Id) && p.Status == ProfileStatus.Approved)
+            .Where(p => ids.Contains(p.Id) && p.Status == ProfileStatus.Approved && !p.IsHidden)
             .ToDictionaryAsync(p => p.Id, ct);
 
         return rows.Where(r => profiles.ContainsKey(r.ProfileId) && !hidden.Contains(r.ProfileId))
@@ -51,7 +51,7 @@ public class ShortlistService : IShortlistService
         var me = await _context.ProfileIdOfAsync(userId, ct);
         if (me == profileId) throw AppException.Validation("You cannot shortlist your own profile.", "profileId");
 
-        var visible = await _context.CandidateProfiles.AnyAsync(p => p.Id == profileId && p.Status == ProfileStatus.Approved, ct);
+        var visible = await _context.CandidateProfiles.AnyAsync(p => p.Id == profileId && p.Status == ProfileStatus.Approved && !p.IsHidden, ct);
         if (!visible || (me.HasValue && await _context.IsBlockedEitherWayAsync(me.Value, profileId, ct)))
             throw AppException.NotFound("This member is no longer available.");
 

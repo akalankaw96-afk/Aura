@@ -8,6 +8,7 @@ import { Badge, Button } from "@/components/ui";
 import { PLAN_PRICES, lkr, type Period } from "@/content/payment";
 import { cn } from "@/lib/cn";
 import { readPlan } from "@/lib/verification";
+import { getPlans } from "@/lib/billing";
 import { AuthShell } from "./AuthShell";
 import { BackButton } from "@/components/ui/BackButton";
 
@@ -17,17 +18,18 @@ import { BackButton } from "@/components/ui/BackButton";
  * Prices live in content/payment.ts (shared with the Payment page).
  */
 type PlanId = "free" | "gold" | "platinum";
-const PRICES = PLAN_PRICES;
-const SAVE: Record<Period, string | null> = { 1: null, 3: "Save 15%", 6: "Save 25%" };
+/** Shown until GET /api/plans answers (and if it can't be reached); the database prices replace them (S04-T01). */
+const DEFAULT_PRICES = PLAN_PRICES;
+const DEFAULT_SAVE: Record<Period, string | null> = { 1: null, 3: "Save 15%", 6: "Save 25%" };
 
 const PLANS: { id: PlanId; name: string; tagline: string; features: string[] }[] = [
-  { id: "free", name: "Free", tagline: "Your current plan", features: ["Create & post your profile", "3 searches per month", "5 profile views per month", "Safety & privacy controls"] },
+  { id: "free", name: "Free", tagline: "Your current plan", features: ["Create & post your profile", "A few searches and profile views each month", "A few interests and new chats each month", "Safety & privacy controls"] },
   { id: "gold", name: "Gold", tagline: "For serious seekers and families", features: ["Unlimited messages and interest requests", "Unlimited searches and profile views", "See contacts after acceptance", "View horoscopes", "Highlighted in search"] },
   { id: "platinum", name: "Platinum", tagline: "Personal help from our matchmakers", features: ["Everything in Gold", "Dedicated matchmaker", "Hand-picked weekly matches", "Priority verification"] },
 ];
 
 const FAQ = [
-  { q: "Can I stay on the Free plan?", a: "Yes. Your profile stays live and you get 3 searches and 5 profile views each month. Gold unlocks messages and interest requests." },
+  { q: "Can I stay on the Free plan?", a: "Yes. Your profile stays live and each month you get a few searches, profile views, interests and new chats. Gold removes every limit." },
   { q: "How do I pay?", a: "By bank transfer for now. Choose a plan, transfer the amount to our bank account with your payment reference, then upload the receipt. We activate your plan within 24 hours (Mon–Sat). Card, LankaQR and eZ Cash are coming soon." },
   { q: "Can I cancel?", a: "Plans don’t auto-renew. When your period ends you simply move back to Free. No hidden fees." },
 ];
@@ -38,6 +40,25 @@ export function PlansScreen() {
   const [current, setCurrent] = useState<PlanId>("free");
   useEffect(() => setCurrent(readPlan()), []);
   const router = useRouter();
+  // prices from the database (S04-T01); the admin can change them at any time
+  const [PRICES, setPrices] = useState(DEFAULT_PRICES);
+  const [SAVE, setSave] = useState(DEFAULT_SAVE);
+  useEffect(() => {
+    getPlans()
+      .then((list) => {
+        const next = { gold: { ...DEFAULT_PRICES.gold }, platinum: { ...DEFAULT_PRICES.platinum } };
+        const save: Record<Period, string | null> = { 1: null, 3: null, 6: null };
+        for (const p of list) {
+          if (p.product !== "plan" || (p.planId !== "gold" && p.planId !== "platinum")) continue;
+          if (p.months !== 1 && p.months !== 3 && p.months !== 6) continue;
+          next[p.planId][p.months as Period] = p.amount;
+          if (p.planId === "gold" && p.savePercent) save[p.months as Period] = `Save ${p.savePercent}%`;
+        }
+        setPrices(next);
+        setSave(save);
+      })
+      .catch(() => undefined); // keep the defaults; the server checks the real price when an order is made
+  }, []);
   const [openFaq, setOpenFaq] = useState(0);
 
   return (

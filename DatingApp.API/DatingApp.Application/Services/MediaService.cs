@@ -135,7 +135,7 @@ public class MediaService : IMediaService
             .FirstOrDefaultAsync(p => p.Id == photoId, ct) ?? throw AppException.NotFound("Photo not found.");
 
         var isOwner = viewer.UserId.HasValue && photo.Profile?.UserId == viewer.UserId;
-        var isPublic = photo.Status == ReviewItemStatus.Approved && photo.Profile?.Status == ProfileStatus.Approved;
+        var isPublic = photo.Status == ReviewItemStatus.Approved && photo.Profile?.Status == ProfileStatus.Approved && photo.Profile.IsHidden == false;
         if (!isPublic && !isOwner && !viewer.IsStaff) throw AppException.NotFound("Photo not found.");
 
         var stream = await _storage.OpenReadAsync(photo.StorageKey, ct) ?? throw AppException.NotFound("Photo not found.");

@@ -3,7 +3,9 @@ namespace DatingApp.Domain.Enums;
 public enum OtpPurpose
 {
     VerifyPhone = 1,
-    ResetPassword = 2
+    ResetPassword = 2,
+    /// <summary>Confirms "delete my account" (S04-T08).</summary>
+    DeleteAccount = 3
 }
 
 public enum OtpChannel
