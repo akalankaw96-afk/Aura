@@ -35,6 +35,8 @@ import { cn } from "@/lib/cn";
 import { ShareProfileDialog } from "@/components/profile/ShareProfileDialog";
 import { ProfileActions } from "@/components/profile/ProfileActions";
 import { favouriteProfile, useFavourites, useIsConnected, useSentInterests } from "@/lib/connections";
+import { reportMember, type ReportReason } from "@/lib/matching";
+import { ApiError } from "@/lib/http";
 import { useRouter } from "next/navigation";
 import { requireMember, useSignedIn } from "@/lib/session";
 import { Badge } from "@/components/ui/Badge";
@@ -50,6 +52,8 @@ import { type ProfileExtras } from "@/content/search";
 
 export interface ViewProfile {
   id: string;
+  /** the member's profile id (UUID) — used for shortlist and reports */
+  profileId?: string;
   name?: string;
   gender: "bride" | "groom";
   age: number;
@@ -557,12 +561,23 @@ function Detail({ p, x, onInterest }: { p: ViewProfile; x?: ProfileExtras; onInt
         id={p.id}
         open={reportOpen}
         onCancel={() => setReportOpen(false)}
-        onSubmit={() => {
+        onSubmit={async (reason, details) => {
           setReportOpen(false);
           if (!requireMember("report a profile")) return;
-          setReported(true);
-          markSafetyEvent();
-          toast.success("Report submitted", `Thank you, our safety team will review ${p.id} within 24 hours.`);
+          if (!p.profileId) return;
+          try {
+            // POST /api/reports — reaches the staff area (S03-T07)
+            const apiReason = REPORT_REASON_API[reason] ?? "Other";
+            const text = [apiReason === "Other" || reason.startsWith("Photos") ? reason : "", details.trim()].filter(Boolean).join(". ");
+            await reportMember(p.profileId, apiReason, text);
+            setReported(true);
+            markSafetyEvent();
+            toast.success("Report submitted", `Thank you, our safety team will review ${p.id} within 24 hours.`);
+          } catch (err) {
+            const already = err instanceof ApiError && err.status === 409;
+            if (already) setReported(true);
+            toast.error(already ? "Already reported" : "Report not sent", err instanceof Error ? err.message : "Please try again.");
+          }
         }}
       />, document.body)}
     </article>
@@ -578,8 +593,18 @@ const REPORT_REASONS = [
   "Other",
 ];
 
+/** The dialog's reasons → the API's report reasons (Scam · Inappropriate · FakeProfile · Other). */
+const REPORT_REASON_API: Record<string, ReportReason> = {
+  "Fake or misleading profile": "FakeProfile",
+  "Photos are not of this person": "FakeProfile",
+  "Asked for money or bank details": "Scam",
+  "Already married or in a relationship": "Other",
+  "Rude or inappropriate behaviour": "Inappropriate",
+  Other: "Other",
+};
+
 /** Report profile — simple dialog: reason (required) + details, then Submit. Same style as the Block dialog. */
-function ReportModal({ id, open, onCancel, onSubmit }: { id: string; open: boolean; onCancel: () => void; onSubmit: () => void }) {
+function ReportModal({ id, open, onCancel, onSubmit }: { id: string; open: boolean; onCancel: () => void; onSubmit: (reason: string, details: string) => void }) {
   const [reason, setReason] = useState("");
   const [details, setDetails] = useState("");
   const [tried, setTried] = useState(false);
@@ -612,7 +637,7 @@ function ReportModal({ id, open, onCancel, onSubmit }: { id: string; open: boole
     e.preventDefault();
     setTried(true);
     if (!reason || needsDetails) return;
-    close(onSubmit);
+    close(() => onSubmit(reason, details));
   };
 
   return (

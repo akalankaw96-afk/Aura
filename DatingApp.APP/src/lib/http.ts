@@ -15,13 +15,23 @@ const DEFAULT_TIMEOUT_MS = 15_000;
 /** Signed-in member details kept in localStorage — never the token (see `SESSION_KEY`). */
 export const SESSION_KEY = "aura_session";
 
+/** Extra ProblemDetails fields. Plan limits (402 LIMIT_REACHED / PLAN_REQUIRED) add feature, limit, planId, resetsAt. */
+export interface ApiErrorExtras {
+  attemptsLeft?: number;
+  retryAfterSeconds?: number;
+  feature?: string;
+  limit?: number;
+  planId?: string;
+  resetsAt?: string;
+}
+
 /** An API failure with the ProblemDetails `code` (e.g. CODE_INVALID) and extras such as `attemptsLeft`. */
 export class ApiError extends Error {
   constructor(
     message: string,
     public readonly status: number,
     public readonly code?: string,
-    public readonly extras: { attemptsLeft?: number; retryAfterSeconds?: number } = {},
+    public readonly extras: ApiErrorExtras = {},
   ) {
     super(message);
     this.name = "ApiError";
@@ -29,11 +39,14 @@ export class ApiError extends Error {
 }
 
 export async function toApiError(res: Response, fallback: string): Promise<ApiError> {
-  const body: { title?: string; message?: string; code?: string; attemptsLeft?: number; retryAfterSeconds?: number } =
-    await res.json().catch(() => ({}));
+  const body: { title?: string; message?: string; code?: string } & ApiErrorExtras = await res.json().catch(() => ({}));
   return new ApiError(body.title || body.message || fallback, res.status, body.code, {
     attemptsLeft: body.attemptsLeft,
     retryAfterSeconds: body.retryAfterSeconds,
+    feature: body.feature,
+    limit: body.limit,
+    planId: body.planId,
+    resetsAt: body.resetsAt,
   });
 }
 

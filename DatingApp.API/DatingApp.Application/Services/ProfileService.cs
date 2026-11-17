@@ -292,7 +292,7 @@ public class ProfileService : IProfileService
         throw new InvalidOperationException("Could not generate a unique profile code.");
     }
 
-    private static ProfileDto MapToDto(CandidateProfile p, bool includeMemberDetails = false, bool owner = false)
+    internal static ProfileDto MapToDto(CandidateProfile p, bool includeMemberDetails = false, bool owner = false)
     {
         var details = string.IsNullOrWhiteSpace(p.SubmittedDetailsJson)
             ? null

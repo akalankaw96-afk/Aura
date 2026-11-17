@@ -78,7 +78,7 @@ export function Hero() {
         <div className="enter w-full" style={{ "--enter-delay": "500ms" } as React.CSSProperties}>
           <Marquee key={filter}>
             {list.map((p) => (
-              <ProfilePhotoCard key={p.id} profile={p} variant="card" href={`/search?for=${p.gender}&id=${p.id}&from=home`} />
+              <ProfilePhotoCard key={p.id} profile={p} variant="card" href={`/search?for=${p.gender}&id=${p.profileId ?? p.id}&from=home`} />
             ))}
           </Marquee>
         </div>

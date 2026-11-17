@@ -19,7 +19,13 @@ export interface ChatMessageDto {
   safetyFlagReason?: string | null;
   isContactShareRequest: boolean;
   isContactShareAccepted: boolean;
+  /** S03-T07: the asked member said "not now" / the asker cancelled */
+  isContactShareDeclined?: boolean;
+  isContactShareCancelled?: boolean;
 }
+
+/** Result of a hub call: ok, or the server's "CODE: message" (e.g. "LIMIT_REACHED: …", "BLOCKED: …"). */
+export type HubResult = { ok: true } | { ok: false; error: string };
 
 export interface ConversationDto {
   conversationId: string;
@@ -34,6 +40,10 @@ export interface ConversationDto {
   unreadCount: number;
   isContactShared: boolean;
   partnerPhoneNumber?: string | null;
+  /** none · sent (I asked) · received (they asked) · accepted — from the server (S03-T07) */
+  contactShareState?: "none" | "sent" | "received" | "accepted";
+  /** I blocked this member: read-only until I unblock */
+  isBlocked?: boolean;
 }
 
 export interface TypingIndicatorDto {
@@ -58,6 +68,7 @@ class SignalRService {
   private readListeners: ((convId: string, msgId: string) => void)[] = [];
   private contactShareRequestedListeners: ((convId: string, requesterId: string) => void)[] = [];
   private contactUnlockedListeners: ((payload: ContactUnlockedDto) => void)[] = [];
+  private contactShareClosedListeners: ((convId: string, byProfileId: string, how: "declined" | "cancelled") => void)[] = [];
   private statusListeners: ((status: ConnectionStatus) => void)[] = [];
   private currentStatus: ConnectionStatus = "disconnected";
 
@@ -115,6 +126,14 @@ class SignalRService {
         this.contactUnlockedListeners.forEach((l) => l(payload));
       });
 
+      this.hubConnection.on("ContactShareDeclined", (convId: string, byProfileId: string) => {
+        this.contactShareClosedListeners.forEach((l) => l(convId, byProfileId, "declined"));
+      });
+
+      this.hubConnection.on("ContactShareCancelled", (convId: string, byProfileId: string) => {
+        this.contactShareClosedListeners.forEach((l) => l(convId, byProfileId, "cancelled"));
+      });
+
       this.hubConnection.onreconnecting(() => this.setStatus("reconnecting"));
       this.hubConnection.onreconnected(() => this.setStatus("connected"));
       this.hubConnection.onclose(() => this.setStatus("disconnected"));
@@ -149,24 +168,32 @@ class SignalRService {
     }
   }
 
+  /** Calls a hub method; a HubException comes back as its "CODE: message" text. */
+  private async call(method: string, ...args: unknown[]): Promise<HubResult> {
+    if (this.hubConnection?.state !== signalR.HubConnectionState.Connected) {
+      return { ok: false, error: "OFFLINE: Chat is reconnecting. Please try again in a moment." };
+    }
+    try {
+      await this.hubConnection.invoke(method, ...args);
+      return { ok: true };
+    } catch (err) {
+      const raw = err instanceof Error ? err.message : String(err);
+      // "An unexpected error occurred invoking 'X' on the server. HubException: CODE: message"
+      const error = raw.includes("HubException:") ? raw.slice(raw.indexOf("HubException:") + "HubException:".length).trim() : raw;
+      return { ok: false, error };
+    }
+  }
+
   public async sendMessage(
     senderProfileId: string,
     receiverProfileId: string,
     messageText: string,
     conversationId?: string
-  ): Promise<boolean> {
-    if (this.hubConnection?.state === signalR.HubConnectionState.Connected) {
-      try {
-        // The server knows who is sending from the access token; the ids here are only the receiver.
-        void senderProfileId;
-        void conversationId;
-        await this.hubConnection.invoke("SendMessage", receiverProfileId, messageText);
-        return true;
-      } catch (err) {
-        console.error("SendMessage invoke failed:", err);
-      }
-    }
-    return false;
+  ): Promise<HubResult> {
+    // The server knows who is sending from the access token; the ids here are only the receiver.
+    void senderProfileId;
+    void conversationId;
+    return this.call("SendMessage", receiverProfileId, messageText);
   }
 
   public async sendTyping(conversationId: string, userName: string, isTyping: boolean) {
@@ -191,40 +218,27 @@ class SignalRService {
     }
   }
 
-  public async requestContactShare(
-    conversationId: string,
-    senderProfileId: string,
-    receiverProfileId: string
-  ): Promise<boolean> {
-    if (this.hubConnection?.state === signalR.HubConnectionState.Connected) {
-      try {
-        void conversationId;
-        void senderProfileId;
-        await this.hubConnection.invoke("RequestContactShare", receiverProfileId);
-        return true;
-      } catch (err) {
-        console.error("RequestContactShare failed:", err);
-      }
-    }
-    return false;
+  /** Asking for numbers needs Gold — "PLAN_REQUIRED: …" otherwise. */
+  public async requestContactShare(conversationId: string, senderProfileId: string, receiverProfileId: string): Promise<HubResult> {
+    void conversationId;
+    void senderProfileId;
+    return this.call("RequestContactShare", receiverProfileId);
   }
 
-  public async acceptContactShare(
-    conversationId: string,
-    accepterProfileId: string,
-    partnerProfileId: string
-  ): Promise<boolean> {
-    if (this.hubConnection?.state === signalR.HubConnectionState.Connected) {
-      try {
-        void conversationId;
-        void accepterProfileId;
-        await this.hubConnection.invoke("AcceptContactShare", partnerProfileId);
-        return true;
-      } catch (err) {
-        console.error("AcceptContactShare failed:", err);
-      }
-    }
-    return false;
+  public async acceptContactShare(conversationId: string, accepterProfileId: string, partnerProfileId: string): Promise<HubResult> {
+    void conversationId;
+    void accepterProfileId;
+    return this.call("AcceptContactShare", partnerProfileId);
+  }
+
+  /** "Not now" to the partner's request (S03-T07). */
+  public declineContactShare(partnerProfileId: string): Promise<HubResult> {
+    return this.call("DeclineContactShare", partnerProfileId);
+  }
+
+  /** Take back my own request (S03-T07). */
+  public cancelContactShare(partnerProfileId: string): Promise<HubResult> {
+    return this.call("CancelContactShare", partnerProfileId);
   }
 
   // Event subscription helpers
@@ -260,6 +274,13 @@ class SignalRService {
     this.contactUnlockedListeners.push(callback);
     return () => {
       this.contactUnlockedListeners = this.contactUnlockedListeners.filter((l) => l !== callback);
+    };
+  }
+
+  public onContactShareClosed(callback: (convId: string, byProfileId: string, how: "declined" | "cancelled") => void) {
+    this.contactShareClosedListeners.push(callback);
+    return () => {
+      this.contactShareClosedListeners = this.contactShareClosedListeners.filter((l) => l !== callback);
     };
   }
 

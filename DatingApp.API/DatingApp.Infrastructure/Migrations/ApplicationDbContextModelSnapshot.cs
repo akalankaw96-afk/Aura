@@ -22,6 +22,38 @@ namespace DatingApp.Infrastructure.Migrations
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
 
+            modelBuilder.Entity("DatingApp.Domain.Entities.Block", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("BlockedProfileId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("BlockerProfileId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Reason")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BlockedProfileId");
+
+                    b.HasIndex("BlockerProfileId", "BlockedProfileId")
+                        .IsUnique();
+
+                    b.ToTable("Blocks");
+                });
+
             modelBuilder.Entity("DatingApp.Domain.Entities.CandidateProfile", b =>
                 {
                     b.Property<Guid>("Id")
@@ -134,7 +166,11 @@ namespace DatingApp.Infrastructure.Migrations
                     b.HasIndex("UserId")
                         .IsUnique();
 
+                    b.HasIndex("Status", "CreatedAt");
+
                     b.HasIndex("Status", "SubmittedAt");
+
+                    b.HasIndex("Status", "Gender", "DateOfBirth");
 
                     b.ToTable("CandidateProfiles");
                 });
@@ -153,6 +189,12 @@ namespace DatingApp.Infrastructure.Migrations
                         .HasColumnType("datetime2");
 
                     b.Property<bool>("IsContactShareAccepted")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsContactShareCancelled")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsContactShareDeclined")
                         .HasColumnType("bit");
 
                     b.Property<bool>("IsContactShareRequest")
@@ -436,6 +478,40 @@ namespace DatingApp.Infrastructure.Migrations
                     b.ToTable("PasswordResetTokens");
                 });
 
+            modelBuilder.Entity("DatingApp.Domain.Entities.PlanLimit", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("Feature")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("MonthlyLimit")
+                        .HasColumnType("int");
+
+                    b.Property<string>("PlanId")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("UpdatedByUserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PlanId", "Feature")
+                        .IsUnique();
+
+                    b.ToTable("PlanLimits");
+                });
+
             modelBuilder.Entity("DatingApp.Domain.Entities.PricingPlan", b =>
                 {
                     b.Property<Guid>("Id")
@@ -609,6 +685,40 @@ namespace DatingApp.Infrastructure.Migrations
                     b.ToTable("ProfileReviewLogs");
                 });
 
+            modelBuilder.Entity("DatingApp.Domain.Entities.ProfileView", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("LastViewedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("ViewCount")
+                        .HasColumnType("int");
+
+                    b.Property<Guid>("ViewedProfileId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("ViewerUserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ViewedProfileId", "LastViewedAt");
+
+                    b.HasIndex("ViewerUserId", "ViewedProfileId")
+                        .IsUnique();
+
+                    b.ToTable("ProfileViews");
+                });
+
             modelBuilder.Entity("DatingApp.Domain.Entities.RefreshToken", b =>
                 {
                     b.Property<Guid>("Id")
@@ -662,6 +772,120 @@ namespace DatingApp.Infrastructure.Migrations
                     b.ToTable("RefreshTokens");
                 });
 
+            modelBuilder.Entity("DatingApp.Domain.Entities.Report", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("ConversationId")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Details")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<int>("Reason")
+                        .HasColumnType("int");
+
+                    b.Property<Guid>("ReportedProfileId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("ReporterUserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("ReviewedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("ReviewedByUserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("StaffNote")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ReportedProfileId");
+
+                    b.HasIndex("ReporterUserId", "ReportedProfileId");
+
+                    b.HasIndex("Status", "CreatedAt");
+
+                    b.ToTable("Reports");
+                });
+
+            modelBuilder.Entity("DatingApp.Domain.Entities.SavedSearch", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("FiltersJson")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(60)
+                        .HasColumnType("nvarchar(60)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId", "Name")
+                        .IsUnique();
+
+                    b.ToTable("SavedSearches");
+                });
+
+            modelBuilder.Entity("DatingApp.Domain.Entities.Shortlist", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("ProfileId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ProfileId");
+
+                    b.HasIndex("UserId", "ProfileId")
+                        .IsUnique();
+
+                    b.ToTable("Shortlists");
+                });
+
             modelBuilder.Entity("DatingApp.Domain.Entities.SuccessStory", b =>
                 {
                     b.Property<Guid>("Id")
@@ -709,6 +933,38 @@ namespace DatingApp.Infrastructure.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("SuccessStories");
+                });
+
+            modelBuilder.Entity("DatingApp.Domain.Entities.UsageCounter", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("Count")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("Feature")
+                        .HasColumnType("int");
+
+                    b.Property<DateOnly>("PeriodStart")
+                        .HasColumnType("date");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId", "Feature", "PeriodStart")
+                        .IsUnique();
+
+                    b.ToTable("UsageCounters");
                 });
 
             modelBuilder.Entity("DatingApp.Domain.Entities.User", b =>
@@ -782,6 +1038,21 @@ namespace DatingApp.Infrastructure.Migrations
                     b.HasIndex("PhoneNumber");
 
                     b.ToTable("Users");
+                });
+
+            modelBuilder.Entity("DatingApp.Domain.Entities.Block", b =>
+                {
+                    b.HasOne("DatingApp.Domain.Entities.CandidateProfile", null)
+                        .WithMany()
+                        .HasForeignKey("BlockedProfileId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.HasOne("DatingApp.Domain.Entities.CandidateProfile", null)
+                        .WithMany()
+                        .HasForeignKey("BlockerProfileId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("DatingApp.Domain.Entities.CandidateProfile", b =>
@@ -877,6 +1148,21 @@ namespace DatingApp.Infrastructure.Migrations
                     b.Navigation("Profile");
                 });
 
+            modelBuilder.Entity("DatingApp.Domain.Entities.ProfileView", b =>
+                {
+                    b.HasOne("DatingApp.Domain.Entities.CandidateProfile", null)
+                        .WithMany()
+                        .HasForeignKey("ViewedProfileId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("DatingApp.Domain.Entities.User", null)
+                        .WithMany()
+                        .HasForeignKey("ViewerUserId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("DatingApp.Domain.Entities.RefreshToken", b =>
                 {
                     b.HasOne("DatingApp.Domain.Entities.User", "User")
@@ -886,6 +1172,45 @@ namespace DatingApp.Infrastructure.Migrations
                         .IsRequired();
 
                     b.Navigation("User");
+                });
+
+            modelBuilder.Entity("DatingApp.Domain.Entities.Report", b =>
+                {
+                    b.HasOne("DatingApp.Domain.Entities.CandidateProfile", null)
+                        .WithMany()
+                        .HasForeignKey("ReportedProfileId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.HasOne("DatingApp.Domain.Entities.User", null)
+                        .WithMany()
+                        .HasForeignKey("ReporterUserId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("DatingApp.Domain.Entities.SavedSearch", b =>
+                {
+                    b.HasOne("DatingApp.Domain.Entities.User", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("DatingApp.Domain.Entities.Shortlist", b =>
+                {
+                    b.HasOne("DatingApp.Domain.Entities.CandidateProfile", null)
+                        .WithMany()
+                        .HasForeignKey("ProfileId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("DatingApp.Domain.Entities.User", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("DatingApp.Domain.Entities.CandidateProfile", b =>

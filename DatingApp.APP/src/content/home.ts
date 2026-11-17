@@ -25,6 +25,8 @@ export const HERO = {
 
 export interface MarqueeProfile {
   id: string;
+  /** Database id — shortlist and opening the profile. */
+  profileId?: string;
   city: string;
   country: CountryCode;
   age: number;

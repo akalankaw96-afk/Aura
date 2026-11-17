@@ -51,6 +51,7 @@ public class ApplicationDbContextInitialiser
         {
             await CleanUpRegistrationDataAsync();
             await EnsureAdminAsync();
+            await EnsurePlanLimitsAsync();
             await TrySeedAsync();
         }
         catch (Exception ex)
@@ -116,6 +117,30 @@ public class ApplicationDbContextInitialiser
 
             await _context.SaveChangesAsync();
         }
+    }
+
+    /// <summary>Starting plan limits (S03-T02) — only rows that don't exist yet; the admin's changes are never overwritten.</summary>
+    private async Task EnsurePlanLimitsAsync()
+    {
+        var existing = await _context.PlanLimits.Select(p => new { p.PlanId, p.Feature }).ToListAsync();
+        var added = 0;
+        foreach (var plan in DatingApp.Application.Services.Plans.All)
+        {
+            foreach (var feature in Enum.GetValues<UsageFeature>())
+            {
+                if (existing.Any(e => e.PlanId == plan && e.Feature == feature)) continue;
+                _context.PlanLimits.Add(new PlanLimit
+                {
+                    PlanId = plan,
+                    Feature = feature,
+                    MonthlyLimit = plan == DatingApp.Application.Services.Plans.Free
+                        ? DatingApp.Application.Services.Plans.FreeDefaults.GetValueOrDefault(feature)
+                        : null
+                });
+                added++;
+            }
+        }
+        if (added > 0) await _context.SaveChangesAsync();
     }
 
     /// <summary>Profiles saved before this date may hold the old made-up registration values.</summary>

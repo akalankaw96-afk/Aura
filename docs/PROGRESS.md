@@ -3,16 +3,16 @@
 **Status values:** Not Started · In Progress · Testing · Completed · Blocked · Deferred.
 "Completed" only when acceptance criteria pass and tests/manual checks are recorded (`TESTING_GUIDELINES.md` §6).
 
-_Last updated: 2026-11-14 — Sprint 02 **completed** (owner verified: register → photos → ID → submit, request changes → fix → resubmit, approve → live, edit-profile photos → New photos queue). Sprint 03 approved (branch `S03-match`)._
+_Last updated: 2026-11-16 — Sprint 03 T01–T10 **completed** (owner verified in the web app: limits, search, profile views, interests, shortlist, saved searches, new chats, contact share, block, report, staff reports queue, dashboard). T11 (final `dotnet test` run + docs) waiting for the owner's confirmation; then Sprint 03 closes._
 
 ## Overall
 | Area | State |
 |---|---|
 | Web UI (screens, design system) | Largely built against Figma; most screens run on demo/localStorage data |
-| API | Auth group (#1–14), profiles, interests, secured chat — built and verified 2026-11-14 |
-| Security | Sprint 01 critical/high issues closed; BUG-011 (client-trusted plan/usage) remains for Sprints 02–04 |
-| Tests / CI | `DatingApp.Tests` (xUnit, 25 tests) + CI workflow (owner adds `.github/workflows/ci.yml`) |
-| Current sprint | **03 — Match & talk** (approved 2026-11-14, branch `S03-match`) · 02 completed on `S02-kyc` |
+| API | Auth, profiles, review / KYC, staff area, search, plan limits + usage, profile views, interests, shortlist, saved searches, blocks, reports, dashboard — verified 2026-11-16 |
+| Security | Sprint 01 critical/high issues closed; KYC (S02) and usage limits (S03) now enforced by the server; BUG-011 left only for plan / boost (Sprint 04) |
+| Tests / CI | `DatingApp.Tests` (xUnit, 53 tests) + CI workflow (owner adds `.github/workflows/ci.yml`) |
+| Current sprint | **03 — Match & talk** (branch `S03-match`) — T01–T10 completed, T11 closing · 02 completed on `S02-kyc` |
 
 ## Sprint 01 — Foundation & critical security
 | Task | Status | Notes |
@@ -40,17 +40,17 @@ Decisions (owner, 2026-11-14): Free plan starts at 3 searches · 5 profile views
 
 | Task | Status | Notes |
 |---|---|---|
-| S03-T01 Paged server search | Not Started | |
-| S03-T02 Admin-set plan limits | Not Started | |
-| S03-T03 Usage counters + LIMIT_REACHED | Not Started | |
-| S03-T04 Profile views | Not Started | |
-| S03-T05 Interests lifecycle | Not Started | |
-| S03-T06 Shortlist + saved searches | Not Started | |
-| S03-T07 Chat limits, contact share, block / report | Not Started | |
-| S03-T08 Staff reports queue | Not Started | |
-| S03-T09 Dashboard summary | Not Started | |
-| S03-T10 Web wiring (Search, Friends, Messages, Dashboard) | Not Started | |
-| S03-T11 Tests + docs | Not Started | |
+| S03-T01 Paged server search | Completed | `GET /api/profiles/search` — filters, sort, paging (≤50), approved only, not self; guests page 1 only. Owner verified 2026-11-14 (migration `Sprint03Usage`) |
+| S03-T02 Admin-set plan limits | Completed | `GET/PUT /api/admin/plan-limits`; seeded Free 3/5/3/2, Gold/Platinum unlimited. Owner verified 2026-11-14 (migration `Sprint03Usage`) |
+| S03-T03 Usage counters + LIMIT_REACHED | Completed | `GET /api/me/usage`; monthly counters; 402 `LIMIT_REACHED` with feature, limit, planId, resetsAt; staff exempt. Search uses it now; views / interests / chats in T04, T05, T07. Owner verified 2026-11-14 (migration `Sprint03Usage`) |
+| S03-T04 Profile views | Completed | `GET /api/profiles/{id}` records a view and counts a ProfileView (re-opening this month, own profile, staff and members you share an interest with are free); `GET /api/profile-views/viewers` (Gold/Platinum list, Free = total + `locked`), `GET /api/profile-views/recent`. Built 2026-11-14 — awaiting owner test (migration `Sprint03Interactions`) · owner verified 2026-11-14 |
+| S03-T05 Interests lifecycle | Completed | Send needs an approved profile (403 `KYC_REQUIRED`) and counts an Interest (402); `PUT {id}/withdraw`; `GET received · sent · matched`; notifications on new interest and on accept (decline is silent); withdrawn interests can be sent again, declined ones can't. Owner verified 2026-11-14 (withdraw uses the interest `id`, sender only). Web Friends screen in T10 |
+| S03-T06 Shortlist + saved searches | Completed | `GET/PUT/DELETE /api/shortlist/{profileId}` (≤ 200, approved + not blocked); `GET/POST/DELETE /api/saved-searches` (≤ 10, unique name, filters kept as JSON). Owner verified 2026-11-16 in the web app (migration `Sprint03Safety`) |
+| S03-T07 Chat limits, contact share, block / report | Completed | First message of a new conversation counts a NewChat (Free 2/month, replies free); asking for numbers needs Gold (402 `PLAN_REQUIRED`), answering is free; hub `DeclineContactShare` / `CancelContactShare`; conversations carry `contactShareState` + `isBlocked`; `/api/blocks` (hides both ways, blocker told `BLOCKED`, blocked member sees 404; waiting interests end); `POST /api/reports`. Owner verified 2026-11-16 in the web app (migration `Sprint03Safety`) |
+| S03-T08 Staff reports queue | Completed | `GET /api/moderation/reports?status=open|closed|all`, `POST /api/moderation/reports/{id}/resolve` (dismiss · action · suspend — suspend needs a note, closes all the member's open reports); reporter notified "reviewed", decision in profile history; staff area **Reports** tab. Owner verified 2026-11-16 (no migration) |
+| S03-T09 Dashboard summary | Completed | `GET /api/me/dashboard` (usage, viewers + this week, names for paid, interests received / waiting / sent, matches, shortlisted-by, unread, latest chats); dashboard stat tiles, "Who viewed you" and Messages card use it; `/messages?c=` opens a chat. Owner verified 2026-11-16 |
+| S03-T10 Web wiring (Search, Friends, Messages, Dashboard) | Completed | Built 2026-11-15 (done before T08/T09 so the owner can test in the browser): usage from `/api/me/usage` (dashboard meters, Upgrade prompt, 402 handling), admin **Plan limits** tab, Search on `/api/profiles/search` (Load more, saved searches), profile opens via `GET /api/profiles/{id}` (views counted), shortlist / Friends / Received / Sent / Withdraw on the API, Messages: new-chat limit, contact share decline / cancel on the hub, block / unblock / report on the API. Owner verified 2026-11-16 (Tests 1–10: limits, search + filters, views, interests, saved searches, new chats, contact share, block, report). Still static: dashboard stats + Messages card (T09) |
+| S03-T11 Tests + docs | Testing | 53 xUnit tests (search filters + paging, limits + 402, profile views, interests lifecycle, shortlist, saved searches, new-chat limit, contact share, block, report, reports queue, dashboard). Docs updated 2026-11-16 (PROGRESS, CHANGELOG, API / DATABASE guidelines, BUG_TRACKER, TECHNICAL_DEBT). Waiting for the owner's `dotnet test` result |
 
 ## Sprint 02 — Join & get approved
 Decisions (owner, 2026-11-14): files on **local disk** behind `IFileStorage` (cloud later); first **Admin from user-secrets**,

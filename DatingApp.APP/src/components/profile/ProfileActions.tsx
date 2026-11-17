@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 import { useToast } from "@/components/ui/Toast";
 import { useIsConnected } from "@/lib/connections";
-import { requirePaidAction } from "@/lib/usage";
+import { requireMember } from "@/lib/session";
 
 /** The Message and Send interest actions shared by profile details and favourites. */
 export function ProfileActions({ profileId, sent, onSend }: {
@@ -19,7 +19,7 @@ export function ProfileActions({ profileId, sent, onSend }: {
   const interestExists = sent || connected;
 
   function message() {
-    if (!requirePaidAction("messages", "message members")) return;
+    if (!requireMember("message members")) return; // starting a chat is counted by the server (new chats)
     if (connected) {
       router.push("/messages");
       return;

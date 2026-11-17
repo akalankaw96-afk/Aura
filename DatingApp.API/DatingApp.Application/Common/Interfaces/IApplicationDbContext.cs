@@ -25,5 +25,14 @@ public interface IApplicationDbContext
     DbSet<ProfileReviewLog> ProfileReviewLogs { get; }
     DbSet<Notification> Notifications { get; }
 
+    // Plans & usage (S03)
+    DbSet<PlanLimit> PlanLimits { get; }
+    DbSet<UsageCounter> UsageCounters { get; }
+    DbSet<ProfileView> ProfileViews { get; }
+    DbSet<Shortlist> Shortlists { get; }
+    DbSet<SavedSearch> SavedSearches { get; }
+    DbSet<Block> Blocks { get; }
+    DbSet<Report> Reports { get; }
+
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }
