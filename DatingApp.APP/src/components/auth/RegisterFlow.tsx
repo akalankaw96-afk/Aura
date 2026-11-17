@@ -53,7 +53,7 @@ import {
   type KycDocumentType,
   type PhotoDto,
 } from "@/lib/media";
-import { profileDetailsFromKyc, saveSubmittedKycDetails } from "@/lib/kycDetails";
+import { displayNameFor, profileDetailsFromKyc, saveSubmittedKycDetails } from "@/lib/kycDetails";
 import { AuthShell } from "./AuthShell";
 import { GoogleSignInButton } from "./GoogleSignInButton";
 import { formatPhone } from "./shared";
@@ -126,7 +126,7 @@ export function profileToDraft(p: Profile, session?: { phoneNumber?: string; ema
     createdBy: d.createdBy ?? "",
     profileFor: d.profileFor ?? "Myself",
     whatsapp: d.whatsApp ?? "",
-    whatsappSameAsMobile: !d.whatsApp || d.whatsApp === session?.phoneNumber,
+    whatsappSameAsMobile: false,
     height: p.height,
     profession: p.profession,
     professionCategory: category,
@@ -253,6 +253,10 @@ function AccountStep({
 }) {
   const toast = useToast();
   const [mobile, setMobile] = useState(draft.mobile);
+  // the draft is read after mount (sessionStorage), so pick up the number typed on the home page sign-up form
+  useEffect(() => {
+    if (draft.mobile) setMobile((m) => m || draft.mobile);
+  }, [draft.mobile]);
   const [pw, setPw] = useState("");
   const [pw2, setPw2] = useState("");
   const [terms, setTerms] = useState(false);
@@ -305,6 +309,24 @@ function AccountStep({
   return (
     <form onSubmit={submit} noValidate className="flex flex-col gap-5">
       <CardTitle title="Create your free account" subtitle="No payment needed, browse and connect for free, upgrade anytime." />
+
+      {/* details typed on the home page "Ready to meet your life partner?" form */}
+      {(draft.firstName || draft.lastName || draft.email) && (
+        <div className="flex items-start gap-3 rounded-[16px] bg-brand-subtle p-4">
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand-gradient text-label-md text-ink-on-brand">
+            {(draft.firstName[0] || draft.lastName[0] || "V").toUpperCase()}
+          </span>
+          <div className="min-w-0 flex-1">
+            <p className="text-label-md text-ink">
+              {[draft.firstName, draft.lastName].filter(Boolean).join(" ") || "Your details"}
+            </p>
+            <p className="truncate text-body-sm text-ink-secondary">
+              {[draft.email, draft.mobile && formatPhone(draft.mobile)].filter(Boolean).join(" · ")}
+            </p>
+            <p className="mt-1 text-body-xs text-ink-tertiary">We’ve saved these for your profile. You can change them in the profile step.</p>
+          </div>
+        </div>
+      )}
 
       <GoogleSignInButton
         isSignUp
@@ -378,7 +400,7 @@ function AccountStep({
 
 /* ───────────────────────── Step 2 · Verify (03, 03a–03f) ───────────────────────── */
 
-function VerifyStep({ mobile, onBack, onNext }: { mobile: string; onBack: () => void; onNext: () => void }) {
+function VerifyStep({ mobile, onBack, onNext }: Readonly<{ mobile: string; onBack: () => void; onNext: () => void }>) {
   const toast = useToast();
   const [code, setCode] = useState("");
   const [state, setState] = useState<"default" | "error" | "success">("default");
@@ -593,7 +615,6 @@ export function ProfileStep({
   onNext: () => void;
   review?: ProfileReview;
 }) {
-  const toast = useToast();
   // a rejected field stays "Rejected" until its value changes (and passes the safety check)
   const stillRejected = {
     dob: !!review?.reasons.dob && draft.dob === review.original.dob,
@@ -628,7 +649,7 @@ export function ProfileStep({
     });
     if (draft.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(draft.email)) er.email = "Enter a valid email address";
     // WhatsApp (optional): validate only when a different number was entered
-    if (!draft.whatsappSameAsMobile && draft.whatsapp) {
+    if (draft.whatsapp) {
       const ok = draft.whatsappCountry === "lk" ? isValidSriLankanMobile(draft.whatsapp) : /^\d{7,14}$/.test(draft.whatsapp);
       if (!ok) er.whatsapp = draft.whatsappCountry === "lk" ? "Enter a valid Sri Lankan mobile number" : "Enter a valid WhatsApp number";
     }
@@ -686,37 +707,26 @@ export function ProfileStep({
       <div className="grid gap-4 sm:grid-cols-2">
         <Input label="First name" placeholder="e.g. Sanjeewa" value={draft.firstName} onChange={set("firstName")} error={errors.firstName} autoComplete="given-name" />
         <Input label="Last name" placeholder="e.g. Silva" value={draft.lastName} onChange={set("lastName")} error={errors.lastName} autoComplete="family-name" />
-        <Select label="Display name format" options={OPTIONS.displayNameFormat} value={draft.displayNameFormat} onChange={pick("displayNameFormat")} error={errors.displayNameFormat} />
+        <div className="flex flex-col gap-2">
+          <Select label="Display name format" options={OPTIONS.displayNameFormat} value={draft.displayNameFormat} onChange={pick("displayNameFormat")} error={errors.displayNameFormat} />
+          {/* live preview of the name other members will see */}
+          <DisplayNamePreview format={draft.displayNameFormat} first={draft.firstName} last={draft.lastName} />
+        </div>
         <Select label="Account created by" options={OPTIONS.createdBy} value={draft.createdBy} onChange={pick("createdBy")} error={errors.createdBy} />
         <Input label="Email" type="email" placeholder="you@example.com" value={draft.email} onChange={set("email")} error={errors.email} autoComplete="email" />
-        {/* WhatsApp number — next to Email (same row), optional */}
-        <div className="flex flex-col gap-2">
-          <PhoneField
-            label="WhatsApp number (optional)"
-            value={draft.whatsappSameAsMobile ? draft.mobile : draft.whatsapp}
-            onChange={(v) => {
-              update({ whatsapp: v, whatsappSameAsMobile: false });
-              setErrors((er) => ({ ...er, whatsapp: undefined }));
-            }}
-            country={(draft.whatsappSameAsMobile ? "lk" : draft.whatsappCountry) as CountryCode}
-            onCountryChange={(c) => update({ whatsappCountry: c.iso, whatsappSameAsMobile: false })}
-            disabled={draft.whatsappSameAsMobile && !!draft.mobile}
-            compact
-            helper="Shared only with members you accept."
-            error={errors.whatsapp}
-          />
-          {draft.mobile && (
-            <Checkbox
-              checked={draft.whatsappSameAsMobile}
-              onChange={(v) => {
-                update({ whatsappSameAsMobile: v, whatsapp: v ? "" : draft.whatsapp, whatsappCountry: v ? "lk" : draft.whatsappCountry });
-                setErrors((er) => ({ ...er, whatsapp: undefined }));
-              }}
-            >
-              <span className="text-body-sm text-ink-secondary">Same as my mobile ({formatPhone(draft.mobile)})</span>
-            </Checkbox>
-          )}
-        </div>
+        {/* WhatsApp number — next to Email (same row), optional; the member types it */}
+        <PhoneField
+          label="WhatsApp number (optional)"
+          value={draft.whatsapp}
+          onChange={(v) => {
+            update({ whatsapp: v, whatsappSameAsMobile: false });
+            setErrors((er) => ({ ...er, whatsapp: undefined }));
+          }}
+          country={(draft.whatsappCountry || "lk") as CountryCode}
+          onCountryChange={(c) => update({ whatsappCountry: c.iso, whatsappSameAsMobile: false })}
+          compact
+          error={errors.whatsapp}
+        />
         <Select label="Height" options={OPTIONS.height} value={draft.height} onChange={pick("height")} error={errors.height} />
         <Input
           label="Birthdate"
@@ -762,11 +772,6 @@ export function ProfileStep({
           {review ? "Resubmit for review" : "Continue"}
         </Button>
       </div>
-      {!review && (
-        <button type="button" onClick={() => toast.success("Progress saved", "You can come back and finish anytime.")} className="text-center text-body-sm font-semibold text-brand hover:underline">
-          Save &amp; finish later
-        </button>
-      )}
     </form>
   );
 }
@@ -1018,7 +1023,7 @@ const DOCUMENT_SLOTS: Record<"nic" | "passport", { type: KycDocumentType; label:
  * Identity check: NIC (front + back) or passport, plus a selfie. Files go straight to the API
  * (POST /api/kyc/documents) and are only seen by our safety team. Then the profile is submitted for review.
  */
-export function IdentityStep({ onBack, onFinish }: { onBack: () => void; onFinish: () => Promise<void> | void }) {
+export function IdentityStep({ onBack, onFinish }: Readonly<{ onBack: () => void; onFinish: () => Promise<void> | void }>) {
   const toast = useToast();
   const fileRef = useRef<HTMLInputElement>(null);
   const [docs, setDocs] = useState<KycDocumentDto[]>([]);
@@ -1144,7 +1149,7 @@ export function IdentityStep({ onBack, onFinish }: { onBack: () => void; onFinis
 }
 
 /** Segmented switch for uploading photos or choosing an avatar. */
-function PhotoModeSwitch({ value, onChange }: { value: "upload" | "illustration"; onChange: (v: "upload" | "illustration") => void }) {
+function PhotoModeSwitch({ value, onChange }: Readonly<{ value: "upload" | "illustration"; onChange: (v: "upload" | "illustration") => void }>) {
   return (
     <SegmentedSwitch
       label="Profile picture type"
@@ -1163,7 +1168,7 @@ function PhotoModeSwitch({ value, onChange }: { value: "upload" | "illustration"
  * Large preview on the left (like the Main photo slot), options grid on the right,
  * Bride / Groom filter preset from the gender chosen in the previous step.
  */
-function IllustrationPicker({ gender, value, onPick }: { gender?: AvatarGender; value: string | null; onPick: (uri: string, name: string) => void }) {
+function IllustrationPicker({ gender, value, onPick }: Readonly<{ gender?: AvatarGender; value: string | null; onPick: (uri: string, name: string) => void }>) {
   const [filter, setFilter] = useState<AvatarGender>(gender ?? "female");
   const list = AVATARS.filter((a) => a.gender === filter);
   const selected = AVATARS.find((a) => avatarDataUri(a) === value);
@@ -1245,3 +1250,27 @@ function IllustrationPicker({ gender, value, onPick }: { gender?: AvatarGender; 
   );
 }
 
+/** "Members will see: Sanjeewa S." — updates as the member types their name or changes the format. */
+function DisplayNamePreview({ format, first, last }: Readonly<{ format: string; first: string; last: string }>) {
+  const hasName = !!(first.trim() || last.trim());
+  const shown = format ? displayNameFor(format, first, last) : "";
+  if (!format) {
+    return <p className="text-body-xs text-ink-tertiary">Choose how your name appears to other members.</p>;
+  }
+  return (
+    <div aria-live="polite" className="flex items-center gap-2.5 rounded-md bg-brand-subtle px-3 py-2">
+      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand-gradient text-label-sm text-ink-on-brand">
+        {(shown || "?").replace(/[^\p{L}]/gu, "").slice(0, 1).toUpperCase() || "?"}
+      </span>
+      <p className="min-w-0 text-body-sm text-ink-secondary">
+        {hasName ? (
+          <>
+            Members will see <b className="font-bold text-ink">{shown}</b>
+          </>
+        ) : (
+          "Enter your first and last name to see a preview"
+        )}
+      </p>
+    </div>
+  );
+}

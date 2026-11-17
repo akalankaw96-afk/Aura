@@ -95,6 +95,53 @@ Sections: Added · Changed · Fixed · Security · Removed · Breaking.
   initialiser `EnsurePlanLimitsAsync`, tests `SearchAndUsageTests`.
 
 ### Changed
+- 2026-11-16 — **Staff area redesigned as a real admin panel (S02-T11 follow-up).** `/admin/*` now has its own
+  layout: a left sidebar (Dashboard · Profile reviews · New photos · Members · Roles & staff, with live counts; a
+  drawer on phones and tablets) and a slim top bar with only the logo + "Staff area", language, light/dark and the
+  profile menu (Member view, Log out); no marketing navbar or footer. Pages:
+  - **Dashboard** (`/admin`): Total members, Active members, Waiting for review, Half registered, plus Paid, New this
+    week, KYC updates, Blocked; two tables, *New profiles to review* and *KYC update requests* (resubmitted after
+    changes), both on the live review queue; *Recently registered* table.
+  - **Profile reviews** (`/admin/reviews`): All · New · KYC updates tabs; opens the existing review screen.
+    **New photos** (`/admin/photos`): the existing photo queue.
+  - **Members** (`/admin/users`): full-page table (name + MP code, mobile, email, plan, status, joined) with search,
+    status filters (Active · Pending review · Half registered · Deactivated · Blocked) and paging; per-row actions
+    Activate, Deactivate, Block / Unblock (reason required) and Reset password. Card list on phones.
+  - **Roles & staff** (`/admin/roles`, Admin only): create / edit / delete roles with a permission checklist
+    (Admin and Moderator are built-in; Admin can't be edited); staff accounts with username, role, status and last
+    sign-in; **Add staff** (name, username, optional email, role, generated temporary password shown once);
+    change role, deactivate / activate, reset password; the live "make a member a moderator" tool stays as a tab.
+  Members, stats, roles and staff-account endpoints don't exist on the API yet: in development the pages show
+  clearly labelled demo data, in production they say the feature needs the API (see API_GUIDELINES → Planned:
+  admin). Files: `app/admin/layout.tsx`, `app/admin/{page,reviews,photos,users,roles}`, `components/admin/*`
+  (`AdminShell`, `AdminDashboard`, `AdminReviews`, `AdminMembers`, `AdminRoles`), `lib/adminApi.ts`;
+  `sections/admin/StaffConsole.tsx` now exports its queue, review, photo and staff pieces for reuse.
+- 2026-11-16 — **Account settings: "Delete account" made low-key.** The red Delete account card is replaced by a small
+  grey "Delete account" text link at the bottom ("Want to leave Vikasitha for good?"). It opens a short "Delete your
+  account?" check with **Cancel** and **Delete account** (plus "Just need a break? Hide your profile instead"); only
+  then the reason → confirm → SMS code flow starts. `account/AccountSettingsDialog.tsx`.
+- 2026-11-16 — **KYC profile step tidy-up.** WhatsApp is now a normal optional field the member types (removed the
+  "Same as my mobile" checkbox and the "Shared only with members you accept." helper; the saved WhatsApp is exactly
+  what was typed). **Display name format** shows a live preview under the select ("Members will see Sanjeewa S.")
+  that updates with the name and format; uses the new shared `displayNameFor()` so the preview matches what is
+  saved. Removed the "Save & finish later" text button (the draft already saves as you type). Files:
+  `auth/RegisterFlow.tsx`, `lib/kycDetails.ts`, `lib/registrationDraft.ts`.
+- 2026-11-15 — **Free plan usage card is collapsed by default** (user feedback: it took too much space). One row
+  shows the Free plan badge, "This month’s usage", a small pill per allowance (Profile views 5/5 · Searches 0/3,
+  red with a lock when used up), Upgrade and a Details toggle; Details opens the reset date, limit alert, meters
+  and Gold benefits with a height animation. The choice is remembered (`vk-usage-card-open`), same pattern as the
+  Gold / Platinum card. Desktop height closed ≈ 74 px (was ≈ 360 px). `dashboard/PlanUsageCard.tsx`.
+- 2026-11-15 — **Friends page tabs** (Friends · Favourites · Received · Sent) moved from the right of the header to
+  under the subtitle, left-aligned with the content box below (same left edge as the list card). New `MemberShell` prop
+  `rightPlacement="below"`. Files: `layout/MemberShell.tsx`, `member/RequestsScreen.tsx`.
+- 2026-11-15 — **Home sign-up form → register page.** "Ready to meet your life partner?" form now uses the shared
+  `PhoneField` (flag + country code picker, digits only; only +94 can be verified by SMS for now, with a clear
+  message). The register page fills in the mobile number from that form and shows the first name, last name,
+  email and mobile at the top of step 1 ("We’ve saved these for your profile"); name and email are already
+  filled in on the Profile step. Files: `home/SignUp.tsx`, `auth/RegisterFlow.tsx`.
+- 2026-11-15 — **Sinhala hero title on two lines** (ඔබේ මුළු පවුලටම විශ්වාස කළ හැකි / ජීවිත සහකරුවෙකු සොයා ගන්න)
+  from tablet up; sizes 34 / 44 / 52 px so each line fits, phones wrap balanced. `BumpTitle` now keeps a "\n"
+  (or `<br />`) as a line break. Files: `content/translations.ts`, `home/Hero.tsx`, `motion/BumpTitle.tsx`.
 - 2026-11-14 — **Edit profile on the API (S02-T10 done).** About text saves with `PATCH /api/profiles/me/about` (new
   endpoint: 50–500 characters, phone numbers / e-mails / links refused on the server too); the Photos tab uploads,
   replaces, removes and sets the main photo through `/api/photos` immediately, shows "In review" / rejected reasons,
@@ -121,6 +168,57 @@ Sections: Added · Changed · Fixed · Security · Removed · Breaking.
   `content/avatars.ts` (`photo:<id>` → API file URL), `lib/{registrationDraft,verification}.ts`, `services/api.ts`.
 
 ### Added
+- 2026-11-16 — **Full How to use guide is now a Gold / Platinum benefit + guided tour.** Guests and Free members see
+  only "From sign-up to your first conversation" (no full tour, no "See the full tour" link, no hint of it). Approved
+  Gold / Platinum members see the full guide plus a "Start the tour" button. New **tour popup** (`GuidedTourDialog`,
+  root layout, `openTour()`): 6 steps with the real screenshots and copy from `content/howToUse.ts` (Search,
+  Send interest, Messages, Share contact details, Report or block, Promote) — progress bar, Back / Next, Skip,
+  ← → keys, "You’re all set" with Start exploring / Open the full guide; bottom sheet on phones. New dashboard
+  **"Welcome to Gold 👑 Take a 2-minute tour"** card under the hero (Start tour / Later = hidden 3 days; gone once
+  the tour is finished or skipped). Free members can’t open the tour. Status per browser for now
+  (`vk-tour-status`). Files: `lib/tour.ts`, `tour/GuidedTourDialog.tsx`, `tour/TourWelcomeCard.tsx`,
+  `howto/HowToUseScreen.tsx`, `app/dashboard/page.tsx`, `app/layout.tsx`.
+- 2026-11-16 — **About us page** (`/about`, the footer link was a 404). Same layout as Terms / Privacy: member
+  header (back, breadcrumb, title, subtitle), "On this page" menu + "Want to talk to us?" Contact support, summary box
+  and 7 numbered sections (who we are, what we believe, how we keep it safe, what you can do, who it’s for, our team,
+  contact) with links to How it works, Terms and Privacy. Added "About us" to the guest top bar (from 1280 px; phone
+  menu always) next to Pricing. `LegalPage` now also takes `doc="about"`; `LegalDoc` gets optional `updated`,
+  `helpTitle`, `related`. Copy in `content/about.ts`, [bracketed] text (founding year, team, address) to fill in.
+  Files: `content/about.ts`, `app/about/page.tsx`, `content/legal.ts`, `sections/legal/LegalPage.tsx`,
+  `layout/Navbar.tsx`.
+- 2026-11-15 — **Account settings: take a break or delete account.** New "Account settings" item in the profile
+  menu (desktop dropdown + phone drawer) opens `AccountSettingsDialog` (mounted in the root layout). Home: account
+  summary (masked mobile, Visible / Hidden badge), **Take a break** (hide profile from search; friends, chats and plan
+  kept; "Show my profile again") and a red **Delete account** card. Delete flow with step dots: reason (7 options,
+  "Found my partner on Vikasitha" offers Share your story) + optional comment → confirm (what gets deleted, "I
+  understand" checkbox, "Keep my account", "Hide instead" link) → SMS code to the verified mobile (OtpInput, resend
+  timer, attempts / expired / too many) → "Account deleted" → signs out and reloads the home page. Calls planned
+  endpoints (`services/accountClosure.ts`); in development builds a missing endpoint switches to a clearly labelled
+  demo (code 123456, nothing deleted); in production it says "not available yet, contact support". Privacy Policy
+  deletion steps now point to Account settings. Files: `services/accountClosure.ts`,
+  `account/AccountSettingsDialog.tsx`, `app/layout.tsx`, `layout/Navbar.tsx`, `content/legal.ts`.
+- 2026-11-15 — **Payment page: bank transfer (phase 1)** at `/plans/checkout?plan=gold|platinum&months=1|3|6`.
+  Plans page "Upgrade to Gold" / "Choose Platinum" now open it (the "coming soon" sheet is removed; "Pay with"
+  shows Bank transfer, cards and wallets "coming soon"; FAQ "How do I pay?"). Page = member header (back to Plans) +
+  order summary (plan, amount, member payment reference `VK-G3-xxxxxx` with copy, sticky on desktop, first on
+  phones) + brand bank-account card (account number, name, bank, branch, SWIFT, each with a Copy button, plus
+  "Copy all details" and "I’ve paid, upload receipt" which scrolls to and glows the upload step) + "How to pay"
+  4 pinned notes (Home How it works style) + highlighted "Final step" receipt upload: shared `PhotoSlot` for
+  photos, a matching tile for PDFs, drag & drop, JPG/PNG/WEBP/PDF ≤ 10 MB, amount / date / reference / note,
+  checklist; then a "receipt is with us" status card (received → checking → activated). Demo: saved in
+  localStorage `vk-payment-pending` until `POST /api/payments/bank-transfer` exists. Prices + bank details in
+  `content/payment.ts` (**bank details are placeholders, fill in before launch**). Files: `content/payment.ts`,
+  `sections/payment/BankTransferScreen.tsx`, `app/plans/checkout/page.tsx`, `auth/PlansScreen.tsx`.
+- 2026-11-15 — **Terms & Conditions and Privacy Policy pages** (`/terms`, `/privacy`) replace the "coming soon"
+  placeholders (Figma: Info Pages). Same header as member pages (navbar, back button, breadcrumb, title, subtitle);
+  desktop: sticky "On this page" menu that highlights the section in view + Contact support; phones: the menu folds
+  into a tap-to-open list. Content card: last updated, read time, plain-language summary, numbered sections, link
+  to the other policy. New **"Deleting your account"** section in the Privacy Policy (how to request it, SMS check,
+  hidden from search at once, data deleted within [30] days) and in Terms § 7; footer link **Delete account** →
+  `/privacy#delete-account`. Home sign-up "By registering you agree…" now links to both pages (EN + SI).
+  Copy in `content/legal.ts`; text in [brackets] needs the business / a lawyer before launch. Files:
+  `content/legal.ts`, `sections/legal/LegalPage.tsx`, `app/terms/page.tsx`, `app/privacy/page.tsx`,
+  `layout/Footer.tsx`, `home/SignUp.tsx`.
 - 2026-11-14 — **Sprint 02 API: join & get approved (S02-T01–T08, T12; branch `S02-kyc`).**
   - Profile status (`Draft · Submitted · ChangesRequested · Resubmitted · Approved · Suspended`) replaces `Verified`;
     other members see approved profiles only; the session carries `profileStatus`.
@@ -140,6 +238,18 @@ Sections: Added · Changed · Fixed · Security · Removed · Breaking.
     `DatingApp.Tests/ReviewFlowTests.cs`. **Needs migration `Sprint02Review`.**
 
 ### Fixed
+- 2026-11-16 — **SonarCloud warnings on PR #6 cleared.** Read-only component props (`Readonly<…>`) across the new
+  admin, payment, account, legal and register files; nested ternaries moved into small helpers (`copyButtonTone`,
+  `StepMark`, `progressTone`, `pillTone`, `photoNote`, `demoPlan`, `STATUS_AFTER`); the staff drawer on phones is now a
+  native `<dialog>` (Esc and focus trap built in) and the demo notice an `<output>`; modal backdrops close through a
+  hidden button instead of a click handler on a `<div>`; the admin context value is memoised; the email check in
+  Add staff no longer uses a backtracking regex; Copy on the payment page dropped the deprecated
+  `document.execCommand` fallback (shows "copy it yourself" if the clipboard is blocked); un-awaited promises marked
+  with `void`. **Account settings dialog** split into one small component per step (Home, Break, Ask, Reason,
+  Confirm, Code, Done + header) to bring its complexity under Sonar's limit; screens and behaviour unchanged
+  (re-tested the full hide / delete / wrong code / back / right code flow at 1440 light and 390 dark).
+- 2026-11-15 — Shared `Button` **danger** variant was pale pink with white text in dark mode (it used the error text
+  colour); now solid red-600 in both themes. `ui/Button.tsx`.
 - 2026-11-14 — **Registration data (BUG-023), owner report.** API: mobile-only accounts store no e-mail (`Users.Email`
   nullable) instead of `phone_…@auramatrimony.lk`; `POST /auth/register` with a mobile number returns **201 without a
   session** — sign-in happens at `verify-otp`; login refuses unverified numbers (`403 PHONE_NOT_VERIFIED`); an unconfirmed

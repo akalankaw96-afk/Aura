@@ -82,3 +82,45 @@ One global exception handler produces these (TD-12). Never leak stack traces or 
 1. Spec row exists (or add it to the spec doc). 2. DTOs + validator. 3. Service method with business rules + tests.
 4. Thin controller action with `[Authorize]`/roles and `ProducesResponseType`. 5. ProblemDetails codes from §4.
 6. Web client function in `src/services/` using the typed fetch helper (TD-04). 7. Update §1 table + `CHANGELOG.md`.
+
+## Planned: bank transfer payments (front end ready 2026-11-15)
+- `POST /api/payments/bank-transfer` — multipart: `plan` (gold|platinum), `months` (1|3|6), `amount` (LKR, server
+  must recompute from its own price list), `reference`, `paidOn` (yyyy-mm-dd), `note?`, `receipt` (JPG/PNG/WEBP/PDF
+  ≤ 10 MB). Returns `{ id, status: "Pending" }`. Store receipts privately (same rules as ID documents, TD-26).
+- `GET /api/payments/mine` — latest request + status (Pending / Approved / Rejected + reason), so the Payment page
+  and dashboard can show it across devices (replaces localStorage `vk-payment-pending`).
+- Staff: list pending receipts, approve (activates the plan, sets start/expiry, SMS) or reject with a reason.
+
+## Planned: account visibility and deletion (front end ready 2026-11-15)
+- `POST /api/account/visibility` `{ hidden: boolean, reason? }` → 204. Hidden profiles drop out of search and Best
+  matches; friends, chats and plan stay. Return the flag in the session/profile so every device agrees.
+- `POST /api/account/delete/send-code` `{}` → `{ resendAvailableInSeconds }`. SMS to the verified mobile; same limits as
+  login codes (6 digits, 60 s resend, 5 attempts, expiry).
+- `POST /api/account/delete` `{ code, reason, comment? }` → 204, or 400 ProblemDetails `{ code: CODE_INVALID |
+  CODE_EXPIRED | TOO_MANY_ATTEMPTS, attemptsLeft }`. On success: hide the profile at once, end all sessions (clear
+  the refresh cookie), schedule erasure of profile, photos, chats, ID documents within 30 days (keep legally required
+  payment records), and store the reason/comment anonymously for reporting.
+
+## Planned: admin back office (front end ready 2026-11-16)
+All under the `Staff` policy; each call also checks the permission below. Every change is written to an audit log
+(who, what, when, reason). Front end: `lib/adminApi.ts`.
+- `GET /api/admin/stats` → `{ totalMembers, newThisWeek, activeMembers, pendingReview, kycUpdates, halfRegistered,
+  paidMembers, blocked }` (`dashboard.view`).
+- `GET /api/admin/members?search=&status=&page=&pageSize=` → paged `{ items: [{ userId, fullName, code?, phoneNumber,
+  email?, gender?, plan, status: Active | PendingReview | Incomplete | Deactivated | Blocked, joinedAt, lastActiveAt? }],
+  total }` (`members.view`). Search matches name, mobile, email, MP code.
+- `POST /api/admin/members/{id}/status` `{ action: activate | deactivate | block | unblock, reason? }` → 204
+  (`members.status`). Reason required for deactivate / block; block and deactivate end all the member's sessions.
+- `POST /api/admin/members/{id}/reset-password` → 204 (`members.resetPassword`). Staff never see or type a member's
+  password: this ends their sessions and sends an SMS so the member sets a new one with a code.
+- `GET /api/admin/roles` · `POST /api/admin/roles` · `PUT /api/admin/roles/{id}` · `DELETE /api/admin/roles/{id}`
+  (`staff.manage`). Role `{ id, name, description?, permissions[], builtIn, staffCount }`. Admin (all permissions,
+  read-only) and Moderator are built-in; a role in use can't be deleted (409).
+- `GET /api/admin/staff-accounts` · `POST /api/admin/staff-accounts` `{ fullName, username, email?, password, roleId }`
+  · `PATCH /api/admin/staff-accounts/{id}` `{ roleId?, status? }` · `POST /api/admin/staff-accounts/{id}/reset-password`
+  → `{ temporaryPassword }` (`staff.manage`). Staff sign in with username + password; a new or reset password is
+  temporary and must be changed at the next sign-in; a role or status change revokes their sessions. An admin can't
+  deactivate or demote themselves, and the last active Admin can't be removed.
+- Permissions: `dashboard.view`, `reviews.view`, `reviews.decide`, `photos.moderate`, `documents.view`,
+  `members.view`, `members.status`, `members.resetPassword`, `payments.verify`, `reports.handle`, `staff.manage`.
+  Return the signed-in staff member's permissions in the session so the sidebar can hide what they can't use.

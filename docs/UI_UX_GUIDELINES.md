@@ -35,6 +35,9 @@ plain — "Send interest", not "Swipe". Bilingual English/Sinhala (Tamil planned
 - List + detail pattern (Friends, Messages, Profile view): list on the left, detail on the right on desktop; list → detail
   navigation on mobile.
 - Back behaviour: return to where the user came from (`?from=home` → home). Home profile cards open the full profile page.
+- Staff pages (`/admin/*`) use `AdminShell`: left sidebar + slim top bar (logo, language, theme, profile only), page
+  title via `AdminPageHeader`. Wide tables scroll inside their card on tablets and become a card list on phones; the
+  page itself never scrolls sideways. Planned-endpoint pages show the amber `DemoBanner` in development.
 
 ## 4. States every screen must handle
 Loading (skeleton matching the layout) · empty (friendly text + next action) · error (message + retry) · guest ·

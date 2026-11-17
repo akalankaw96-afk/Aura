@@ -39,6 +39,7 @@ export function Footer() {
         [lang === "si" ? "පැමිණිලි කරන්න" : "Report a profile", "/report"],
         [t.footer.privacy, "/privacy"],
         [t.footer.terms, "/terms"],
+        [lang === "si" ? "ගිණුම මකා දමන්න" : "Delete account", "/privacy#delete-account"],
       ] as [string, string][],
     },
   ];

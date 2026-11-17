@@ -28,6 +28,7 @@ import { useLanguage } from "@/context/LanguageContext";
 import { MESSAGES, REQUESTS } from "@/content/dashboard";
 import { useKyc } from "@/lib/verification";
 import { openFeedback } from "@/lib/feedback";
+import { openAccountSettings } from "@/components/account/AccountSettingsDialog";
 import { apiService, type AuthSession } from "@/services/api";
 
 /**
@@ -120,7 +121,8 @@ export function Navbar({ variant = "light" }: { variant?: NavbarVariant }) {
   const requestCount = REQUESTS.length;
   const messageCount = MESSAGES.reduce((n, m) => n + m.unread, 0);
 
-  const links: { label: string; href: string; count?: number }[] = isMember
+  // wideOnly: shown in the desktop bar from xl (1280px) up — at 1024 the bar has no room; always in the phone menu
+  const links: { label: string; href: string; count?: number; wideOnly?: boolean }[] = isMember
     ? [
         // Figma: Navbar (Style = Member) → Dashboard · Search · Requests · Messages · Plans
         { label: t.nav.dashboard, href: "/dashboard" },
@@ -135,6 +137,7 @@ export function Navbar({ variant = "light" }: { variant?: NavbarVariant }) {
         { label: t.nav.grooms, href: "/search?for=groom" },
         { label: t.nav.howItWorks, href: "/how-to-use" },
         { label: t.nav.pricing, href: "/#pricing" },
+        { label: lang === "si" ? "අප ගැන" : "About us", href: "/about", wideOnly: true },
       ];
 
   return (
@@ -165,6 +168,7 @@ export function Navbar({ variant = "light" }: { variant?: NavbarVariant }) {
                 aria-current={active ? "page" : undefined}
                 className={cn(
                   "group inline-flex items-center gap-1.5 whitespace-nowrap text-label-lg transition-colors",
+                  l.wideOnly && "hidden xl:inline-flex",
                   glass
                     ? active
                       ? "bg-brand-gradient bg-clip-text text-transparent font-bold"
@@ -261,6 +265,17 @@ export function Navbar({ variant = "light" }: { variant?: NavbarVariant }) {
                 >
                   <MessageText1 size={20} color="currentColor" className="text-icon-brand" />
                   {lang === "si" ? "අදහස් බෙදාගන්න" : "Share feedback"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setOpen(false);
+                    openAccountSettings();
+                  }}
+                  className="flex items-center gap-2 rounded-md px-3 py-3 text-left text-label-lg text-ink hover:bg-brand-subtle"
+                >
+                  <Setting2 size={20} color="currentColor" className="text-icon-brand" />
+                  {lang === "si" ? "ගිණුම් සැකසුම්" : "Account settings"}
                 </button>
                 <button
                   type="button"
@@ -416,6 +431,20 @@ function AccountMenu({ session, onLogout }: { session: AuthSession | null; onLog
             >
               <MessageText1 size={18} color="currentColor" className="text-icon-brand" />
               <span>{lang === "si" ? "අදහස් බෙදාගන්න" : "Share feedback"}</span>
+            </button>
+          </li>
+          <li role="none">
+            <button
+              type="button"
+              role="menuitem"
+              onClick={() => {
+                setOpen(false);
+                openAccountSettings();
+              }}
+              className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-body-sm text-ink hover:bg-brand-subtle focus-visible:shadow-ring-brand"
+            >
+              <Setting2 size={18} color="currentColor" className="text-icon-brand" />
+              <span>{lang === "si" ? "ගිණුම් සැකසුම්" : "Account settings"}</span>
             </button>
           </li>
           {/* staff only — the role comes from the server session; /admin and its API check it again */}

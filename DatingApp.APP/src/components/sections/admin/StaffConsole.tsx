@@ -116,7 +116,7 @@ export function StaffConsole({ isAdmin }: { isAdmin: boolean }) {
 
 /* ───────────── Queue ───────────── */
 
-function QueueList({ items, onOpen, onRefresh }: { items: QueueItem[] | null; onOpen: (id: string) => void; onRefresh: () => void }) {
+export function QueueList({ items, onOpen, onRefresh }: { items: QueueItem[] | null; onOpen: (id: string) => void; onRefresh: () => void }) {
   if (!items) return <p className="text-body-md text-ink-secondary">Loading…</p>;
   if (items.length === 0) {
     return (
@@ -157,7 +157,7 @@ function QueueList({ items, onOpen, onRefresh }: { items: QueueItem[] | null; on
 
 /* ───────────── One profile ───────────── */
 
-function ReviewScreen({ profileId, onClose }: { profileId: string; onClose: (changed: boolean) => void }) {
+export function ReviewScreen({ profileId, onClose }: { profileId: string; onClose: (changed: boolean) => void }) {
   const toast = useToast();
   const [data, setData] = useState<ProfileReview | null>(null);
   const [busy, setBusy] = useState(false);
@@ -378,7 +378,7 @@ function ReviewScreen({ profileId, onClose }: { profileId: string; onClose: (cha
   );
 }
 
-function Thumb({ src, className }: { src?: string | null; className?: string }) {
+export function Thumb({ src, className }: { src?: string | null; className?: string }) {
   const shown = useApiImage(src ?? null);
   return (
     <span className={cn("block shrink-0 overflow-hidden bg-surface-muted", className)}>
@@ -465,7 +465,7 @@ function DocumentTile({ doc }: { doc: KycDocumentDto }) {
 
 /* ───────────── New photos from approved members ───────────── */
 
-function PendingPhotos() {
+export function PendingPhotos() {
   const toast = useToast();
   const [items, setItems] = useState<PendingPhoto[] | null>(null);
   const load = useCallback(() => {
@@ -493,7 +493,7 @@ function PendingPhotos() {
 
 /* ───────────── Staff (Admin only) ───────────── */
 
-function StaffManager() {
+export function StaffManager() {
   const toast = useToast();
   const [staff, setStaff] = useState<StaffUser[]>([]);
   const [phone, setPhone] = useState("");

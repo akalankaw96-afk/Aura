@@ -141,6 +141,7 @@ export function RequestsScreen({ initialTab, initialProfileId }: { initialTab: C
       crumb="Friends"
       title="Friends"
       subtitle="Your friends, saved profiles and the interests you have received or sent."
+      rightPlacement="below"
       right={
         <div role="tablist" aria-label="Friends" className="flex w-fit max-w-full gap-1 overflow-x-auto rounded-full border border-line bg-surface-card p-1">
           {REQUEST_TABS.map((t) => {

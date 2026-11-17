@@ -1,7 +1,7 @@
 "use client";
 
-import React from "react";
-import { Crown1, Eye, Heart, Lock1, Messages2, SearchNormal1, Sms, Star1 } from "iconsax-react";
+import React, { useEffect, useState } from "react";
+import { ArrowDown2, Crown1, Eye, Heart, Lock1, Messages2, SearchNormal1, Sms, Star1 } from "iconsax-react";
 import { cn } from "@/lib/cn";
 import { ButtonLink } from "@/components/ui/Button";
 import { useAccess } from "@/lib/verification";
@@ -9,8 +9,10 @@ import { USAGE_LABEL, useUsage } from "@/lib/usage";
 
 /**
  * Plan & usage card — approved members on the Free plan.
- * The four monthly allowances from GET /api/me/usage (limits set by the admin) as meters,
- * what Gold unlocks, and an Upgrade button. Hidden for Gold / Platinum.
+ * Collapsed by default (saves space): one row with the plan badge, a small "left" pill per allowance,
+ * Upgrade and a Details toggle. Expanded: limit alert, meters, reset date and what Gold unlocks.
+ * The open / closed choice is remembered. Same pattern as the Gold / Platinum card (ProPlanCard).
+ * Hidden for Gold / Platinum.
  */
 const METERS: { kind: "profileViews" | "searches" | "interests" | "chats"; Icon: typeof Heart }[] = [
   { kind: "profileViews", Icon: Eye },
@@ -38,8 +40,21 @@ const GOLD = [
 
 export function PlanUsageCard() {
   const { locked, isPaid } = useAccess();
-  const { left, limit, usage, loaded } = useUsage();
-  if (locked || isPaid || !loaded) return null;
+  const { left } = useUsage();
+  const [open, setOpen] = useState(false);
+  useEffect(() => {
+    try {
+      setOpen(localStorage.getItem("vk-usage-card-open") === "1");
+    } catch {}
+  }, []);
+  const toggle = () =>
+    setOpen((o) => {
+      try {
+        localStorage.setItem("vk-usage-card-open", o ? "0" : "1");
+      } catch {}
+      return !o;
+    });
+  if (locked || isPaid) return null;
 
   const meters = METERS.filter(({ kind }) => limit(kind) !== null); // unlimited ones aren't metered
   const outMeter = meters.find(({ kind }) => left(kind) === 0);
@@ -48,14 +63,55 @@ export function PlanUsageCard() {
   const reset = resetInfo(usage.resetsAt);
 
   return (
-    <section aria-label="Your plan and usage" className="kyc-in flex flex-col gap-5 rounded-xl border border-premium-line bg-surface-card p-5 shadow-sm sm:p-6">
-      <div className="flex flex-wrap items-center gap-3">
-        <span className="inline-flex h-7 items-center rounded-full bg-surface-muted px-3 text-label-sm text-ink-secondary">Free plan</span>
-        <h2 className="flex-1 text-h5 text-ink">This month’s usage</h2>
-        <span className="text-label-sm text-ink-tertiary max-sm:w-full">
-          Resets in {reset.days} day{reset.days === 1 ? "" : "s"} · {reset.label}
-        </span>
+    <section aria-label="Your plan and usage" className="kyc-in flex flex-col rounded-xl border border-premium-line bg-surface-card p-4 shadow-sm sm:px-6 sm:py-4">
+      {/* summary row — always visible */}
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-3">
+        <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-3 gap-y-2">
+          <span className="inline-flex h-7 items-center rounded-full bg-surface-muted px-3 text-label-sm text-ink-secondary">Free plan</span>
+          <h2 className="text-h6 text-ink">This month’s usage</h2>
+          <div className="flex flex-wrap gap-2">
+            {METERS.map(({ kind, Icon }) => {
+              const l = left(kind);
+              const out = l === 0;
+              return (
+                <span
+                  key={kind}
+                  className={cn(
+                    "inline-flex h-7 items-center gap-1.5 rounded-full px-2.5 text-label-sm",
+                    pillTone(l),
+                  )}
+                >
+                  {out ? <Lock1 size={14} color="currentColor" /> : <Icon size={14} color="currentColor" />}
+                  {USAGE_LABEL[kind].title} <b className="font-bold">{l}/{FREE_LIMITS[kind]}</b>
+                </span>
+              );
+            })}
+          </div>
+        </div>
+        <div className="flex w-full items-center gap-2 sm:w-auto">
+          <ButtonLink href="/plans" size="sm" className="max-sm:flex-1" leftIcon={<Crown1 size={16} color="currentColor" />}>
+            Upgrade
+          </ButtonLink>
+          <button
+            type="button"
+            onClick={toggle}
+            aria-expanded={open}
+            aria-controls="usage-details"
+            className="flex h-9 shrink-0 items-center gap-1.5 rounded-full px-3 text-button-sm text-ink-secondary ring-1 ring-inset ring-line-strong transition-colors hover:bg-brand-subtle hover:text-brand hover:ring-brand max-sm:flex-1 max-sm:justify-center"
+          >
+            {open ? "Hide details" : "Details"}
+            <ArrowDown2 size={16} color="currentColor" className={cn("transition-transform duration-300", open && "rotate-180")} />
+          </button>
+        </div>
       </div>
+
+      {/* collapsible details — animates height with grid rows (same as ProPlanCard) */}
+      <div id="usage-details" className={cn("grid transition-[grid-template-rows] duration-300 ease-out", open ? "grid-rows-[1fr]" : "grid-rows-[0fr]")}>
+      <div className="min-h-0 overflow-hidden" inert={!open}>
+      <div className="flex flex-col gap-5 pb-1 pt-5">
+      <p className="text-label-sm text-ink-tertiary">
+        Resets in {reset.days} day{reset.days === 1 ? "" : "s"} · {reset.label}
+      </p>
 
       {anyOut && outLabel && (
         <div className="flex animate-fade-up items-start gap-3 rounded-md bg-premium-bg px-4 py-3 text-body-sm text-premium-fg">
@@ -126,7 +182,16 @@ export function PlanUsageCard() {
           Upgrade to Gold
         </ButtonLink>
       </div>
-
+      </div>
+      </div>
+      </div>
     </section>
   );
+}
+
+/** Usage pill colour: used up · one left · plenty left. */
+function pillTone(left: number) {
+  if (left === 0) return "bg-error-bg text-error-fg";
+  if (left === 1) return "bg-premium-bg text-premium-fg";
+  return "bg-surface-subtle text-ink-secondary";
 }

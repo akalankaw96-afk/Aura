@@ -30,9 +30,15 @@ export function useSignedIn(): boolean {
   return signedIn;
 }
 
-/** Where "home" is for the current visitor: the dashboard once signed in. */
+/** Where "home" is for the current visitor: the dashboard (or /admin for staff) once signed in. */
 export function useHomeHref(): string {
-  return useSignedIn() ? "/dashboard" : "/";
+  if (!useSignedIn()) return "/";
+  try {
+    const raw = typeof window !== "undefined" ? localStorage.getItem(SESSION_KEY) : null;
+    const role = raw ? (JSON.parse(raw) as { role?: string }).role : null;
+    if (role === "Admin" || role === "Moderator") return "/admin";
+  } catch {}
+  return "/dashboard";
 }
 
 /**

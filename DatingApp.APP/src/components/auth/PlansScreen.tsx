@@ -2,8 +2,10 @@
 
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
-import { Add, Minus, Crown1, Lock1, TickCircle } from "iconsax-react";
-import { Alert, Badge, Button, Card } from "@/components/ui";
+import { useRouter } from "next/navigation";
+import { Add, Minus, Crown1, TickCircle } from "iconsax-react";
+import { Badge, Button } from "@/components/ui";
+import { PLAN_PRICES, lkr, type Period } from "@/content/payment";
 import { cn } from "@/lib/cn";
 import { readPlan } from "@/lib/verification";
 import { AuthShell } from "./AuthShell";
@@ -11,15 +13,11 @@ import { BackButton } from "@/components/ui/BackButton";
 
 /**
  * Journey 8 · Upgrade plan (Figma 07 Plans).
- * No payment gateway yet (Sprint 04): choosing a plan explains how to upgrade instead of taking a fake payment.
+ * Phase 1 payment = bank transfer: choosing a plan opens /plans/checkout (bank details + receipt upload).
+ * Prices live in content/payment.ts (shared with the Payment page).
  */
-type Period = 1 | 3 | 6;
 type PlanId = "free" | "gold" | "platinum";
-
-const PRICES: Record<Exclude<PlanId, "free">, Record<Period, number>> = {
-  gold: { 1: 2500, 3: 6375, 6: 11250 },
-  platinum: { 1: 6500, 3: 16575, 6: 29250 },
-};
+const PRICES = PLAN_PRICES;
 const SAVE: Record<Period, string | null> = { 1: null, 3: "Save 15%", 6: "Save 25%" };
 
 const PLANS: { id: PlanId; name: string; tagline: string; features: string[] }[] = [
@@ -30,17 +28,16 @@ const PLANS: { id: PlanId; name: string; tagline: string; features: string[] }[]
 
 const FAQ = [
   { q: "Can I stay on the Free plan?", a: "Yes. Your profile stays live and you get 3 searches and 5 profile views each month. Gold unlocks messages and interest requests." },
-  { q: "Is my payment secure?", a: "Payments are processed by a PCI-DSS certified gateway. We never store your full card number." },
+  { q: "How do I pay?", a: "By bank transfer for now. Choose a plan, transfer the amount to our bank account with your payment reference, then upload the receipt. We activate your plan within 24 hours (Mon–Sat). Card, LankaQR and eZ Cash are coming soon." },
   { q: "Can I cancel?", a: "Plans don’t auto-renew. When your period ends you simply move back to Free. No hidden fees." },
 ];
 
-const lkr = (n: number) => `LKR ${n.toLocaleString("en-LK")}`;
 
 export function PlansScreen() {
   const [period, setPeriod] = useState<Period>(3);
   const [current, setCurrent] = useState<PlanId>("free");
   useEffect(() => setCurrent(readPlan()), []);
-  const [paying, setPaying] = useState<Exclude<PlanId, "free"> | null>(null);
+  const router = useRouter();
   const [openFaq, setOpenFaq] = useState(0);
 
   return (
@@ -133,7 +130,7 @@ export function PlansScreen() {
                   Included
                 </Button>
               ) : (
-                <Button fullWidth size="md" variant={featured ? "white" : "primary"} onClick={() => setPaying(plan.id as "gold" | "platinum")}>
+                <Button fullWidth size="md" variant={featured ? "white" : "primary"} onClick={() => router.push(`/plans/checkout?plan=${plan.id}&months=${period}`)}>
                   {featured ? "Upgrade to Gold" : "Choose Platinum"}
                 </Button>
               )}
@@ -144,11 +141,13 @@ export function PlansScreen() {
 
       <div className="flex flex-wrap items-center justify-center gap-2 text-body-xs text-ink-tertiary">
         Pay with
-        {["Visa", "Mastercard", "LankaQR", "eZ Cash", "Bank transfer"].map((m) => (
-          <span key={m} className="rounded-sm border border-line bg-surface-card px-3 py-1.5 text-ink-secondary">
+        <span className="rounded-sm border border-brand-focus bg-brand-subtle px-3 py-1.5 font-semibold text-brand-text">Bank transfer</span>
+        {["Visa", "Mastercard", "LankaQR", "eZ Cash"].map((m) => (
+          <span key={m} className="rounded-sm border border-line bg-surface-card px-3 py-1.5 text-ink-tertiary opacity-70">
             {m}
           </span>
         ))}
+        <span className="text-ink-tertiary">· cards and wallets coming soon</span>
       </div>
 
       {/* FAQ — same FAQ Item spec as Home */}
@@ -169,47 +168,7 @@ export function PlansScreen() {
         })}
       </div>
 
-      {paying && (
-        <PaymentSheet
-          plan={paying}
-          period={period}
-          amount={PRICES[paying][period]}
-          onClose={() => setPaying(null)}
-        />
-      )}
 
     </AuthShell>
-  );
-}
-
-/* ── Upgrade sheet: no payment gateway yet (Sprint 04) ─────────────────── */
-
-function PaymentSheet({ plan, period, amount, onClose }: { plan: "gold" | "platinum"; period: Period; amount: number; onClose: () => void }) {
-  return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-surface-scrim p-0 sm:items-center sm:p-4" onClick={onClose}>
-      <Card className="w-full max-w-[480px] animate-fade-up rounded-b-none p-6 sm:rounded-b-xl" onClick={(e) => e.stopPropagation()}>
-        <div className="mb-4 flex items-start justify-between">
-          <div>
-            <p className="text-body-sm text-ink-tertiary">Upgrade to</p>
-            <h2 className="text-h4">
-              {plan === "gold" ? "Gold" : "Platinum"} · {period} month{period > 1 ? "s" : ""}
-            </h2>
-          </div>
-          <p className="text-h5 font-extrabold text-brand">{lkr(amount)}</p>
-        </div>
-
-        <Alert type="info" title="Online payment is coming soon">
-          We’re connecting card, LankaQR, eZ Cash and bank transfer payments. Until then, contact our support team and
-          we’ll upgrade your plan for you.
-        </Alert>
-
-        <Link href="/support" className="mt-6 block">
-          <Button fullWidth leftIcon={<Lock1 size={18} color="currentColor" />}>Contact support to upgrade</Button>
-        </Link>
-        <button type="button" onClick={onClose} className="mt-3 w-full text-center text-body-sm font-semibold text-ink-secondary hover:text-ink">
-          Close
-        </button>
-      </Card>
-    </div>
   );
 }
