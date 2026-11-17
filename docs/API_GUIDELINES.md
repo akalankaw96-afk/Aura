@@ -4,20 +4,26 @@ Back end: `DatingApp.API` (.NET 9, ASP.NET Core). Base URL `/api`. Swagger at `/
 The **full target endpoint list (102 endpoints, grouped A, P/K, S, M/C, B/U/X, D/N/W/AD)** is the API spec:
 https://claude.ai/artifact/LP2mSaiPiJYZCij2bLU1p6 — this file holds the conventions plus what exists today.
 
-## 1. What exists today (27 endpoints + hub)
+## 1. What exists today (see table + hub)
 | Controller | Endpoints | Auth today | Problems |
 |---|---|---|---|
 | `AuthController` `/api/auth` (+ `AuthController.Passwords.cs`) | #1–14: `POST register`, `POST login`, `POST google-login`, `POST send-otp`, `POST verify-otp`, `GET me`, `POST refresh`, `POST logout`, `POST forgot-password`, `POST forgot-password/verify`, `POST reset-password`, `POST change-password`, `GET sessions`, `DELETE sessions/{id}` | `me`, `change-password`, `sessions` (refresh/logout use the `vk_refresh` httpOnly cookie) | Built 2026-11-13 on `S01-api-auth`. 2026-11-14: `register` with a mobile → 201 `{ userId, phoneNumber, phoneVerificationRequired }`, no session until `verify-otp`; login → 403 `PHONE_NOT_VERIFIED` for unconfirmed numbers |
-| `ProfilesController` `/api/profiles` | `GET` (search — approved only), `GET me`, `GET me/status`, `POST me/submit`, `GET {id}` (approved only), `POST` (create/update) | `me`, `me/*`, `POST` | `POST` validates (name, gender, `dateOfBirth` 18–80, `photoUrl` = "" / `avatar:<id>` / https) → 400; e-mail taken → 409. `dateOfBirth` and `details.whatsApp` only in `GET me` (2026-11-14) |
-| `MatchRequestsController` `/api/match-requests` | `POST`, `GET my`, `PUT {id}/respond` | all | Errors: 400 / 403 `PROFILE_REQUIRED` / 404 / 409 (2026-11-14) |
+| `ProfilesController` `/api/profiles` | `GET search` (paged — S03-T01), `GET` (old list — approved only), `GET me`, `GET me/status`, `POST me/submit`, `GET {id}` (approved only), `POST` (create/update) | `me`, `me/*`, `POST` | `POST` validates (name, gender, `dateOfBirth` 18–80, `photoUrl` = "" / `avatar:<id>` / https) → 400; e-mail taken → 409. `dateOfBirth` and `details.whatsApp` only in `GET me` (2026-11-14) |
+| `MatchRequestsController` `/api/match-requests` | `POST`, `GET my`, `GET received`, `GET sent`, `GET matched`, `PUT {id}/withdraw`, `PUT {id}/respond` | all | Errors: 400 / 402 `LIMIT_REACHED` / 403 `PROFILE_REQUIRED` · `KYC_REQUIRED` / 404 / 409. Lists return `InterestDto { id, direction, status, note, createdAt, respondedAt, profile }` (S03-T05) |
+| `ShortlistController` `/api/shortlist` | `GET`, `PUT {profileId}`, `DELETE {profileId}` | all | S03-T06 |
+| `SavedSearchesController` `/api/saved-searches` | `GET`, `POST { name, filters }`, `DELETE {id}` | all | S03-T06 — run with `GET /api/profiles/search` |
+| `BlocksController` `/api/blocks` | `GET`, `PUT {profileId}` (`{ reason? }`), `DELETE {profileId}` | all | S03-T07 — chat to a blocked member: 403 `BLOCKED` (blocker) / 404 (blocked side) |
+| `ReportsController` `/api/reports` | `POST { profileId, reason: Scam·Inappropriate·FakeProfile·Other, details?, conversationId? }` | all | S03-T07 — one open report per reporter + member (409) |
+| `ProfileViewsController` `/api/profile-views` | `GET viewers` → `{ total, locked, planId, items }`, `GET recent?take=20` | all | S03-T04 — views are recorded by `GET /api/profiles/{id}` (402 when the month's views are used) |
 | `ChatController` `/api/chat` | `GET conversations`, `GET history/{conversationId}` | all — member from the JWT; history 404 unless a participant | Fixed 2026-11-14 (BUG-004) — awaiting test |
 | `PhotosController` `/api/photos` | `POST` (multipart `file`), `GET mine`, `PUT {id}/main`, `PUT order`, `DELETE {id}`, `GET {id}/file` | all but `file` (approved + approved member = public link; else owner / staff) | S02-T04 |
 | `KycController` `/api/kyc` | `POST documents` (multipart `type` + `file`), `GET documents`, `GET documents/{id}/file` | all (owner / staff; staff views logged) | S02-T05 |
-| `ModerationController` `/api/moderation` | `GET queue`, `GET profiles/{id}`, `POST profiles/{id}/approve · request-changes · suspend · reinstate`, `GET photos/pending`, `POST photos/{id}/approve · reject` | `Staff` policy | S02-T06 |
-| `AdminController` `/api/admin` | `GET staff`, `GET users?phone=`, `PUT users/{id}/role` | `Admin` policy | S02-T08 |
+| `ModerationController` `/api/moderation` | `GET reports?status=`, `POST reports/{id}/resolve` (S03-T08), `GET queue`, `GET profiles/{id}`, `POST profiles/{id}/approve · request-changes · suspend · reinstate`, `GET photos/pending`, `POST photos/{id}/approve · reject` | `Staff` policy | S02-T06 |
+| `AdminController` `/api/admin` | `GET staff`, `GET users?phone=`, `PUT users/{id}/role`, `GET plan-limits`, `PUT plan-limits` (`{ limits: [{ planId, feature, monthlyLimit }] }`, null = unlimited) | `Admin` policy | S02-T08; plan limits S03-T02 |
+| `MeController` `/api/me` | `GET usage` → `{ planId, periodStart, resetsAt, items: [{ feature, used, limit, remaining }] }`; `GET dashboard` → usage + viewers, interests, matches, shortlistedBy, unread, recentConversations | all | S03-T03, S03-T09 |
 | `NotificationsController` `/api/notifications` | `GET`, `GET unread-count`, `POST {id}/read`, `POST read-all` | all | S02-T12 |
 | `ContentController` `/api/content` | `GET home`, `GET stories`, `GET plans`, `GET faqs` | anonymous (correct) | — |
-| `ChatHub` `/hubs/chat` | `JoinConversation(conversationId)`, `LeaveConversation`, `SendMessage(receiverProfileId, text)`, `SendTyping(conversationId, isTyping)`, `MarkAsRead(messageId)`, `RequestContactShare(partnerProfileId)`, `AcceptContactShare(partnerProfileId)` | all — `?access_token=`; matched members only; errors as `HubException` "CODE: message" | Fixed 2026-11-14 (BUG-005) — awaiting test. Gold-only rule still web-side (TD-24) |
+| `ChatHub` `/hubs/chat` | `JoinConversation(conversationId)`, `LeaveConversation`, `SendMessage(receiverProfileId, text)`, `SendTyping(conversationId, isTyping)`, `MarkAsRead(messageId)`, `RequestContactShare(partnerProfileId)`, `AcceptContactShare(partnerProfileId)`, `DeclineContactShare(partnerProfileId)`, `CancelContactShare(partnerProfileId)` | all — `?access_token=`; matched members only; errors as `HubException` "CODE: message" | S03-T07: first message of a conversation counts a NewChat (`LIMIT_REACHED`); `RequestContactShare` needs Gold (`PLAN_REQUIRED`); events `ContactShareDeclined` / `ContactShareCancelled`; blocked → `BLOCKED` / `NOT_FOUND` |
 
 ## 2. Target groups (see spec for every route, request and response)
 | Group | Scope | Sprint |
@@ -59,6 +65,10 @@ https://claude.ai/artifact/LP2mSaiPiJYZCij2bLU1p6 — this file holds the conven
 | 409 | Conflict (duplicate request, already submitted) | `ALREADY_EXISTS` | toast |
 | 429 | Rate limited | `RATE_LIMITED` | toast with retry time |
 | 500 | Unhandled | `SERVER_ERROR` | generic error + retry; no details |
+
+`LIMIT_REACHED` (S03) also carries `feature` (`Search` · `ProfileView` · `Interest` · `NewChat`), `limit`, `planId` and
+`resetsAt` (UTC, first day of next month). Search: `GET /api/profiles/search?gender=&ageFrom=&ageTo=&religion=&community=&location=&country=&profession=&horoscope=&q=&sort=newest|ageAsc|ageDesc&page=1&pageSize=20`
+→ `{ items, total, page, pageSize, totalPages }`; page 1 counts one search for members.
 
 One global exception handler produces these (TD-12). Never leak stack traces or SQL.
 

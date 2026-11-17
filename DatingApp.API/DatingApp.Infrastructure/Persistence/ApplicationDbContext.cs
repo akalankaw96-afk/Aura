@@ -25,6 +25,13 @@ public class ApplicationDbContext : DbContext, IApplicationDbContext
     public DbSet<ProfileReviewFlag> ProfileReviewFlags => Set<ProfileReviewFlag>();
     public DbSet<ProfileReviewLog> ProfileReviewLogs => Set<ProfileReviewLog>();
     public DbSet<Notification> Notifications => Set<Notification>();
+    public DbSet<PlanLimit> PlanLimits => Set<PlanLimit>();
+    public DbSet<UsageCounter> UsageCounters => Set<UsageCounter>();
+    public DbSet<ProfileView> ProfileViews => Set<ProfileView>();
+    public DbSet<Shortlist> Shortlists => Set<Shortlist>();
+    public DbSet<SavedSearch> SavedSearches => Set<SavedSearch>();
+    public DbSet<Block> Blocks => Set<Block>();
+    public DbSet<Report> Reports => Set<Report>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

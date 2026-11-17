@@ -5,6 +5,95 @@ Sections: Added · Changed · Fixed · Security · Removed · Breaking.
 
 ## [Unreleased]
 
+### Added
+- 2026-11-16 — **Staff reports queue (S03-T08).** `GET /api/moderation/reports?status=open|closed|all` and
+  `POST /api/moderation/reports/{id}/resolve` with `dismiss`, `action` (handled without suspending) or `suspend` (note
+  required; suspends the member and closes all their open reports). The reporter gets an in-app "We reviewed your report"
+  (never the decision); each decision is written to the reported profile's history (`ReportDismissed` /
+  `ReportActioned`, plus `Suspended`). Staff area: new **Reports** tab (open / closed, open-report count per member,
+  note, Dismiss · Handled · Suspend member, Open profile). Files: `ReportQueueService.cs`, `ModerationController.cs`,
+  `SafetyDtos.cs`, `Enums.cs` (`ReviewAction` 8, 9), `lib/staff.ts`, `StaffConsole.tsx`; tests `ReportsAndDashboardTests`.
+- 2026-11-16 — **Dashboard summary (S03-T09).** `GET /api/me/dashboard` returns usage, profile viewers (all-time and
+  this week; names for Gold / Platinum only), interests received / waiting / sent, matches, members who shortlisted you,
+  unread messages and the five latest chats — blocked members excluded everywhere. The dashboard's stat tiles, a new
+  "Who viewed you" strip (paid) and the Messages card now use it (no more placeholders); `/messages?c=<conversation or
+  profile id>` opens that chat. Files: `DashboardService.cs`, `MeController` (in `ModerationController.cs`),
+  `UsageDtos.cs`, `lib/{matching,dashboard}.ts`, `StatsRow.tsx`, `Inbox.tsx`, `app/messages/page.tsx`, `content/dashboard.ts`.
+
+### Fixed
+- 2026-11-16 — **A tab could keep showing one member while acting as another (owner test: "You cannot message
+  yourself").** All tabs of a browser share the refresh cookie; after signing in as B in a second tab, A's tab renewed
+  its token as B. Tabs now reload when another tab signs in as someone else or signs out. To test two members at once,
+  use a normal and a private window (or two browsers). File: `services/api.ts`.
+- 2026-11-15 — **Search limit could be skipped with app-side filters (owner test).** Height, "Verified only",
+  "With photo", several religions / professions, countries and the "More" filters only narrowed the loaded results,
+  so they never counted and kept working at 0 searches left. The web app now sends `filtered=true` with them and the
+  API counts that as a search (402 at the limit). Plain browsing (Bride / Groom, newest first) stays free.
+  Files: `UsageDtos.cs` (`ProfileSearchDto.Filtered`), `SearchService.IsRefined`, test; `app/search/page.tsx`, `lib/matching.ts`.
+- 2026-11-15 — **Reset date showed "30 Nov" instead of "1 Dec"** west of UTC: the server's month starts at midnight
+  UTC; the usage card and Upgrade prompt now show that date in UTC. Files: `PlanUsageCard.tsx`, `UpgradePrompt.tsx`.
+
+### Changed
+- 2026-11-15 — **Web app on the Sprint 03 APIs (S03-T10).** Usage counters come from `GET /api/me/usage` (localStorage
+  `vk-usage` / `vk-viewed` gone): dashboard shows four meters (profile views, searches, interests, new chats) with the
+  admin's limits and reset date; the Upgrade prompt opens on any 402 (`LIMIT_REACHED` / `PLAN_REQUIRED`) and is closable
+  except when searches and views are both used up on /search. Free members can now send interests and start chats up to
+  their limits (they were Gold-only in the browser). Search uses `GET /api/profiles/search` (48 per API page, "Load
+  more"; multi-selects, height, countries and "More" filters narrow the loaded results — TD-28) and opens profiles
+  through `GET /api/profiles/{id}`, so views are counted; deep links accept the profile UUID. Saved searches are real
+  (chips above the results). Favourites = server shortlist; Friends, Received and Sent tabs and the dashboard
+  requests card read `/api/match-requests/matched · received · sent`; accept / decline / **Withdraw** call the API.
+  Messages: the first message of a chat counts a new chat (refused message is taken back with the reason), asking for
+  numbers needs Gold, decline / cancel go to the hub, block / unblock / report use `/api/blocks` and `/api/reports`,
+  blocked chats and contact-share state come from the server. Profile "Report" sends `POST /api/reports`. Admin:
+  **Plan limits** tab in the staff area. API: plain browsing (Bride / Groom, newest first) no longer counts as a search;
+  religion / profession filters match like the web did (contains). Files: `lib/{usage,matching,connections,http,profiles}.ts`,
+  `services/signalrService.ts`, `app/search/page.tsx`, `app/messages/page.tsx`, `components/layout/UpgradePrompt.tsx`,
+  `components/sections/dashboard/{PlanUsageCard,Inbox,BestMatches}.tsx`, `components/sections/member/RequestsScreen.tsx`,
+  `components/sections/search/ProfileView.tsx`, `components/sections/home/{Hero,FeaturedProfiles}.tsx`,
+  `components/profile/ProfileActions.tsx`, `components/sections/admin/StaffConsole.tsx`, `content/home.ts`;
+  API `SearchService` (+ test).
+
+### Added
+- 2026-11-14 — **Shortlist, saved searches, chat limits, contact share answers, block and report (S03-T06, T07).**
+  Shortlist on the server (`GET /api/shortlist`, `PUT` / `DELETE /api/shortlist/{profileId}`; up to 200; only approved,
+  unblocked profiles listed). Saved searches (`GET` / `POST /api/saved-searches`, `DELETE /{id}`; up to 10, unique
+  names; run with `GET /api/profiles/search`). Chat: the first message of a conversation counts one new chat (Free: 2 a
+  month; replies and later messages are free); asking to share numbers needs Gold / Platinum — 402 `PLAN_REQUIRED`
+  (TD-24) — while accepting or declining is free; new hub methods `DeclineContactShare` / `CancelContactShare` with
+  events `ContactShareDeclined` / `ContactShareCancelled` (TD-20, API side); a request is open until accepted,
+  declined or cancelled; `GET /api/chat/conversations` adds `contactShareState` (none · sent · received · accepted) and
+  `isBlocked`. Blocking (`GET /api/blocks`, `PUT` / `DELETE /api/blocks/{profileId}` with optional `reason`) hides the
+  two members from each other in search, profiles, interests, shortlist and chat; the blocker gets 403 `BLOCKED`, the
+  blocked member a plain 404; waiting interests between them end, an accepted match is kept for unblocking. Reports
+  (`POST /api/reports` — Scam · Inappropriate · FakeProfile · Other) are stored for the staff queue (T08). New tables
+  `Shortlists`, `SavedSearches`, `Blocks`, `Reports`; `ChatMessages` + `IsContactShareDeclined`,
+  `IsContactShareCancelled` (migration `Sprint03Safety`). Files: `SafetyEntities.cs`, `SafetyConfigurations.cs`,
+  `SafetyDtos.cs`, `SafetyService.cs` (+ `BlockRules`), `ShortlistService.cs`, `ChatService.cs`, `ChatHub.cs`,
+  `SafetyControllers.cs`, block checks in `SearchService`, `ProfileViewService`, `MatchRequestService`; tests
+  `SafetyAndChatLimitTests`, `ChatServiceTests` (contact share now needs Gold).
+- 2026-11-14 — **Profile views and the interests lifecycle (S03-T04, T05).** Opening a profile (`GET /api/profiles/{id}`)
+  as a member records the view and counts one profile view (Free: 5 a month → 402 `LIMIT_REACHED`); re-opening the same
+  profile this month, your own profile, staff, and members you share a pending / accepted interest with are free.
+  `GET /api/profile-views/viewers` — Gold / Platinum see who viewed them, Free gets the total with `locked: true`;
+  `GET /api/profile-views/recent`. Interests: sending needs an approved profile (403 `KYC_REQUIRED`) and counts one
+  interest (Free: 3 a month); new `PUT /api/match-requests/{id}/withdraw` (status `Withdrawn`, can be sent again);
+  a declined interest can't be re-sent; lists `GET /api/match-requests/received · sent · matched` return the other
+  member's card; the receiver is notified of a new interest and the sender when it's accepted. New table
+  `ProfileViews` (migration `Sprint03Interactions`). Files: `ProfileViewService.cs`, `ProfileViewsController.cs`,
+  `MatchRequestService.cs`, `MatchRequestsController.cs`, `ProfilesController.cs`, `UsageEntities.cs`,
+  `UsageConfigurations.cs`, DTOs; tests `ProfileViewTests`, `MatchRequestServiceTests` (rewritten for the new rules).
+- 2026-11-14 — **Server search, plan limits and monthly usage (S03-T01–T03).** `GET /api/profiles/search` filters
+  approved profiles on the server (gender, age from birth date, religion, community, location, country, profession,
+  horoscope, free text), sorts (newest / ageAsc / ageDesc) and pages (`page`, `pageSize` ≤ 50; guests see page 1 only).
+  Admin-set limits per plan: `GET/PUT /api/admin/plan-limits` (seeded Free = 3 searches, 5 profile views, 3 interests,
+  2 new chats a month; Gold / Platinum unlimited). Monthly counters with `GET /api/me/usage`; going over returns
+  402 `LIMIT_REACHED` with `feature`, `limit`, `planId`, `resetsAt`. Staff are never counted. A member's first page of a
+  search counts once; later pages are free. New tables `PlanLimits`, `UsageCounters` + search indexes (migration
+  `Sprint03Usage`). Files: `UsageEntities.cs`, `UsageConfigurations.cs`, `UsageDtos.cs`, `UsageService.cs`,
+  `SearchService.cs`, `ProfilesController`, `ModerationController.cs` (`AdminController`, new `MeController`),
+  initialiser `EnsurePlanLimitsAsync`, tests `SearchAndUsageTests`.
+
 ### Changed
 - 2026-11-16 — **Staff area redesigned as a real admin panel (S02-T11 follow-up).** `/admin/*` now has its own
   layout: a left sidebar (Dashboard · Profile reviews · New photos · Members · Roles & staff, with live counts; a

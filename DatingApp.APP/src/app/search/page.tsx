@@ -17,7 +17,16 @@ import { useToast } from "@/components/ui/Toast";
 import { hasSession, requireMember, useSignedIn } from "@/lib/session";
 import { favouriteProfile, useSentInterests } from "@/lib/connections";
 import { cn } from "@/lib/cn";
-import { consumeProfileView, consume, allSearchLimitsExhausted, useUsage } from "@/lib/usage";
+import { allSearchLimitsExhausted, canUse, handleLimitError, refreshUsage, useUsage } from "@/lib/usage";
+import {
+  deleteSavedSearch,
+  getSavedSearches,
+  openProfile,
+  saveSearch as saveSearchApi,
+  searchProfiles,
+  type SavedSearch,
+  type SearchQuery,
+} from "@/lib/matching";
 import { ProfileCard } from "@/components/cards/ProfileCard";
 import { ProfileCardList } from "@/components/cards/ProfileCardList";
 import { ProfileView } from "@/components/sections/search/ProfileView";
@@ -44,7 +53,6 @@ import {
   type MoreKey,
   type SortKey,
 } from "@/content/search";
-import { apiService } from "@/services/api";
 import type { Profile } from "@/types";
 
 // Unified Candidate Proposal Interface
@@ -64,6 +72,69 @@ const COUNTRY_LABEL: Partial<Record<CountryCode, string>> = Object.fromEntries(
   [...COUNTRY_OPTIONS, ...MORE_COUNTRIES].map((c) => [c.code, c.label])
 );
 const PAGE_SIZE: Record<ResultsView, number> = { grid: 12, list: 6 };
+/** Profiles per API page (GET /api/profiles/search, max 50) — "Load more" fetches the next one. */
+const SERVER_PAGE = 48;
+const SORT_API: Record<SortKey, SearchQuery["sort"]> = { newest: undefined, best: undefined, "age-asc": "ageAsc", "age-desc": "ageDesc" };
+
+/**
+ * The filters the server applies (and counts as a search when any is set besides Bride / Groom).
+ * Multi-selects, height, countries and the "More" sections are refined on the loaded results — `filtered`
+ * tells the server, so they count as a search too (no free filtering past the monthly limit).
+ */
+function toQuery(f: SearchFilters, sort: SortKey): SearchQuery {
+  return {
+    gender: f.lookingFor === "bride" ? "female" : "male",
+    ageFrom: f.age[0] !== AGE_MIN ? f.age[0] : undefined,
+    ageTo: f.age[1] !== AGE_MAX ? f.age[1] : undefined,
+    religion: f.religions.length === 1 && f.religions[0] !== "Other" ? f.religions[0] : undefined,
+    profession: f.professions.length === 1 ? f.professions[0] : undefined,
+    location: f.district || undefined,
+    horoscope: f.more.horoscope?.length ? true : undefined,
+    sort: SORT_API[sort],
+    filtered: hasClientOnlyFilters(f) ? true : undefined,
+  };
+}
+
+/** True when some filters only narrow the loaded results (then the count is of what's loaded). */
+function hasClientOnlyFilters(f: SearchFilters) {
+  return (
+    f.religions.length > 1 ||
+    f.religions.includes("Other") ||
+    f.professions.length > 1 ||
+    f.countries.length > 0 ||
+    f.withPhoto ||
+    f.verifiedOnly ||
+    f.height[0] !== HEIGHT_MIN ||
+    f.height[1] !== HEIGHT_MAX ||
+    (Object.keys(f.more) as MoreKey[]).some((k) => k !== "horoscope" && (f.more[k]?.length ?? 0) > 0)
+  );
+}
+
+/** A saved search (API filters) back into the sidebar's filters. */
+function fromQuery(q: SearchQuery): { filters: SearchFilters; sort: SortKey } {
+  const f = defaultFilters(q.gender === "male" ? "groom" : "bride");
+  if (q.ageFrom) f.age = [Math.max(AGE_MIN, q.ageFrom), f.age[1]];
+  if (q.ageTo) f.age = [f.age[0], Math.min(AGE_MAX, q.ageTo)];
+  if (q.religion) f.religions = [q.religion];
+  if (q.profession) f.professions = [q.profession];
+  if (q.location) f.district = q.location;
+  if (q.horoscope) f.more = { horoscope: ["Horoscope available"] };
+  const sort: SortKey = q.sort === "ageAsc" ? "age-asc" : q.sort === "ageDesc" ? "age-desc" : "newest";
+  return { filters: f, sort };
+}
+
+const toProposal = (p: Profile): CandidateProposal => ({
+  ...toFeatured(p),
+  name: p.name,
+  countryName: p.country,
+  district: p.details?.district || undefined,
+  details: p.details,
+  bio: p.bio,
+  education: p.education,
+  community: p.community,
+  aboutFamily: p.aboutFamily,
+  professionCategory: p.professionCategory,
+});
 
 /**
  * Search proposals — Figma "🔍 Search Results" (87:15052):
@@ -107,50 +178,76 @@ function SearchPageContent() {
   const [page, setPage] = useState(1);
   const [drawerOpen, setDrawerOpen] = useState(false);
   // Full-page profile view (?id=) — results list on the left, profile on the right
-  const [viewId, setViewId] = useState<string | null>(null);
+  const [viewing, setViewing] = useState<CandidateProposal | null>(null);
+  const pendingIdRef = useRef<string | null>(initialId || null);
   const pushedRef = useRef(false);
 
-  // Live Database Connectivity State
+  /* Results come from GET /api/profiles/search (S03-T01). A member's filtered first page uses one of the
+     month's searches on the server (plain browsing is free). The sidebar edits `filters`; results follow
+     `applied`, which updates 0.7 s after the last change. At the limit (402) the controls go back to the
+     last search that worked and the Upgrade prompt opens. */
+  const [applied, setApplied] = useState<{ filters: SearchFilters; sort: SortKey }>({ filters, sort });
+  const lastGoodRef = useRef<{ filters: SearchFilters; sort: SortKey } | null>(null);
+  const skipFetchRef = useRef(false);
   const [liveDbProfiles, setLiveDbProfiles] = useState<Profile[]>([]);
-
+  const [meta, setMeta] = useState({ total: 0, page: 1, totalPages: 1 });
   const [loadError, setLoadError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   useEffect(() => {
+    if (skipFetchRef.current) {
+      skipFetchRef.current = false;
+      return;
+    }
     let isMounted = true;
     setLoading(true);
-    apiService
-      .getProfiles()
-      .then((profiles) => {
+    searchProfiles({ ...toQuery(applied.filters, applied.sort), page: 1, pageSize: SERVER_PAGE })
+      .then((r) => {
         if (!isMounted) return;
-        setLiveDbProfiles(profiles);
+        setLiveDbProfiles(r.items);
+        setMeta({ total: r.total, page: r.page, totalPages: r.totalPages });
         setLoadError(null);
+        lastGoodRef.current = applied;
+        if (hasSession()) void refreshUsage();
       })
       .catch((err: unknown) => {
-        if (isMounted) setLoadError(err instanceof Error ? err.message : "We couldn’t load profiles.");
+        if (!isMounted) return;
+        if (handleLimitError(err)) {
+          const prev = lastGoodRef.current;
+          if (prev) {
+            skipFetchRef.current = true;
+            setFilters(prev.filters);
+            setSort(prev.sort);
+            setApplied(prev);
+          }
+          return;
+        }
+        setLoadError(err instanceof Error ? err.message : "We couldn’t load profiles.");
       })
       .finally(() => isMounted && setLoading(false));
     return () => {
       isMounted = false;
     };
-  }, [signedIn]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [applied, signedIn]);
 
-  // Members from the database (GET /api/profiles) — the only source; empty when nobody has registered yet.
-  const candidatePool: CandidateProposal[] = useMemo(
-    () =>
-      liveDbProfiles.map((p) => ({
-        ...toFeatured(p),
-        name: p.name,
-        countryName: p.country,
-        district: p.details?.district || undefined,
-        details: p.details,
-        bio: p.bio,
-        education: p.education,
-        community: p.community,
-        aboutFamily: p.aboutFamily,
-        professionCategory: p.professionCategory,
-      })),
-    [liveDbProfiles],
-  );
+  // Next API page of the same search — free
+  const loadMore = async () => {
+    if (loadingMore || meta.page >= meta.totalPages) return;
+    setLoadingMore(true);
+    try {
+      const r = await searchProfiles({ ...toQuery(applied.filters, applied.sort), page: meta.page + 1, pageSize: SERVER_PAGE });
+      setLiveDbProfiles((list) => [...list, ...r.items.filter((p) => !list.some((x) => x.id === p.id))]);
+      setMeta({ total: r.total, page: r.page, totalPages: r.totalPages });
+    } catch (err) {
+      if (!handleLimitError(err)) toast.error("Couldn’t load more", err instanceof Error ? err.message : "Please try again.");
+    } finally {
+      setLoadingMore(false);
+    }
+  };
+
+  // Approved members from the database — the only source; empty when nobody matches.
+  const candidatePool: CandidateProposal[] = useMemo(() => liveDbProfiles.map(toProposal), [liveDbProfiles]);
 
   // List-card details from each member's real profile
   const extrasById = useMemo(
@@ -172,23 +269,20 @@ function SearchPageContent() {
     [candidatePool]
   );
 
-  // Filtered + sorted results
-  /* Free plan: each search (filters / sort applied) uses one of the monthly searches.
-     The sidebar edits `filters`; results follow `applied`, which only updates when a search is allowed. */
-  const [applied, setApplied] = useState<{ filters: SearchFilters; sort: SortKey }>({ filters, sort });
+  // Filtered + sorted results (the server already applied its filters; the rest narrow the loaded list)
   const { left: usageLeft, unlimited } = useUsage();
   const searchesLeft = usageLeft("searches");
   const viewsLeft = usageLeft("profileViews");
   useEffect(() => {
     if (applied.filters === filters && applied.sort === sort) return;
     const t = window.setTimeout(() => {
-      if (hasSession() && allSearchLimitsExhausted()) return;
-      if (consume("searches")) setApplied({ filters, sort });
-      else {
-        // limit reached → put the controls back to the last allowed search
+      if (hasSession() && allSearchLimitsExhausted()) {
+        // browsing used up → keep the last results
         setFilters(applied.filters);
         setSort(applied.sort);
+        return;
       }
+      setApplied({ filters, sort });
     }, 700);
     return () => window.clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -243,21 +337,64 @@ function SearchPageContent() {
   // Back to page 1 whenever the filters, sort or view change
   useEffect(() => setPage(1), [applied, view]);
 
-  // Open ?id= on load, and follow browser back / forward
+  /* Open a profile in full through GET /api/profiles/{id}: for members this records the view and counts one
+     profile view (re-opening one this month is free) — 402 opens the Upgrade prompt, 404 = hidden or gone. */
+  const openDetail = async (p: { id: string; profileId?: string }, history: "push" | "replace" | "none"): Promise<boolean> => {
+    if (hasSession() && allSearchLimitsExhausted()) return false;
+    let full: CandidateProposal | null = candidatePool.find((c) => c.id === p.id) ?? null;
+    if (p.profileId) {
+      try {
+        full = toProposal(await openProfile(p.profileId));
+        if (hasSession()) void refreshUsage();
+      } catch (err) {
+        if (!handleLimitError(err)) toast.error("Profile not available", err instanceof Error ? err.message : "Please try again.");
+        return false;
+      }
+    }
+    if (!full) return false;
+    if (history !== "none") {
+      const url = new URL(window.location.href);
+      url.searchParams.set("id", full.id);
+      // first open adds a history entry (browser Back returns to results); switching profiles replaces it
+      if (history === "replace") window.history.replaceState(null, "", url);
+      else {
+        window.history.pushState(null, "", url);
+        pushedRef.current = true;
+      }
+    }
+    setViewing(full);
+    return true;
+  };
+  const findInPool = (id: string) =>
+    candidatePool.find((c) => c.id.toLowerCase() === id.toLowerCase() || c.profileId?.toLowerCase() === id.toLowerCase());
+
+  // ?id= on first load — once the first results are in (a profile id that isn't in them is opened directly)
   useEffect(() => {
-    const openFromUrl = (id: string | null) => {
-      if (hasSession() && allSearchLimitsExhausted()) return;
-      if (!id || consumeProfileView(id)) setViewId(id);
-    };
-    openFromUrl(initialId || null);
+    const id = pendingIdRef.current;
+    if (!id || loading) return;
+    pendingIdRef.current = null;
+    const known = findInPool(id);
+    if (known) void openDetail(known, "none");
+    else if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)) void openDetail({ id, profileId: id }, "none");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading, candidatePool]);
+
+  // Follow browser back / forward
+  useEffect(() => {
     const onPop = () => {
       pushedRef.current = false;
-      openFromUrl(new URLSearchParams(window.location.search).get("id"));
+      const id = new URLSearchParams(window.location.search).get("id");
+      if (!id) {
+        setViewing(null);
+        return;
+      }
+      const known = findInPool(id);
+      if (known) void openDetail(known, "none");
     };
     window.addEventListener("popstate", onPop);
     return () => window.removeEventListener("popstate", onPop);
-  }, [initialId]);
-  const viewing = viewId ? candidatePool.find((c) => c.id.toLowerCase() === viewId.toLowerCase()) ?? null : null;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [candidatePool]);
 
   // Lock page scroll while the mobile filter drawer is open
   useEffect(() => {
@@ -267,20 +404,7 @@ function SearchPageContent() {
     };
   }, [drawerOpen]);
 
-  const handleOpenDetail = (p: FeaturedProfile) => {
-    if (hasSession() && allSearchLimitsExhausted()) return;
-    // Free plan: 5 different profiles a month (Upgrade prompt at the limit)
-    if (!consumeProfileView(p.id)) return;
-    const url = new URL(window.location.href);
-    url.searchParams.set("id", p.id);
-    // first open adds a history entry (browser Back returns to results); switching profiles replaces it
-    if (viewId) window.history.replaceState(null, "", url);
-    else {
-      window.history.pushState(null, "", url);
-      pushedRef.current = true;
-    }
-    setViewId(p.id);
-  };
+  const handleOpenDetail = (p: FeaturedProfile) => void openDetail(p, viewing ? "replace" : "push");
   const closeDetail = () => {
     if (fromHome || fromDashboard) {
       // came from Home / Dashboard: go back there (history keeps the scroll position); direct visit → open it
@@ -297,7 +421,7 @@ function SearchPageContent() {
       url.searchParams.delete("id");
       window.history.replaceState(null, "", url);
     }
-    setViewId(null);
+    setViewing(null);
   };
 
   const goToPage = (p: number) => {
@@ -305,22 +429,56 @@ function SearchPageContent() {
     topRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
   const clearAll = () => setFilters(defaultFilters(filters.lookingFor));
-  // POST /api/match-requests; the card shows "Interest sent" only after the API accepted it
+  // POST /api/match-requests; the card shows "Interest sent" only after the API accepted it (402 → Upgrade prompt)
   const sendInterest = async (p: FeaturedProfile): Promise<boolean> => {
     if (!requireMember("send an interest")) return false;
-    if (allSearchLimitsExhausted()) return false;
-    if (!consume("interests")) return false;
+    if (!canUse("interests")) return false;
     const r = await sendInterestApi(p);
     if (!r.ok) {
-      toast.error("Interest not sent", r.message);
+      if (!handleLimitError(r.error)) toast.error("Interest not sent", r.message);
       return false;
     }
     saveInterest({ ...favouriteProfile(p), time: "Just now", note: "You sent an interest. Waiting for a reply." });
+    void refreshUsage();
     toast.success("Interest sent", `${p.id} will be notified. You can chat once they accept.`);
     return true;
   };
-  // Saved searches need the API (Sprint 03) — say so instead of pretending to save
-  const saveSearch = () => toast.info("Saved searches are coming soon", "For now, bookmark this page to come back to these filters.");
+
+  // Saved searches (S03-T06) — kept on the server, up to 10; running one is a normal search
+  const [savedSearches, setSavedSearches] = useState<SavedSearch[]>([]);
+  useEffect(() => {
+    if (!signedIn) {
+      setSavedSearches([]);
+      return;
+    }
+    getSavedSearches().then(setSavedSearches).catch(() => setSavedSearches([]));
+  }, [signedIn]);
+  const saveSearch = async () => {
+    if (!requireMember("save searches")) return;
+    const base = `${filters.lookingFor === "bride" ? "Brides" : "Grooms"}${filters.district ? ` in ${filters.district}` : ""}${filters.age[0] !== AGE_MIN || filters.age[1] !== AGE_MAX ? `, ${filters.age[0]}–${filters.age[1]}` : ""}`;
+    let name = base;
+    for (let n = 2; savedSearches.some((s) => s.name === name); n++) name = `${base} (${n})`;
+    try {
+      const created = await saveSearchApi(name, toQuery(filters, sort));
+      setSavedSearches((list) => [created, ...list]);
+      toast.success("Search saved", hasClientOnlyFilters(filters) ? `“${name}” keeps gender, age, religion, profession, district and horoscope.` : `Find “${name}” above your results anytime.`);
+    } catch (err) {
+      toast.error("Search not saved", err instanceof Error ? err.message : "Please try again.");
+    }
+  };
+  const applySaved = (s: SavedSearch) => {
+    const next = fromQuery(s.filters);
+    setFilters(next.filters);
+    setSort(next.sort);
+  };
+  const removeSaved = async (s: SavedSearch) => {
+    setSavedSearches((list) => list.filter((x) => x.id !== s.id));
+    try {
+      await deleteSavedSearch(s.id);
+    } catch {
+      setSavedSearches((list) => [s, ...list]);
+    }
+  };
 
   /* ---------- active filter chips ---------- */
   const chips: { key: string; label: string; value: React.ReactNode; icon?: React.ReactNode; remove: () => void }[] = [];
@@ -349,6 +507,8 @@ function SearchPageContent() {
     filters.countries.length === 1 ? COUNTRY_LABEL[filters.countries[0]] : filters.countries.length > 1 ? "selected countries" : "Sri Lanka & abroad";
   const title = `${filters.lookingFor === "bride" ? "Brides" : "Grooms"} in ${filters.district || countryTitle}`;
   const listKey = `${view}-${page}-${sort}-${results.length}`;
+  // server total, unless some filters only narrow what's loaded
+  const shownTotal = hasClientOnlyFilters(applied.filters) ? results.length : Math.max(meta.total, results.length);
 
   const sidebar = (
     <FiltersSidebar value={filters} onChange={setFilters} onClear={clearAll} onSave={saveSearch} />
@@ -396,12 +556,12 @@ function SearchPageContent() {
               <h1 className="text-h3 text-ink md:text-h2">{title}</h1>
               <p className="text-body-sm text-ink-secondary">
                 Showing {from}–{to} of{" "}
-                <span key={results.length} className="inline-block animate-pop-in font-semibold text-brand-text">
-                  {results.length.toLocaleString()} proposals
+                <span key={shownTotal} className="inline-block animate-pop-in font-semibold text-brand-text">
+                  {shownTotal.toLocaleString()} proposals
                 </span>
               </p>
               {/* Free plan: what's left this month — searches + profile views (countdown) */}
-              {signedIn && !unlimited && (
+              {signedIn && !unlimited && Number.isFinite(searchesLeft) && Number.isFinite(viewsLeft) && (
                 <div className="mt-1 flex flex-wrap items-center gap-2">
                   {(
                     [
@@ -463,6 +623,22 @@ function SearchPageContent() {
             )}
           </div>
 
+          {signedIn && savedSearches.length > 0 && (
+            <div className="enter flex flex-wrap items-center gap-2">
+              <span className="mr-1 text-label-md text-ink-secondary">Saved searches</span>
+              {savedSearches.map((s) => (
+                <span key={s.id} className="inline-flex items-center gap-1 rounded-full border border-line bg-surface-card pl-3 pr-1 text-label-md text-ink shadow-xs">
+                  <button type="button" onClick={() => applySaved(s)} className="py-1.5 hover:text-brand-text">
+                    {s.name}
+                  </button>
+                  <button type="button" aria-label={`Delete saved search ${s.name}`} onClick={() => void removeSaved(s)} className="rounded-full p-1 text-ink-tertiary hover:bg-surface-subtle hover:text-error-fg">
+                    <CloseCircle size={16} color="currentColor" />
+                  </button>
+                </span>
+              ))}
+            </div>
+          )}
+
           {loadError ? (
             <div role="alert" className="flex flex-col items-center gap-3 rounded-xl border border-line bg-surface-card p-8 text-center">
               <p className="text-h6 text-ink">Profiles couldn’t load</p>
@@ -472,8 +648,8 @@ function SearchPageContent() {
             <p className="py-12 text-center text-body-md text-ink-tertiary">Loading profiles…</p>
           ) : candidatePool.length === 0 ? (
             <div className="flex flex-col items-center gap-2 rounded-xl border border-line bg-surface-card p-8 text-center">
-              <p className="text-h6 text-ink">No members yet</p>
-              <p className="text-body-md text-ink-secondary">Profiles appear here as members register. Check back soon.</p>
+              <p className="text-h6 text-ink">No proposals found</p>
+              <p className="text-body-md text-ink-secondary">No approved profiles match yet. Try a wider search, or check back soon as new members join.</p>
             </div>
           ) : results.length === 0 ? (
             <EmptyResults onClear={clearAll} />
@@ -537,7 +713,14 @@ function SearchPageContent() {
                 <p className="text-body-sm text-ink-secondary">
                   Showing {from}–{to} of {pool.length.toLocaleString()}
                 </p>
-                <Pagination page={page} pageCount={pageCount} onChange={goToPage} />
+                <div className="flex flex-col items-center gap-3">
+                  <Pagination page={page} pageCount={pageCount} onChange={goToPage} />
+                  {meta.page < meta.totalPages && (
+                    <Button variant="outline" size="sm" className="rounded-full" disabled={loadingMore} onClick={() => void loadMore()}>
+                      {loadingMore ? "Loading…" : "Load more proposals"}
+                    </Button>
+                  )}
+                </div>
                 <Button variant="outline" size="sm" className="rounded-full" onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}>
                   Back to top
                 </Button>

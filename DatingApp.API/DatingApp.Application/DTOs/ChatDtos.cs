@@ -21,6 +21,8 @@ public class ChatMessageDto
     // Contact sharing
     public bool IsContactShareRequest { get; set; }
     public bool IsContactShareAccepted { get; set; }
+    public bool IsContactShareDeclined { get; set; }
+    public bool IsContactShareCancelled { get; set; }
 }
 
 public class SendMessageDto
@@ -44,6 +46,10 @@ public class ConversationDto
     public int UnreadCount { get; set; }
     public bool IsContactShared { get; set; }
     public string? PartnerPhoneNumber { get; set; }
+    /// <summary>Contact share: none · sent (I asked) · received (they asked) · accepted (S03-T07).</summary>
+    public string ContactShareState { get; set; } = "none";
+    /// <summary>I blocked this member — the chat is read-only until I unblock (S03-T07).</summary>
+    public bool IsBlocked { get; set; }
 }
 
 public class TypingIndicatorDto

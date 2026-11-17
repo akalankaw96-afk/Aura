@@ -1,169 +1,192 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { readPlan } from "@/lib/verification";
+import { ApiError, apiJson } from "@/lib/http";
 import { hasSession, requireMember } from "@/lib/session";
 
 /**
- * Free-plan usage limits (per calendar month). Paid members (Gold / Platinum) are unlimited.
- *   messages  → messages sent in chat
- *   searches  → searches run (filters / sort applied on the Search page)
- *   interests → interests sent ("add friend")
- *   profileViews → different profiles opened in full (re-opening one already seen this month is free)
- * When a free member hits a limit, `consume()` returns false and opens the Upgrade prompt.
- * Counts are kept in this browser until the API meters usage (Sprint 03, BUG-011) — not demo data, but not secure yet.
+ * This month's plan usage, from the API (GET /api/me/usage — S03-T03). The server counts and enforces every limit;
+ * the web app only shows the numbers and opens the Upgrade prompt early when a limit is clearly used up.
+ *   searches     → filtered searches (plain browsing is free)
+ *   profileViews → different profiles opened in full (re-opening one this month is free)
+ *   interests    → interests sent
+ *   chats        → new conversations started (replies are free)
+ *   contactShare → asking to share phone numbers — a Gold feature (answering a request is free)
+ * The admin can change every limit (Staff area → Plan limits); null = unlimited.
  */
-export type UsageKind = "profileViews" | "chats" | "messages" | "searches" | "interests";
+export type UsageKind = "profileViews" | "chats" | "searches" | "interests" | "contactShare";
+type MeteredKind = Exclude<UsageKind, "contactShare">;
 
-export const FREE_LIMITS: Record<UsageKind, number> = {
-  profileViews: 5,
-  chats: 0,
-  messages: 0,
-  searches: 3,
-  interests: 0,
+const FEATURE_KIND: Record<string, UsageKind> = {
+  Search: "searches",
+  ProfileView: "profileViews",
+  Interest: "interests",
+  NewChat: "chats",
+  ContactShare: "contactShare",
 };
 
-export const USAGE_LABEL: Record<UsageKind, { title: string; unit: string; limitReachedTitle?: string; limitReachedMsg?: string }> = {
-  profileViews: {
-    title: "Profile views",
-    unit: "profile views",
-    limitReachedTitle: "You’ve viewed your 5 free profiles",
-    limitReachedMsg: "Free members can open 5 profiles a month. Your allowance resets on the 1st. Upgrade to view unlimited profiles right now.",
-  },
-  chats: {
-    title: "Free Chat Connections",
-    unit: "connections",
-    limitReachedTitle: "Chat is a Gold feature",
-    limitReachedMsg: "Upgrade to Gold to connect and chat with members.",
-  },
-  messages: {
-    title: "Messages",
-    unit: "messages",
-    limitReachedTitle: "Messaging is a Gold feature",
-    limitReachedMsg: "You can still view profile details with your free allowance. Upgrade to Gold to send messages.",
-  },
+export const USAGE_LABEL: Record<UsageKind, { title: string; unit: string; goldTitle?: string; goldMsg?: string }> = {
+  profileViews: { title: "Profile views", unit: "profile views" },
+  chats: { title: "New chats", unit: "new chats" },
   searches: { title: "Searches", unit: "searches" },
-  interests: {
-    title: "Interest requests",
-    unit: "interests",
-    limitReachedTitle: "Interest requests are a Gold feature",
-    limitReachedMsg: "Upgrade to Gold to send and respond to interest requests.",
+  interests: { title: "Interests", unit: "interests" },
+  contactShare: {
+    title: "Contact sharing",
+    unit: "contact requests",
+    goldTitle: "Contact sharing is a Gold feature",
+    goldMsg: "Upgrade to Gold to ask for phone and WhatsApp numbers. You can still accept a request someone sends you.",
   },
 };
 
-const KEY = "vk-usage";
-const EVENT = "vk-usage-change";
 export const UPGRADE_EVENT = "vk-upgrade-prompt";
+const EVENT = "vk-usage-change";
 
-type Usage = Record<UsageKind, number> & { month: string };
+interface UsageItemDto { feature: string; used: number; limit: number | null; remaining: number | null }
+interface UsageDto { planId: string; periodStart: string; resetsAt: string; items: UsageItemDto[] }
 
-const thisMonth = () => new Date().toISOString().slice(0, 7);
-const empty = (): Usage => ({
-  month: thisMonth(),
-  profileViews: 0,
-  chats: 0,
-  messages: 0,
-  searches: 0,
-  interests: 0,
-});
+export interface UsageState {
+  loaded: boolean;
+  planId: string;
+  unlimited: boolean;
+  used: Record<MeteredKind, number>;
+  /** null = unlimited */
+  limits: Record<MeteredKind, number | null>;
+  resetsAt: string | null;
+}
 
-export function readUsage(): Usage {
-  if (typeof window === "undefined") return empty();
-  try {
-    const u = JSON.parse(localStorage.getItem(KEY) || "null") as Usage | null;
-    return u && u.month === thisMonth() ? { ...empty(), ...u } : empty(); // resets every month
-  } catch {
-    return empty();
+const EMPTY: UsageState = {
+  loaded: false,
+  planId: "free",
+  unlimited: false,
+  used: { profileViews: 0, chats: 0, searches: 0, interests: 0 },
+  limits: { profileViews: null, chats: null, searches: null, interests: null },
+  resetsAt: null,
+};
+
+let state: UsageState = EMPTY;
+let inflight: Promise<void> | null = null;
+let lastLoad = 0;
+
+function emit() {
+  if (typeof window !== "undefined") window.dispatchEvent(new Event(EVENT));
+}
+
+export const readUsageState = () => state;
+
+/** Re-reads usage from the API (deduplicated). Signed-out → empty. */
+export function refreshUsage(): Promise<void> {
+  if (!hasSession()) {
+    state = EMPTY;
+    emit();
+    return Promise.resolve();
   }
+  if (inflight) return inflight;
+  inflight = apiJson<UsageDto>("/me/usage", { cache: "no-store" })
+    .then((dto) => {
+      const next: UsageState = { ...EMPTY, used: { ...EMPTY.used }, limits: { ...EMPTY.limits } };
+      next.loaded = true;
+      next.planId = dto.planId;
+      next.resetsAt = dto.resetsAt;
+      for (const item of dto.items) {
+        const kind = FEATURE_KIND[item.feature];
+        if (!kind || kind === "contactShare") continue;
+        next.used[kind] = item.used;
+        next.limits[kind] = item.limit;
+      }
+      next.unlimited = dto.planId !== "free" && Object.values(next.limits).every((l) => l === null);
+      state = next;
+      lastLoad = Date.now();
+      emit();
+    })
+    .catch(() => undefined) // keep the last known numbers; the server still enforces the limits
+    .finally(() => {
+      inflight = null;
+    });
+  return inflight;
 }
 
-function write(u: Usage) {
-  try {
-    localStorage.setItem(KEY, JSON.stringify(u));
-  } catch {}
-  window.dispatchEvent(new Event(EVENT));
+/** How many of `kind` are left this month (Infinity when unlimited or not known yet). */
+export function remaining(kind: UsageKind, s: UsageState = state): number {
+  if (kind === "contactShare") return s.planId === "free" ? 0 : Infinity;
+  const limit = s.limits[kind];
+  if (!s.loaded || limit === null) return Infinity;
+  return Math.max(0, limit - s.used[kind]);
 }
 
-export const isUnlimited = () => readPlan() !== "free";
-
-const SEARCH_LIMITS = ["searches", "profileViews"] as const;
-
-export function exhaustedSearchLimit(usage = readUsage(), unlimited = isUnlimited()) {
-  if (unlimited) return undefined;
-  return SEARCH_LIMITS.find((kind) => usage[kind] >= FREE_LIMITS[kind]);
+export function openUpgrade(kind: UsageKind) {
+  window.dispatchEvent(new CustomEvent(UPGRADE_EVENT, { detail: { kind } }));
 }
 
-export function allSearchLimitsExhausted(usage = readUsage(), unlimited = isUnlimited()) {
-  return !unlimited && SEARCH_LIMITS.every((kind) => usage[kind] >= FREE_LIMITS[kind]);
+/** Early check before an action: false (and the Upgrade prompt) when the limit is already used up. */
+export function canUse(kind: UsageKind): boolean {
+  if (remaining(kind) > 0) return true;
+  openUpgrade(kind);
+  return false;
 }
 
-/** How many of `kind` a free member has left this month (Infinity for paid members). */
-export function remaining(kind: UsageKind) {
-  if (isUnlimited()) return Infinity;
-  return Math.max(0, FREE_LIMITS[kind] - readUsage()[kind]);
+/** Signed in + not over the limit. The server makes the final decision (handle its 402 with handleLimitError). */
+export function requirePaidAction(kind: UsageKind, action: string): boolean {
+  return requireMember(action) && canUse(kind);
 }
 
 /**
- * Use one of `kind`. Returns true if allowed (and counts it);
- * false when the free limit is reached — the Upgrade prompt opens.
+ * A 402 from the API (LIMIT_REACHED or PLAN_REQUIRED): refresh the counters and open the Upgrade prompt.
+ * Returns true when it was a plan-limit error (the caller shouldn't show another message).
  */
-export function consume(kind: UsageKind): boolean {
-  if (isUnlimited()) return true;
-  const u = readUsage();
-  if (u[kind] >= FREE_LIMITS[kind]) {
-    window.dispatchEvent(new CustomEvent(UPGRADE_EVENT, { detail: { kind } }));
-    return false;
+export function handleLimitError(err: unknown): boolean {
+  if (!(err instanceof ApiError) || err.status !== 402) return false;
+  const kind = FEATURE_KIND[err.extras.feature ?? ""] ?? (err.code === "PLAN_REQUIRED" ? "contactShare" : "searches");
+  void refreshUsage();
+  openUpgrade(kind);
+  return true;
+}
+
+/** The same for chat-hub errors, which arrive as "CODE: message". */
+export function handleHubLimitError(message: string): boolean {
+  if (message.includes("LIMIT_REACHED")) {
+    void refreshUsage();
+    openUpgrade("chats");
+    return true;
   }
-  write({ ...u, [kind]: u[kind] + 1 });
-  return true;
+  if (message.includes("PLAN_REQUIRED")) {
+    openUpgrade("contactShare");
+    return true;
+  }
+  return false;
 }
 
-export function requirePaidAction(kind: "messages" | "interests", action: string): boolean {
-  return requireMember(action) && consume(kind);
+/** Searches and profile views both used up → browsing stops until the 1st (or an upgrade). */
+export function allSearchLimitsExhausted(s: UsageState = state) {
+  return s.loaded && remaining("searches", s) === 0 && remaining("profileViews", s) === 0;
 }
-
-/**
- * Open a profile in full. Free members can view FREE_LIMITS.profileViews different profiles a month;
- * re-opening one they already viewed this month doesn't count. Guests aren't counted here
- * (their actions are gated by the login popup). Returns false (and opens the Upgrade prompt) at the limit.
- */
-const VIEWED_KEY = "vk-viewed";
-export function consumeProfileView(id: string): boolean {
-  if (!hasSession() || isUnlimited()) return true;
-  let viewed: { month: string; ids: string[] } = { month: thisMonth(), ids: [] };
-  try {
-    const v = JSON.parse(localStorage.getItem(VIEWED_KEY) || "null");
-    if (v?.month === thisMonth() && Array.isArray(v.ids)) viewed = v;
-  } catch {}
-  if (viewed.ids.includes(id)) return true;
-  if (!consume("profileViews")) return false;
-  try {
-    localStorage.setItem(VIEWED_KEY, JSON.stringify({ month: viewed.month, ids: [...viewed.ids, id] }));
-  } catch {}
-  return true;
-}
-
 
 export function useUsage() {
-  const [usage, setUsage] = useState<Usage>(empty());
-  const [unlimited, setUnlimited] = useState(false);
+  const [usage, setUsage] = useState<UsageState>(state);
   useEffect(() => {
-    const update = () => {
-      setUsage(readUsage());
-      setUnlimited(isUnlimited());
+    const update = () => setUsage(state);
+    const reload = () => {
+      if (Date.now() - lastLoad > 30_000) void refreshUsage();
     };
+    const onAuth = () => void refreshUsage();
     update();
+    if (!state.loaded || Date.now() - lastLoad > 30_000) void refreshUsage();
     window.addEventListener(EVENT, update);
-    window.addEventListener("vk-plan-change", update);
-    window.addEventListener("storage", update);
-    window.addEventListener("focus", update);
+    window.addEventListener("vk-plan-change", onAuth);
+    window.addEventListener("aura_auth_change", onAuth);
+    window.addEventListener("focus", reload);
     return () => {
       window.removeEventListener(EVENT, update);
-      window.removeEventListener("vk-plan-change", update);
-      window.removeEventListener("storage", update);
-      window.removeEventListener("focus", update);
+      window.removeEventListener("vk-plan-change", onAuth);
+      window.removeEventListener("aura_auth_change", onAuth);
+      window.removeEventListener("focus", reload);
     };
   }, []);
-  const left = (k: UsageKind) => (unlimited ? Infinity : Math.max(0, FREE_LIMITS[k] - usage[k]));
-  return { usage, unlimited, left };
+  return {
+    usage,
+    unlimited: usage.unlimited,
+    loaded: usage.loaded,
+    left: (k: UsageKind) => remaining(k, usage),
+    limit: (k: MeteredKind) => usage.limits[k],
+    used: (k: MeteredKind) => usage.used[k],
+  };
 }

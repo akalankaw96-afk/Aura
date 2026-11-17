@@ -28,6 +28,15 @@ public static class TestDb
         return (user, profile);
     }
 
+    /// <summary>A member whose profile staff have approved (visible, can send interests).</summary>
+    public static async Task<(User User, CandidateProfile Profile)> AddApprovedMemberAsync(ApplicationDbContext db, string name, string phone)
+    {
+        var (user, profile) = await AddMemberAsync(db, name, phone);
+        profile.Status = ProfileStatus.Approved;
+        await db.SaveChangesAsync();
+        return (user, profile);
+    }
+
     public static async Task MatchAsync(ApplicationDbContext db, CandidateProfile a, CandidateProfile b)
     {
         db.MatchRequests.Add(new MatchRequest

@@ -5,7 +5,7 @@ import { ArrowDown2, Crown1, Eye, Heart, Lock1, Messages2, SearchNormal1, Sms, S
 import { cn } from "@/lib/cn";
 import { ButtonLink } from "@/components/ui/Button";
 import { useAccess } from "@/lib/verification";
-import { FREE_LIMITS, USAGE_LABEL, useUsage, type UsageKind } from "@/lib/usage";
+import { USAGE_LABEL, useUsage } from "@/lib/usage";
 
 /**
  * Plan & usage card — approved members on the Free plan.
@@ -14,21 +14,24 @@ import { FREE_LIMITS, USAGE_LABEL, useUsage, type UsageKind } from "@/lib/usage"
  * The open / closed choice is remembered. Same pattern as the Gold / Platinum card (ProPlanCard).
  * Hidden for Gold / Platinum.
  */
-const METERS: { kind: UsageKind; Icon: typeof Heart }[] = [
+const METERS: { kind: "profileViews" | "searches" | "interests" | "chats"; Icon: typeof Heart }[] = [
   { kind: "profileViews", Icon: Eye },
   { kind: "searches", Icon: SearchNormal1 },
+  { kind: "interests", Icon: Heart },
+  { kind: "chats", Icon: Messages2 },
 ];
 
-/** Days until the monthly reset (1st of next month) — the countdown under the title */
-function resetInfo() {
+/** Days until the monthly reset (from the API; 1st of next month otherwise) — the countdown under the title */
+function resetInfo(resetsAt: string | null) {
   const now = new Date();
-  const next = new Date(now.getFullYear(), now.getMonth() + 1, 1);
-  const days = Math.ceil((next.getTime() - now.getTime()) / 86_400_000);
-  return { days, label: next.toLocaleDateString("en-GB", { day: "numeric", month: "short" }) };
+  const next = resetsAt ? new Date(resetsAt) : new Date(now.getFullYear(), now.getMonth() + 1, 1);
+  const days = Math.max(0, Math.ceil((next.getTime() - now.getTime()) / 86_400_000));
+  // the server's month starts at midnight UTC — show that date, not the local evening before it
+  return { days, label: next.toLocaleDateString("en-GB", { day: "numeric", month: "short", timeZone: "UTC" }) };
 }
 const GOLD = [
   { Icon: Eye, label: "Unlimited profile views" },
-  { Icon: Messages2, label: "Unlimited chat connections" },
+  { Icon: Messages2, label: "Unlimited new chats" },
   { Icon: Heart, label: "Unlimited interests" },
   { Icon: SearchNormal1, label: "Unlimited & advanced search" },
   { Icon: Sms, label: "Contact & WhatsApp sharing" },
@@ -53,10 +56,11 @@ export function PlanUsageCard() {
     });
   if (locked || isPaid) return null;
 
-  const outMeter = METERS.find(({ kind }) => left(kind) === 0);
+  const meters = METERS.filter(({ kind }) => limit(kind) !== null); // unlimited ones aren't metered
+  const outMeter = meters.find(({ kind }) => left(kind) === 0);
   const outLabel = outMeter ? USAGE_LABEL[outMeter.kind] : null;
   const anyOut = Boolean(outMeter);
-  const reset = resetInfo();
+  const reset = resetInfo(usage.resetsAt);
 
   return (
     <section aria-label="Your plan and usage" className="kyc-in flex flex-col rounded-xl border border-premium-line bg-surface-card p-4 shadow-sm sm:px-6 sm:py-4">
@@ -113,16 +117,16 @@ export function PlanUsageCard() {
         <div className="flex animate-fade-up items-start gap-3 rounded-md bg-premium-bg px-4 py-3 text-body-sm text-premium-fg">
           <Lock1 size={18} color="currentColor" className="shrink-0 mt-0.5" />
           <div className="flex-1">
-            <p className="font-bold">{outLabel.limitReachedTitle || `You’ve used all your free ${outLabel.title.toLowerCase()}`}</p>
-            <p className="text-body-xs">{outLabel.limitReachedMsg || "You’ve reached a free limit. Upgrade to keep exploring."}</p>
+            <p className="font-bold">{`You’ve used all your free ${outLabel.unit} this month`}</p>
+            <p className="text-body-xs">{`They come back on ${reset.label}. Upgrade to Gold to keep going right now.`}</p>
           </div>
         </div>
       )}
 
       {/* meters */}
-      <div className="grid grid-cols-2 gap-3">
-        {METERS.map(({ kind, Icon }, i) => {
-          const total = FREE_LIMITS[kind];
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        {meters.map(({ kind, Icon }, i) => {
+          const total = limit(kind) ?? 0;
           const l = left(kind);
           const out = l === 0;
           const low = l === 1;
@@ -151,7 +155,7 @@ export function PlanUsageCard() {
                 <div
                   className={cn("h-full rounded-full transition-[width] duration-700 ease-out", out ? "bg-error-fg" : low ? "bg-premium-fg" : "bg-brand-gradient")}
                   // countdown bar: shrinks as the allowance is used
-                  style={{ width: `${(l / total) * 100}%` }}
+                  style={{ width: `${total > 0 ? (l / total) * 100 : 0}%` }}
                 />
               </div>
             </div>

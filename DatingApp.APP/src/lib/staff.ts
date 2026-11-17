@@ -5,6 +5,7 @@
  *   /api/moderation/*  queue, review details, decisions, new-photo queue
  *   /api/admin/*       staff list, find by mobile, change role (Admin only)
  *   /api/kyc/documents/{id}/file   ID documents (each staff view is logged by the API)
+ *   /api/moderation/reports        member reports — dismiss / handled / suspend (S03-T08)
  */
 import { API_BASE_URL, apiJson, apiRequest, toApiError } from "@/lib/http";
 import type { KycDocumentDto, PhotoDto, ReviewFlag } from "@/lib/media";
@@ -116,3 +117,37 @@ export async function openDocument(id: string): Promise<void> {
   else window.location.href = url;
   setTimeout(() => URL.revokeObjectURL(url), 60_000);
 }
+
+/* ---------- reports (S03-T08) ---------- */
+
+export interface ReportItem {
+  id: string;
+  reason: "Scam" | "Inappropriate" | "FakeProfile" | "Other";
+  details?: string | null;
+  conversationId?: string | null;
+  status: "Open" | "Dismissed" | "Actioned";
+  createdAt: string;
+  reviewedAt?: string | null;
+  reviewedByName?: string | null;
+  staffNote?: string | null;
+  reporterName: string;
+  reporterProfileId?: string | null;
+  reportedProfileId: string;
+  reportedName: string;
+  reportedCode: string;
+  reportedPhotoUrl: string;
+  reportedStatus: string;
+  openReportsOnProfile: number;
+  totalReportsOnProfile: number;
+}
+
+export const getReports = (status: "open" | "closed" | "all" = "open") =>
+  apiJson<ReportItem[]>(`/moderation/reports?status=${status}`, { cache: "no-store" });
+
+/** dismiss · action (handled, no suspension) · suspend (note required; closes all the member's open reports). */
+export const resolveReport = (id: string, action: "dismiss" | "action" | "suspend", note?: string) =>
+  apiJson<ReportItem>(`/moderation/reports/${encodeURIComponent(id)}/resolve`, {
+    method: "POST",
+    json: { action, note: note || null },
+    fallbackError: "We couldn’t update this report.",
+  });

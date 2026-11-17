@@ -1,17 +1,20 @@
 using DatingApp.Application.Common.Exceptions;
 using DatingApp.Application.Services;
+using DatingApp.Infrastructure.Persistence;
 
 namespace DatingApp.Tests;
 
 public class ChatServiceTests
 {
+    internal static ChatService Chat(ApplicationDbContext db) => new(db, new FakePresence(), new UsageService(db));
+
     [Fact]
     public async Task Members_without_an_accepted_interest_cannot_chat()
     {
         using var db = TestDb.Create();
         var (amal, _) = await TestDb.AddMemberAsync(db, "Amal", "+94770000011");
         var (_, nimmi) = await TestDb.AddMemberAsync(db, "Nimmi", "+94770000012");
-        var chat = new ChatService(db, new FakePresence());
+        var chat = Chat(db);
 
         var ex = await Assert.ThrowsAsync<AppException>(() => chat.SendMessageAsync(amal.Id, nimmi.Id, "Hello"));
 
@@ -26,7 +29,7 @@ public class ChatServiceTests
         var (amalUser, amal) = await TestDb.AddMemberAsync(db, "Amal", "+94770000011");
         var (nimmiUser, nimmi) = await TestDb.AddMemberAsync(db, "Nimmi", "+94770000012");
         await TestDb.MatchAsync(db, amal, nimmi);
-        var chat = new ChatService(db, new FakePresence());
+        var chat = Chat(db);
 
         var sent = await chat.SendMessageAsync(amalUser.Id, nimmi.Id, "Hello Nimmi");
 
@@ -50,7 +53,7 @@ public class ChatServiceTests
         var (_, nimmi) = await TestDb.AddMemberAsync(db, "Nimmi", "+94770000012");
         var (outsider, _) = await TestDb.AddMemberAsync(db, "Kasun", "+94770000013");
         await TestDb.MatchAsync(db, amal, nimmi);
-        var chat = new ChatService(db, new FakePresence());
+        var chat = Chat(db);
         var sent = await chat.SendMessageAsync(amalUser.Id, nimmi.Id, "Private");
 
         var ex = await Assert.ThrowsAsync<AppException>(() => chat.GetHistoryAsync(outsider.Id, sent.Message.ConversationId));
@@ -65,7 +68,9 @@ public class ChatServiceTests
         var (amalUser, amal) = await TestDb.AddMemberAsync(db, "Amal", "+94770000011");
         var (nimmiUser, nimmi) = await TestDb.AddMemberAsync(db, "Nimmi", "+94770000012");
         await TestDb.MatchAsync(db, amal, nimmi);
-        var chat = new ChatService(db, new FakePresence());
+        amal.Premium = true; // asking for numbers is a Gold feature (S03-T07)
+        await db.SaveChangesAsync();
+        var chat = Chat(db);
 
         // nobody asked yet → nothing to accept
         await Assert.ThrowsAsync<AppException>(() => chat.AcceptContactShareAsync(nimmiUser.Id, amal.Id));
@@ -87,7 +92,7 @@ public class ChatServiceTests
         var (amalUser, amal) = await TestDb.AddMemberAsync(db, "Amal", "+94770000011");
         var (_, nimmi) = await TestDb.AddMemberAsync(db, "Nimmi", "+94770000012");
         await TestDb.MatchAsync(db, amal, nimmi);
-        var chat = new ChatService(db, new FakePresence());
+        var chat = Chat(db);
 
         var sent = await chat.SendMessageAsync(amalUser.Id, nimmi.Id, "Call me on 077 123 4567");
 
@@ -101,7 +106,7 @@ public class ChatServiceTests
         var (amalUser, amal) = await TestDb.AddMemberAsync(db, "Amal", "+94770000011");
         var (_, nimmi) = await TestDb.AddMemberAsync(db, "Nimmi", "+94770000012");
         await TestDb.MatchAsync(db, amal, nimmi);
-        var chat = new ChatService(db, new FakePresence());
+        var chat = Chat(db);
 
         await Assert.ThrowsAsync<AppException>(() => chat.SendMessageAsync(amalUser.Id, nimmi.Id, "   "));
         await Assert.ThrowsAsync<AppException>(() =>

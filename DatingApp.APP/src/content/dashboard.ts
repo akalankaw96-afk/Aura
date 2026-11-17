@@ -147,6 +147,8 @@ export interface Friend {
   lastSeen?: string;
   /** just accepted — shown first with a "New friend" badge */
   isNew?: boolean;
+  /** the member's profile id (UUID) — opens the chat with them */
+  profileId?: string;
 }
 export const FRIENDS: Friend[] = [];
 

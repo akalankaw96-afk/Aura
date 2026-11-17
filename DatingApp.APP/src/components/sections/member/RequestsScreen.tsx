@@ -16,9 +16,17 @@ import {
   Teacher,
   Verify,
 } from "iconsax-react";
-import { requirePaidAction } from "@/lib/usage";
+import { handleLimitError, refreshUsage, requirePaidAction } from "@/lib/usage";
 import { requireMember } from "@/lib/session";
-import { useAddedFriends, useDeclinedInterests, useFavourites, useSentInterests, type ConnectionProfile } from "@/lib/connections";
+import {
+  refreshConnections,
+  useAddedFriends,
+  useFavourites,
+  useReceivedInterests,
+  useSentInterests,
+  type ConnectionProfile,
+} from "@/lib/connections";
+import { respondInterest, sendInterestTo, withdrawInterest } from "@/lib/matching";
 import { ProfileActions } from "@/components/profile/ProfileActions";
 import { cn } from "@/lib/cn";
 import { Badge } from "@/components/ui/Badge";
@@ -27,7 +35,7 @@ import { Flag } from "@/components/ui/Flag";
 import { useToast } from "@/components/ui/Toast";
 import { MemberShell } from "@/components/layout/MemberShell";
 import { ConnectionEmptyState } from "./ConnectionEmptyState";
-import { FRIENDS, REQUEST_PROFILES, REQUEST_TABS, friendProfileId, type ConnectionTab } from "@/content/dashboard";
+import { REQUEST_TABS, type ConnectionTab } from "@/content/dashboard";
 
 const DETAIL_ICONS = { calendar: Calendar, ruler: Ruler, book: Book1, people: People, briefcase: Briefcase, teacher: Teacher, heart: Heart, location: Location };
 const EMPTY_COPY: Record<ConnectionTab, { title: string; body: string }> = {
@@ -41,29 +49,20 @@ const EMPTY_COPY: Record<ConnectionTab, { title: string; body: string }> = {
  * Figma: 📊 Member Dashboard → Requests — Desktop 1440.
  * Tabs (Friends / Favourites / Received / Sent) · Request list (400 wide) · Profile detail.
  * Mobile: the list first; picking a request opens its detail with a Back button.
+ * Data (S03-T05/T06): friends = GET /match-requests/matched, favourites = GET /shortlist,
+ * received / sent = GET /match-requests/received · sent. Accept, decline and withdraw call the API.
  */
-const FRIEND_PROFILES = FRIENDS.flatMap((friend) => REQUEST_PROFILES.filter((profile) => profile.id === friendProfileId(friend)));
-
 export function RequestsScreen({ initialTab, initialProfileId }: { initialTab: ConnectionTab; initialProfileId?: string }) {
   const toast = useToast();
   const [tab, setTab] = useState<ConnectionTab>(initialTab);
   const [query, setQuery] = useState("");
-  const { profiles: favourites } = useFavourites();
-  const { profiles: addedFriends, save: addFriend } = useAddedFriends();
+  const { profiles: favourites, loaded } = useFavourites();
+  const { profiles: addedFriends } = useAddedFriends();
   const { profiles: sentInterests, save: saveInterest } = useSentInterests();
-  const { profiles: declined, save: declineInterest } = useDeclinedInterests();
-  const declinedIds = new Set(declined.map((profile) => profile.id));
-  const accepted = new Set(addedFriends.map((profile) => profile.id));
-  const inTab = (t: ConnectionTab): ConnectionProfile[] => {
-    if (t === "friends") return [...addedFriends, ...FRIEND_PROFILES.filter((profile) => !accepted.has(profile.id))];
-    if (t === "favourites") return favourites;
-    const requests = REQUEST_PROFILES.filter((profile) => !declinedIds.has(profile.id) && !accepted.has(profile.id) && profile.tab === t);
-    if (t === "sent") {
-      const sent = sentInterests.filter((profile) => !accepted.has(profile.id));
-      return [...sent, ...requests.filter((profile) => !sent.some((entry) => entry.id === profile.id))];
-    }
-    return requests;
-  };
+  const { profiles: received } = useReceivedInterests();
+  const [busy, setBusy] = useState(false);
+  const inTab = (t: ConnectionTab): ConnectionProfile[] =>
+    t === "friends" ? addedFriends : t === "favourites" ? favourites : t === "received" ? received : sentInterests;
   const tabProfiles = inTab(tab);
   const list = tabProfiles.filter((p) => `${p.fullName} ${p.id}`.toLowerCase().includes(query.trim().toLowerCase()));
   const noSearchMatches = tabProfiles.length > 0 && list.length === 0;
@@ -81,26 +80,60 @@ export function RequestsScreen({ initialTab, initialProfileId }: { initialTab: C
     setMobileOpen(false);
   };
 
-  const accept = (p: ConnectionProfile) => {
-    if (!requirePaidAction("interests", "accept a request")) return;
-    if (!addFriend({ ...p, note: "You accepted this interest." })) return;
-    setTab("friends");
-    setQuery("");
-    setSelectedId(p.id);
-    toast.success("Interest accepted", `You can now message ${p.name}. Photos and contacts are unlocked.`);
+  // Answering an interest is free on every plan
+  const answer = async (p: ConnectionProfile, accept: boolean) => {
+    if (!requireMember(accept ? "accept a request" : "decline a request") || !p.requestId || busy) return;
+    setBusy(true);
+    try {
+      await respondInterest(p.requestId, accept);
+      await refreshConnections();
+      if (accept) {
+        setTab("friends");
+        setQuery("");
+        setSelectedId(p.id);
+        toast.success("Interest accepted", `You can now message ${p.name}.`);
+      } else {
+        setSelectedId(null);
+        setMobileOpen(false);
+        toast.info("Request declined", `${p.name} won’t be notified.`);
+      }
+    } catch (err) {
+      toast.error("Couldn’t update this request", err instanceof Error ? err.message : "Please try again.");
+      void refreshConnections();
+    } finally {
+      setBusy(false);
+    }
   };
-  const decline = (p: ConnectionProfile) => {
-    if (!requirePaidAction("interests", "decline a request")) return;
-    if (!declineInterest({ id: p.id })) return;
-    setSelectedId(null);
-    setMobileOpen(false);
-    toast.info("Request declined", `${p.name} won’t be notified.`);
+  const accept = (p: ConnectionProfile) => void answer(p, true);
+  const decline = (p: ConnectionProfile) => void answer(p, false);
+
+  const withdraw = async (p: ConnectionProfile) => {
+    if (!p.requestId || busy) return;
+    setBusy(true);
+    try {
+      await withdrawInterest(p.requestId);
+      await refreshConnections();
+      setSelectedId(null);
+      setMobileOpen(false);
+      toast.info("Interest withdrawn", `${p.name} won’t see it any more. Your monthly interest count isn’t refunded.`);
+    } catch (err) {
+      toast.error("Couldn’t withdraw", err instanceof Error ? err.message : "Please try again.");
+    } finally {
+      setBusy(false);
+    }
   };
 
-  const sendInterest = (p: ConnectionProfile) => {
-    if (!requirePaidAction("interests", "send an interest")) return;
-    if (!saveInterest({ ...p, time: "Just now", note: "You sent an interest. Waiting for a reply." })) return;
-    toast.success("Interest sent", `You can chat with ${p.name} once they accept.`);
+  // From Favourites — counts one of the month's interests on the server (402 → Upgrade prompt)
+  const sendInterest = async (p: ConnectionProfile) => {
+    if (!requirePaidAction("interests", "send an interest") || !p.profileId) return;
+    try {
+      await sendInterestTo(p.profileId);
+      saveInterest({ ...p, time: "Just now", note: "You sent an interest. Waiting for a reply." });
+      void refreshUsage();
+      toast.success("Interest sent", `You can chat with ${p.name} once they accept.`);
+    } catch (err) {
+      if (!handleLimitError(err)) toast.error("Interest not sent", err instanceof Error ? err.message : "Please try again.");
+    }
   };
 
   return (
@@ -137,7 +170,8 @@ export function RequestsScreen({ initialTab, initialProfileId }: { initialTab: C
             <span className="sr-only">Search requests</span>
             <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search by name or ID" className="w-full bg-transparent text-body-sm text-ink outline-none" />
           </label>}
-          {list.length === 0 && (
+          {!loaded && list.length === 0 && <p className="px-3 py-8 text-center text-body-sm text-ink-tertiary">Loading…</p>}
+          {loaded && list.length === 0 && (
             <ConnectionEmptyState
               title={noSearchMatches ? "No matching profiles" : EMPTY_COPY[tab].title}
               body={noSearchMatches ? "Try a different name or profile ID, or clear your search to see the full list." : EMPTY_COPY[tab].body}
@@ -188,6 +222,8 @@ export function RequestsScreen({ initialTab, initialProfileId }: { initialTab: C
             onBack={() => setMobileOpen(false)}
             onAccept={accept}
             onDecline={decline}
+            onWithdraw={(profile) => void withdraw(profile)}
+            busy={busy}
             className={cn(!mobileOpen && "max-lg:hidden")}
           />
         )}
@@ -211,6 +247,8 @@ function Detail({
   onBack,
   onAccept,
   onDecline,
+  onWithdraw,
+  busy,
   className,
 }: {
   p: ConnectionProfile;
@@ -220,6 +258,8 @@ function Detail({
   onBack: () => void;
   onAccept: (p: ConnectionProfile) => void;
   onDecline: (p: ConnectionProfile) => void;
+  onWithdraw: (p: ConnectionProfile) => void;
+  busy?: boolean;
   className?: string;
 }) {
   const toast = useToast();
@@ -268,7 +308,11 @@ function Detail({
           {tab !== "friends" && tab !== "favourites" && <div className="flex flex-col gap-1.5 rounded-[16px] bg-brand-subtle p-4">
             <p className="flex items-center gap-1.5 text-label-sm text-brand-text">
               <Heart size={16} color="currentColor" variant="Bold" />
-              {tab === "received" ? `Sent you an interest · ${p.time}` : `You sent an interest · ${p.time}`}
+              {tab === "received"
+                ? `Sent you an interest · ${p.time}`
+                : p.status === "Declined"
+                  ? `Not a match this time · ${p.time}`
+                  : `You sent an interest · ${p.time}`}
             </p>
             {p.note && <p className="text-body-md text-ink">{tab === "received" ? `“${p.note}”` : p.note}</p>}
           </div>}
@@ -301,24 +345,26 @@ function Detail({
 
       <div className="flex flex-wrap items-center gap-3">
         <p className="min-w-[160px] flex-1 text-body-sm text-ink-tertiary">
-          {tab === "received" ? "Accepting unlocks photos, contact details and chat." : tab === "sent" ? "We’ll let you know as soon as they reply." : tab === "favourites" ? "Saved to your favourites." : "You’re connected, say hello!"}
+          {tab === "received"
+            ? "Accepting unlocks chat. Answering is free on every plan."
+            : tab === "sent"
+              ? p.status === "Declined" ? "They decided not to go ahead. Keep looking, the right match is out there." : "We’ll let you know as soon as they reply."
+              : tab === "favourites" ? "Saved to your favourites." : "You’re connected, say hello!"}
         </p>
         {tab === "received" && (
           <div className="flex gap-3 max-sm:w-full">
-            <Button size="md" variant="outline" className="max-sm:flex-1" onClick={() => onDecline(p)}>
+            <Button size="md" variant="outline" className="max-sm:flex-1" disabled={busy} onClick={() => onDecline(p)}>
               Decline
             </Button>
-            <Button size="md" className="max-sm:flex-1" onClick={() => onAccept(p)}>
+            <Button size="md" className="max-sm:flex-1" disabled={busy} onClick={() => onAccept(p)}>
               Accept interest
             </Button>
           </div>
         )}
         {tab === "favourites" && <ProfileActions profileId={p.id} sent={sent} onSend={() => onSend(p)} />}
-        {tab === "sent" && (
-          <Button size="md" variant="outline" onClick={() => {
-            if (requirePaidAction("interests", "send a reminder")) toast.info("Reminder sent", `We’ll nudge ${p.name} gently.`);
-          }}>
-            Send a reminder
+        {tab === "sent" && p.status === "Pending" && (
+          <Button size="md" variant="outline" disabled={busy} onClick={() => onWithdraw(p)}>
+            Withdraw interest
           </Button>
         )}
         {tab === "friends" && (

@@ -26,9 +26,14 @@ import {
   type ProfileReview,
   type QueueItem,
   type StaffUser,
+  getReports,
+  resolveReport,
+  type ReportItem,
 } from "@/lib/staff";
+import { resolvePhoto } from "@/content/avatars";
+import { getPlanLimits, updatePlanLimits, type PlanLimit } from "@/lib/matching";
 
-type Tab = "queue" | "photos" | "staff";
+type Tab = "queue" | "photos" | "reports" | "staff" | "limits";
 
 const when = (iso?: string | null) =>
   iso ? new Date(iso).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) : "—";
@@ -49,6 +54,10 @@ export function StaffConsole({ isAdmin }: { isAdmin: boolean }) {
   const [openId, setOpenId] = useState<string | null>(null);
   const [queue, setQueue] = useState<QueueItem[] | null>(null);
   const [error, setError] = useState<string>();
+  const [openReports, setOpenReports] = useState<number | undefined>();
+  useEffect(() => {
+    getReports("open").then((r) => setOpenReports(r.length)).catch(() => undefined);
+  }, []);
 
   const loadQueue = useCallback(async () => {
     try {
@@ -66,9 +75,10 @@ export function StaffConsole({ isAdmin }: { isAdmin: boolean }) {
     () => [
       { id: "queue" as Tab, label: "Review queue", count: queue?.length },
       { id: "photos" as Tab, label: "New photos" },
-      ...(isAdmin ? [{ id: "staff" as Tab, label: "Staff" }] : []),
+      { id: "reports" as Tab, label: "Reports", count: openReports },
+      ...(isAdmin ? [{ id: "staff" as Tab, label: "Staff" }, { id: "limits" as Tab, label: "Plan limits" }] : []),
     ],
-    [queue, isAdmin]
+    [queue, isAdmin, openReports]
   );
 
   if (openId) {
@@ -97,7 +107,9 @@ export function StaffConsole({ isAdmin }: { isAdmin: boolean }) {
 
       {tab === "queue" && <QueueList items={queue} onOpen={setOpenId} onRefresh={loadQueue} />}
       {tab === "photos" && <PendingPhotos />}
+      {tab === "reports" && <ReportsQueue onOpenProfile={setOpenId} onCount={setOpenReports} />}
       {tab === "staff" && isAdmin && <StaffManager />}
+      {tab === "limits" && isAdmin && <PlanLimitsEditor />}
     </div>
   );
 }
@@ -547,6 +559,258 @@ export function StaffManager() {
           </div>
         )}
       </Card>
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Plan limits (Admin) — S03-T02: monthly allowances per plan           */
+/* ------------------------------------------------------------------ */
+
+const LIMIT_PLANS: PlanLimit["planId"][] = ["free", "gold", "platinum"];
+const LIMIT_FEATURES: { id: PlanLimit["feature"]; label: string; hint: string }[] = [
+  { id: "Search", label: "Searches", hint: "Filtered searches (plain browsing is free)" },
+  { id: "ProfileView", label: "Profile views", hint: "Different profiles opened in full" },
+  { id: "Interest", label: "Interests", hint: "Interests sent" },
+  { id: "NewChat", label: "New chats", hint: "Conversations started (replies are free)" },
+];
+const limitKey = (plan: string, feature: string) => `${plan}:${feature}`;
+
+/** Edit the monthly limits. Empty = unlimited. Changes apply to every member straight away. */
+function PlanLimitsEditor() {
+  const toast = useToast();
+  const [values, setValues] = useState<Record<string, string> | null>(null);
+  const [saved, setSaved] = useState<Record<string, string>>({});
+  const [saving, setSaving] = useState(false);
+  const load = useCallback(() => {
+    getPlanLimits()
+      .then((rows) => {
+        const v = Object.fromEntries(rows.map((r) => [limitKey(r.planId, r.feature), r.monthlyLimit === null ? "" : String(r.monthlyLimit)]));
+        setValues(v);
+        setSaved(v);
+      })
+      .catch((err) => toast.error("Couldn’t load the limits", err instanceof Error ? err.message : ""));
+    // toast isn't a stable reference — load once
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  useEffect(load, [load]);
+
+  if (!values) return <p className="py-8 text-center text-body-sm text-ink-tertiary">Loading limits…</p>;
+
+  const invalid = Object.values(values).some((v) => v.trim() !== "" && !/^\d{1,6}$/.test(v.trim()));
+  const changed = Object.keys(values).filter((k) => values[k].trim() !== (saved[k] ?? "").trim());
+
+  const save = async () => {
+    if (invalid || changed.length === 0) return;
+    setSaving(true);
+    try {
+      const rows = await updatePlanLimits(
+        changed.map((k) => {
+          const [planId, feature] = k.split(":") as [PlanLimit["planId"], PlanLimit["feature"]];
+          const raw = values[k].trim();
+          return { planId, feature, monthlyLimit: raw === "" ? null : Number(raw) };
+        }),
+      );
+      const v = Object.fromEntries(rows.map((r) => [limitKey(r.planId, r.feature), r.monthlyLimit === null ? "" : String(r.monthlyLimit)]));
+      setValues(v);
+      setSaved(v);
+      toast.success("Limits saved", "Members see the new numbers straight away.");
+    } catch (err) {
+      toast.error("Limits not saved", err instanceof Error ? err.message : "");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Card className="flex flex-col gap-4 p-5">
+      <div>
+        <h2 className="text-h6 text-ink">Monthly plan limits</h2>
+        <p className="text-body-sm text-ink-secondary">How many of each a member can use per calendar month. Leave a box empty for unlimited. Counts reset on the 1st.</p>
+      </div>
+      <div className="overflow-x-auto">
+        <table className="w-full min-w-[560px] border-separate border-spacing-y-2 text-left">
+          <thead>
+            <tr className="text-label-sm text-ink-tertiary">
+              <th className="font-semibold">Feature</th>
+              {LIMIT_PLANS.map((p) => (
+                <th key={p} className="font-semibold capitalize">{p}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {LIMIT_FEATURES.map((f) => (
+              <tr key={f.id}>
+                <td className="pr-3 align-top">
+                  <span className="block text-label-md text-ink">{f.label}</span>
+                  <span className="block text-caption text-ink-tertiary">{f.hint}</span>
+                </td>
+                {LIMIT_PLANS.map((p) => {
+                  const k = limitKey(p, f.id);
+                  const v = values[k] ?? "";
+                  const bad = v.trim() !== "" && !/^\d{1,6}$/.test(v.trim());
+                  return (
+                    <td key={p} className="pr-3 align-top">
+                      <Input
+                        aria-label={`${f.label} per month on ${p}`}
+                        inputMode="numeric"
+                        placeholder="Unlimited"
+                        value={v}
+                        onChange={(e) => setValues((all) => ({ ...(all ?? {}), [k]: e.target.value }))}
+                        error={bad ? "0–100000, or empty" : undefined}
+                        containerClassName="w-[130px]"
+                      />
+                    </td>
+                  );
+                })}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <div className="flex flex-wrap items-center justify-end gap-3">
+        {changed.length > 0 && <span className="text-body-sm text-ink-tertiary">{changed.length} change{changed.length === 1 ? "" : "s"} not saved</span>}
+        <Button variant="outline" disabled={changed.length === 0 || saving} onClick={() => setValues(saved)}>Undo</Button>
+        <Button disabled={invalid || changed.length === 0 || saving} onClick={save}>{saving ? "Saving…" : "Save limits"}</Button>
+      </div>
+    </Card>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Reports (S03-T08) — members reporting members                        */
+/* ------------------------------------------------------------------ */
+
+const REASON_LABEL: Record<ReportItem["reason"], string> = {
+  Scam: "Asked for money / scam",
+  Inappropriate: "Rude or inappropriate",
+  FakeProfile: "Fake or misleading profile",
+  Other: "Other",
+};
+
+/** Open reports (oldest first) with Dismiss · Handled · Suspend member; Closed shows past decisions. */
+function ReportsQueue({ onOpenProfile, onCount }: { onOpenProfile: (profileId: string) => void; onCount: (n: number) => void }) {
+  const toast = useToast();
+  const [box, setBox] = useState<"open" | "closed">("open");
+  const [items, setItems] = useState<ReportItem[] | null>(null);
+  const [notes, setNotes] = useState<Record<string, string>>({});
+  const [busyId, setBusyId] = useState<string | null>(null);
+
+  const load = useCallback(async (which: "open" | "closed") => {
+    setItems(null);
+    try {
+      const list = await getReports(which);
+      setItems(list);
+      if (which === "open") onCount(list.length);
+    } catch (err) {
+      setItems([]);
+      toast.error("Couldn’t load reports", err instanceof Error ? err.message : "");
+    }
+    // toast / onCount aren't stable references
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  useEffect(() => {
+    void load(box);
+  }, [box, load]);
+
+  const decide = async (r: ReportItem, action: "dismiss" | "action" | "suspend") => {
+    const note = (notes[r.id] ?? "").trim();
+    if (action === "suspend" && !note) {
+      toast.error("Add a reason", "Write why the member is suspended. It is kept in their history.");
+      return;
+    }
+    setBusyId(r.id);
+    try {
+      await resolveReport(r.id, action, note);
+      toast.success(
+        action === "dismiss" ? "Report dismissed" : action === "action" ? "Report marked as handled" : `${r.reportedName} is suspended`,
+        action === "suspend" && r.openReportsOnProfile > 1 ? `All ${r.openReportsOnProfile} open reports about them are closed.` : "The reporter was told it was reviewed.",
+      );
+      await load("open");
+    } catch (err) {
+      toast.error("That didn’t work", err instanceof Error ? err.message : "");
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="flex items-center gap-2">
+        {(["open", "closed"] as const).map((b) => (
+          <Button key={b} size="sm" variant={box === b ? "primary" : "outline"} onClick={() => setBox(b)}>
+            {b === "open" ? "Open" : "Closed"}
+          </Button>
+        ))}
+        <Button size="sm" variant="ghost" onClick={() => void load(box)}>Refresh</Button>
+      </div>
+
+      {!items && <p className="text-body-md text-ink-secondary">Loading…</p>}
+      {items && items.length === 0 && (
+        <Card className="flex flex-col items-center gap-2 p-10 text-center">
+          <ShieldTick size={40} color="currentColor" className="text-success-fg" />
+          <h2 className="text-h5 text-ink">{box === "open" ? "No open reports" : "No closed reports yet"}</h2>
+          <p className="text-body-sm text-ink-secondary">{box === "open" ? "Members’ reports appear here, oldest first." : "Decisions you make on reports are listed here."}</p>
+        </Card>
+      )}
+
+      {items && items.length > 0 && (
+        <ul className="flex flex-col gap-3">
+          {items.map((r) => (
+            <li key={r.id}>
+              <Card className="flex flex-col gap-4 p-4 sm:p-5">
+                <div className="flex flex-wrap items-start gap-3">
+                  <Thumb src={r.reportedPhotoUrl.startsWith("avatar:") ? resolvePhoto(r.reportedPhotoUrl) : r.reportedPhotoUrl} className="h-14 w-14 rounded-lg" />
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-label-lg text-ink">
+                      {r.reportedName} <span className="text-body-sm text-ink-tertiary">· {r.reportedCode}</span>
+                    </span>
+                    <span className="mt-1 flex flex-wrap items-center gap-1.5">
+                      <Badge tone="error">{REASON_LABEL[r.reason]}</Badge>
+                      <Badge tone={statusTone(r.reportedStatus)}>{r.reportedStatus}</Badge>
+                      {r.openReportsOnProfile > 1 && <Badge tone="warning">{r.openReportsOnProfile} open reports</Badge>}
+                      {r.conversationId && <Badge tone="info">From a chat</Badge>}
+                    </span>
+                  </span>
+                  <Button size="sm" variant="outline" onClick={() => onOpenProfile(r.reportedProfileId)}>Open profile</Button>
+                </div>
+
+                <div className="flex flex-col gap-1 rounded-lg bg-surface-subtle p-3">
+                  <p className="text-caption text-ink-tertiary">Reported by {r.reporterName} · {when(r.createdAt)}</p>
+                  <p className="text-body-sm text-ink">{r.details ? `“${r.details}”` : "No details given."}</p>
+                </div>
+
+                {r.status === "Open" ? (
+                  <div className="flex flex-col gap-3">
+                    <Textarea
+                      label="Note"
+                      hint="Required to suspend · kept with the report"
+                      value={notes[r.id] ?? ""}
+                      onChange={(v) => setNotes((n) => ({ ...n, [r.id]: v }))}
+                      rows={2}
+                      maxLength={1000}
+                      placeholder="What you checked and decided"
+                    />
+                    <div className="flex flex-wrap justify-end gap-2">
+                      <Button size="sm" variant="outline" disabled={busyId === r.id} onClick={() => void decide(r, "dismiss")}>Dismiss</Button>
+                      <Button size="sm" variant="outline" disabled={busyId === r.id} onClick={() => void decide(r, "action")}>Handled</Button>
+                      <Button size="sm" variant="danger" disabled={busyId === r.id || r.reportedStatus === "Suspended"} onClick={() => void decide(r, "suspend")}>
+                        Suspend member
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-body-sm text-ink-secondary">
+                    <Badge tone={r.status === "Dismissed" ? "neutral" : "success"}>{r.status === "Dismissed" ? "Dismissed" : "Handled"}</Badge>{" "}
+                    by {r.reviewedByName ?? "staff"} · {when(r.reviewedAt)}
+                    {r.staffNote ? ` — ${r.staffNote}` : ""}
+                  </p>
+                )}
+              </Card>
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }

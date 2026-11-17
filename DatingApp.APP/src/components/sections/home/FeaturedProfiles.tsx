@@ -11,6 +11,8 @@ import { ProfileCard } from "@/components/cards/ProfileCard";
 import { useRouter } from "next/navigation";
 import { FEATURED, type FeaturedProfile } from "@/content/home";
 import { sendInterest, toFeatured, useMemberProfiles } from "@/lib/profiles";
+import { handleLimitError } from "@/lib/usage";
+import { refreshConnections } from "@/lib/connections";
 
 /**
  * Figma: 04 Featured profiles — padding 48/80/96, gap 48.
@@ -61,8 +63,10 @@ export function FeaturedProfiles() {
                 onView={handleOpenDetail}
                 onInterest={async () => {
                   const r = await sendInterest(p);
-                  if (r.ok) toast.success("Interest sent", r.message);
-                  else toast.error("Interest not sent", r.message);
+                  if (r.ok) {
+                    toast.success("Interest sent", r.message);
+                    void refreshConnections();
+                  } else if (!handleLimitError(r.error)) toast.error("Interest not sent", r.message);
                   return r.ok;
                 }}
                 onShortlist={(pr, saved) =>
