@@ -98,8 +98,7 @@ public class SafetyAndChatLimitTests
         Assert.Equal(402, free.Status);
         Assert.Equal(ErrorCodes.PlanRequired, free.Code);
 
-        amal.Premium = true;
-        await db.SaveChangesAsync();
+        await TestDb.MakePaidAsync(db, amalUser.Id);
 
         await chat.RequestContactShareAsync(amalUser.Id, nimmi.Id);
         var twice = await Assert.ThrowsAsync<AppException>(() => chat.RequestContactShareAsync(amalUser.Id, nimmi.Id));

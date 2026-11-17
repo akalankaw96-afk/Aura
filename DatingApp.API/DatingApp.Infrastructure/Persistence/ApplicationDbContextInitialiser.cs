@@ -52,6 +52,8 @@ public class ApplicationDbContextInitialiser
             await CleanUpRegistrationDataAsync();
             await EnsureAdminAsync();
             await EnsurePlanLimitsAsync();
+            await DatingApp.Application.Services.PricingService.EnsureDefaultsAsync(_context);
+            await MoveLegacyPremiumToSubscriptionsAsync();
             await TrySeedAsync();
         }
         catch (Exception ex)
@@ -141,6 +143,37 @@ public class ApplicationDbContextInitialiser
             }
         }
         if (added > 0) await _context.SaveChangesAsync();
+    }
+
+    /// <summary>
+    /// Before Sprint 04 "paid" was only the Premium flag (set by hand in the database). Each such profile without a
+    /// subscription gets a one-month Gold period so nothing changes for them today; after that the subscriptions decide.
+    /// </summary>
+    private async Task MoveLegacyPremiumToSubscriptionsAsync()
+    {
+        var withSubscription = _context.Subscriptions.Select(s => s.UserId);
+        var legacy = await _context.CandidateProfiles
+            .Where(p => p.Premium && !withSubscription.Contains(p.UserId))
+            .ToListAsync();
+        if (legacy.Count == 0) return;
+
+        var now = DateTime.UtcNow;
+        foreach (var p in legacy)
+        {
+            var sub = new Subscription
+            {
+                UserId = p.UserId,
+                PlanId = DatingApp.Application.Services.Plans.Gold,
+                StartsAt = now,
+                EndsAt = now.AddMonths(1),
+                Note = "Moved from the old Premium flag (Sprint 04)"
+            };
+            _context.Subscriptions.Add(sub);
+            p.PlanId = sub.PlanId;
+            p.PlanEndsAt = sub.EndsAt;
+        }
+        await _context.SaveChangesAsync();
+        _logger.LogInformation("Gave {Count} legacy Premium profile(s) a one-month Gold subscription.", legacy.Count);
     }
 
     /// <summary>Profiles saved before this date may hold the old made-up registration values.</summary>

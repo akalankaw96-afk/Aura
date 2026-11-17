@@ -32,6 +32,8 @@ public class ApplicationDbContext : DbContext, IApplicationDbContext
     public DbSet<SavedSearch> SavedSearches => Set<SavedSearch>();
     public DbSet<Block> Blocks => Set<Block>();
     public DbSet<Report> Reports => Set<Report>();
+    public DbSet<PlanPrice> PlanPrices => Set<PlanPrice>();
+    public DbSet<Subscription> Subscriptions => Set<Subscription>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

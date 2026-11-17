@@ -92,3 +92,17 @@ public enum ReportStatus
     Dismissed = 2,
     Actioned = 3
 }
+
+/// <summary>What a price or payment is for (S04). Stored as numbers — never renumber.</summary>
+public enum BillingProduct
+{
+    Plan = 1,
+    Boost = 2
+}
+
+public enum SubscriptionStatus
+{
+    Active = 1,
+    Expired = 2,
+    Cancelled = 3
+}

@@ -40,5 +40,7 @@ public class CandidateProfileSearchConfiguration : IEntityTypeConfiguration<Cand
     {
         builder.HasIndex(p => new { p.Status, p.Gender, p.DateOfBirth });
         builder.HasIndex(p => new { p.Status, p.CreatedAt });
+        // plan cache (S04-T02)
+        builder.Property(p => p.PlanId).HasMaxLength(20).IsRequired().HasDefaultValue("free");
     }
 }

@@ -26,6 +26,8 @@ var jwtAudience = builder.Configuration["JwtSettings:Audience"] ?? "AuraMatrimon
 // 1. Infrastructure & application services
 builder.Services.AddInfrastructureServices(builder.Configuration);
 builder.Services.AddSingleton<AuthCookieSettings>();
+// S04-T02: plan expiry + "ends in 3 days" reminders, hourly
+builder.Services.AddHostedService<DatingApp.WebApi.Billing.BillingMaintenanceService>();
 builder.Services.AddSingleton<DatingApp.Application.Common.Interfaces.IPresenceTracker, PresenceTracker>();
 
 // 2. Controllers, SignalR, errors as ProblemDetails (API_GUIDELINES.md §4)

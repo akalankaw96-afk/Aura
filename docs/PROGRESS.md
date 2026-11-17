@@ -34,6 +34,22 @@ _Last updated: 2026-11-16 — Sprint 03 T01–T10 **completed** (owner verified 
 | S01-T15 README update | Completed | Root README: start-here links to CLAUDE.md / docs, run + check commands, status |
 | S01-T16 Forgot password journey | Completed | API endpoints #9–11 + change password #12 built; `services/passwordReset.ts` now calls them. Password rule aligned web ↔ API: 8+ chars, letter + number |
 
+## Sprint 04 — Earn
+Planned 2026-11-16 (see `SPRINT_PLAN.md`): bank transfer only, Plans-page prices in the DB, no auto-renew; branch **`S04-pay`**.
+Branch `S04-Pay` created 2026-11-16 (from main with Sprint 03). Started with T01–T02.
+
+| Task | Status | Notes |
+|---|---|---|
+| S04-T01 Plans and prices in the DB | Testing | `PlanPrice` (cents) seeded with the Plans-page prices; `GET /api/plans` (public, with saving %); `GET/PUT /api/admin/prices`; staff area **Prices** tab; Plans page reads the API. Built 2026-11-16 — awaiting owner test (migration `Sprint04Billing`) |
+| S04-T02 Subscriptions + expiry + reminder | Testing | `Subscription` is the source of the plan (limits, contact share, session); profile keeps a cache (`PlanId`, `PlanEndsAt`, `Premium`); early renewal queues after the current end, Platinum starts at once; hourly job expires periods and sends the 3-day reminder (in-app + SMS) once; `GET /api/me/subscription`; admin grant / cancel with a note; old Premium flags moved to a one-month Gold period at start-up. Built 2026-11-16 — awaiting owner test |
+| S04-T03 Bank-transfer orders + slip upload | Not Started | |
+| S04-T04 Staff payments queue | Not Started | |
+| S04-T05 Boosts on the server | Not Started | |
+| S04-T06 Web: pay, plan, boost from the API | Not Started | |
+| S04-T07 Admin back office (members, payments, audit) | Not Started | |
+| S04-T08 Account deactivate / delete | Not Started | |
+| S04-T09 Tests + docs | Not Started | |
+
 ## Sprint 03 — Match & talk
 Decisions (owner, 2026-11-14): Free plan starts at 3 searches · 5 profile views · 3 interests · 2 new chats per month
 (Gold / Platinum unlimited), changeable by the admin; branch **`S03-match`**.

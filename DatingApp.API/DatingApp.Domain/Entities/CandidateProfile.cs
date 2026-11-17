@@ -36,6 +36,12 @@ public class CandidateProfile : BaseEntity
     public DateTime? ReviewedAt { get; set; }
     public Guid? ReviewedByUserId { get; set; }
     public bool Premium { get; set; } = false;
+    /// <summary>
+    /// Cached from the member's subscriptions (S04-T02) for sessions and badges: "free", "gold" or "platinum".
+    /// The subscriptions are the source of truth — only SubscriptionService writes these (and Premium).
+    /// </summary>
+    public string PlanId { get; set; } = "free";
+    public DateTime? PlanEndsAt { get; set; }
     public string PhotoUrl { get; set; } = string.Empty;
     public string Interests { get; set; } = string.Empty; // Comma-separated list
     public string? SubmittedDetailsJson { get; set; }

@@ -40,7 +40,7 @@ const GOLD = [
 
 export function PlanUsageCard() {
   const { locked, isPaid } = useAccess();
-  const { left } = useUsage();
+  const { left, limit, usage, loaded } = useUsage();
   const [open, setOpen] = useState(false);
   useEffect(() => {
     try {
@@ -54,7 +54,7 @@ export function PlanUsageCard() {
       } catch {}
       return !o;
     });
-  if (locked || isPaid) return null;
+  if (locked || isPaid || !loaded) return null;
 
   const meters = METERS.filter(({ kind }) => limit(kind) !== null); // unlimited ones aren't metered
   const outMeter = meters.find(({ kind }) => left(kind) === 0);
@@ -70,7 +70,7 @@ export function PlanUsageCard() {
           <span className="inline-flex h-7 items-center rounded-full bg-surface-muted px-3 text-label-sm text-ink-secondary">Free plan</span>
           <h2 className="text-h6 text-ink">This month’s usage</h2>
           <div className="flex flex-wrap gap-2">
-            {METERS.map(({ kind, Icon }) => {
+            {meters.map(({ kind, Icon }) => {
               const l = left(kind);
               const out = l === 0;
               return (
@@ -82,7 +82,7 @@ export function PlanUsageCard() {
                   )}
                 >
                   {out ? <Lock1 size={14} color="currentColor" /> : <Icon size={14} color="currentColor" />}
-                  {USAGE_LABEL[kind].title} <b className="font-bold">{l}/{FREE_LIMITS[kind]}</b>
+                  {USAGE_LABEL[kind].title} <b className="font-bold">{l}/{limit(kind)}</b>
                 </span>
               );
             })}

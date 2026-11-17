@@ -5,7 +5,31 @@ Sections: Added · Changed · Fixed · Security · Removed · Breaking.
 
 ## [Unreleased]
 
+### Fixed
+- 2026-11-16 — **Merge of `main` (new admin area) into `S04-Pay` checked.** Resolved the conflicts left by `git stash
+  pop`: `PlansScreen.tsx` (main's checkout button and "How do I pay?" + database prices + real Free limits) and
+  `TECHNICAL_DEBT.md` (both sides used TD-28 / TD-29 — main keeps them; the search-filter item is now **TD-30** and "no
+  online gateway" **TD-31**). Fixed a silent bad merge in `PlanUsageCard.tsx` (main's collapsible card still used the
+  old browser limits `FREE_LIMITS` → now the server limits). The new admin sidebar had dropped three working screens —
+  added back as pages: **Reports** (`/admin/reports`, S03-T08), **Plan limits** (`/admin/limits`, admin) and **Prices**
+  (`/admin/prices`, admin). Files: `components/auth/PlansScreen.tsx`, `components/sections/dashboard/PlanUsageCard.tsx`,
+  `components/admin/AdminShell.tsx`, `components/sections/admin/StaffConsole.tsx` (exports), `app/admin/{reports,limits,prices}/page.tsx`.
+
 ### Added
+- 2026-11-16 — **Prices in the database and real subscriptions (S04-T01, T02).** New `PlanPrices` (amounts in cents,
+  LKR; seeded with the Plans-page prices — Gold 2,500 / 6,375 / 11,250, Platinum 6,500 / 16,575 / 29,250, boost 500 for
+  7 days) with `GET /api/plans` (public, saving % per length) and `GET/PUT /api/admin/prices`; staff area **Prices** tab;
+  the Plans page reads the API. New `Subscriptions`: the member's plan is the best period running now — plan limits,
+  "asking for numbers needs Gold" and the session (`planId` gold / platinum, new `planEndsAt`) all use it instead of the
+  `Premium` flag (now a cache with `PlanId` / `PlanEndsAt` on the profile). Renewing early adds a period after the
+  current one; Platinum starts at once. An hourly background job ends finished periods and sends the "ends in 3 days"
+  reminder (in-app + SMS, once, not when a renewal follows). `GET /api/me/subscription`; admin `GET/POST
+  /api/admin/members/{userId}/subscriptions` (give a plan, note required) and `POST /api/admin/subscriptions/{id}/cancel`.
+  At start-up, profiles that only had the old `Premium` flag get a one-month Gold period. Files: `BillingEntities.cs`,
+  `BillingConfigurations.cs`, `BillingDtos.cs`, `PricingService.cs`, `SubscriptionService.cs` (+ `SubscriptionRules`),
+  `UsageService`, `SessionService`, `AuthDtos`, initialiser, `PlansController`, `AdminController` / `MeController`,
+  `WebApi/Billing/BillingMaintenanceService.cs`, `Program.cs`; web `lib/billing.ts`, `PlansScreen.tsx`, `StaffConsole.tsx`;
+  tests `BillingTests` (+ older tests now use real subscriptions). Migration `Sprint04Billing` (owner generates).
 - 2026-11-16 — **Staff reports queue (S03-T08).** `GET /api/moderation/reports?status=open|closed|all` and
   `POST /api/moderation/reports/{id}/resolve` with `dismiss`, `action` (handled without suspending) or `suspend` (note
   required; suspends the member and closes all their open reports). The reporter gets an in-app "We reviewed your report"
@@ -39,7 +63,7 @@ Sections: Added · Changed · Fixed · Security · Removed · Breaking.
   admin's limits and reset date; the Upgrade prompt opens on any 402 (`LIMIT_REACHED` / `PLAN_REQUIRED`) and is closable
   except when searches and views are both used up on /search. Free members can now send interests and start chats up to
   their limits (they were Gold-only in the browser). Search uses `GET /api/profiles/search` (48 per API page, "Load
-  more"; multi-selects, height, countries and "More" filters narrow the loaded results — TD-28) and opens profiles
+  more"; multi-selects, height, countries and "More" filters narrow the loaded results — TD-30) and opens profiles
   through `GET /api/profiles/{id}`, so views are counted; deep links accept the profile UUID. Saved searches are real
   (chips above the results). Favourites = server shortlist; Friends, Received and Sent tabs and the dashboard
   requests card read `/api/match-requests/matched · received · sent`; accept / decline / **Withdraw** call the API.

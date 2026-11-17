@@ -33,6 +33,8 @@ public interface IApplicationDbContext
     DbSet<SavedSearch> SavedSearches { get; }
     DbSet<Block> Blocks { get; }
     DbSet<Report> Reports { get; }
+    DbSet<PlanPrice> PlanPrices { get; }
+    DbSet<Subscription> Subscriptions { get; }
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }

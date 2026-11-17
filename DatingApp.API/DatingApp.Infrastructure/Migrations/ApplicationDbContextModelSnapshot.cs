@@ -119,6 +119,16 @@ namespace DatingApp.Infrastructure.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<DateTime?>("PlanEndsAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("PlanId")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)")
+                        .HasDefaultValue("free");
+
                     b.Property<bool>("Premium")
                         .HasColumnType("bit");
 
@@ -512,6 +522,54 @@ namespace DatingApp.Infrastructure.Migrations
                     b.ToTable("PlanLimits");
                 });
 
+            modelBuilder.Entity("DatingApp.Domain.Entities.PlanPrice", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<long>("AmountCents")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Currency")
+                        .IsRequired()
+                        .HasMaxLength(3)
+                        .HasColumnType("nvarchar(3)");
+
+                    b.Property<int>("Days")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<int>("Months")
+                        .HasColumnType("int");
+
+                    b.Property<string>("PlanId")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<int>("Product")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("UpdatedByUserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Product", "PlanId", "Months", "Days")
+                        .IsUnique();
+
+                    b.ToTable("PlanPrices");
+                });
+
             modelBuilder.Entity("DatingApp.Domain.Entities.PricingPlan", b =>
                 {
                     b.Property<Guid>("Id")
@@ -886,6 +944,57 @@ namespace DatingApp.Infrastructure.Migrations
                     b.ToTable("Shortlists");
                 });
 
+            modelBuilder.Entity("DatingApp.Domain.Entities.Subscription", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("EndsAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("GrantedByUserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Note")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<Guid?>("PaymentId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("PlanId")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<DateTime?>("ReminderSentAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("StartsAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Status", "EndsAt");
+
+                    b.HasIndex("UserId", "Status", "EndsAt");
+
+                    b.ToTable("Subscriptions");
+                });
+
             modelBuilder.Entity("DatingApp.Domain.Entities.SuccessStory", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1206,6 +1315,15 @@ namespace DatingApp.Infrastructure.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.HasOne("DatingApp.Domain.Entities.User", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("DatingApp.Domain.Entities.Subscription", b =>
+                {
                     b.HasOne("DatingApp.Domain.Entities.User", null)
                         .WithMany()
                         .HasForeignKey("UserId")

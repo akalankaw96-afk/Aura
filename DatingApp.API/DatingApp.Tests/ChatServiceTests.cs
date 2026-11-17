@@ -68,8 +68,7 @@ public class ChatServiceTests
         var (amalUser, amal) = await TestDb.AddMemberAsync(db, "Amal", "+94770000011");
         var (nimmiUser, nimmi) = await TestDb.AddMemberAsync(db, "Nimmi", "+94770000012");
         await TestDb.MatchAsync(db, amal, nimmi);
-        amal.Premium = true; // asking for numbers is a Gold feature (S03-T07)
-        await db.SaveChangesAsync();
+        await TestDb.MakePaidAsync(db, amalUser.Id); // asking for numbers is a Gold feature (S03-T07)
         var chat = Chat(db);
 
         // nobody asked yet → nothing to accept

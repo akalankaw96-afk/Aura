@@ -162,8 +162,10 @@ public class SessionService : ISessionService
             IsVerified = profile?.Status == ProfileStatus.Approved,
             IsUnderReview = profile?.Status is ProfileStatus.Submitted or ProfileStatus.Resubmitted,
             ProfileStatus = profile?.Status.ToString() ?? "None",
-            IsPremium = profile?.Premium ?? false,
-            PlanId = (profile?.Premium ?? false) ? "premium" : "free",
+            // plan cache kept by SubscriptionService (S04-T02); an ended plan reads as free even before the hourly job
+            IsPremium = profile != null && profile.PlanId != Plans.Free && profile.PlanEndsAt > DateTime.UtcNow,
+            PlanId = profile != null && profile.PlanId != Plans.Free && profile.PlanEndsAt > DateTime.UtcNow ? profile.PlanId : Plans.Free,
+            PlanEndsAt = profile != null && profile.PlanId != Plans.Free && profile.PlanEndsAt > DateTime.UtcNow ? profile.PlanEndsAt : null,
             PhotoUrl = profile?.PhotoUrl
         };
     }

@@ -172,11 +172,9 @@ public class UsageService : IUsageService
 
     // ---- helpers ----
 
-    private async Task<string> PlanOfAsync(Guid userId, CancellationToken ct)
-    {
-        var premium = await _context.CandidateProfiles.Where(p => p.UserId == userId).Select(p => (bool?)p.Premium).FirstOrDefaultAsync(ct);
-        return premium == true ? Plans.Gold : Plans.Free;
-    }
+    // the plan comes from the member's subscriptions (S04-T02) — never from a flag the client could influence
+    private Task<string> PlanOfAsync(Guid userId, CancellationToken ct) =>
+        SubscriptionRules.CurrentPlanAsync(_context, userId, null, ct);
 
     private async Task<Dictionary<UsageFeature, int?>> LimitsForAsync(string plan, CancellationToken ct)
     {

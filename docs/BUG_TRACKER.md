@@ -29,7 +29,7 @@ Baseline: 22 issues found during the analysis on 2026-11-11 (5 critical · 6 hig
 | BUG-013 | Medium | API · DB | InMemory DB is the default (config key missing); `EnsureCreated`, no migrations | Closed (verified 2026-11-14) | 01 |
 | BUG-014 | Medium | API + Web | Services/clients swallow errors and serve fallback or mock data | In Progress — Search, Friends, Dashboard, staff area on the API with error states (S03-T10); left: chat REST helpers return [] on error | 03–05 |
 | BUG-015 | Medium | API · DB | Demo user with a known password seeded in every environment | Closed (verified 2026-11-14) | 01 |
-| BUG-016 | Medium | API · Search | Profile search loads the whole table; no paging | **Fixed** — `GET /api/profiles/search` (S03-T01), owner verified 2026-11-16; some filters still run on the loaded page (TD-28) | 03 |
+| BUG-016 | Medium | API · Search | Profile search loads the whole table; no paging | **Fixed** — `GET /api/profiles/search` (S03-T01), owner verified 2026-11-16; some filters still run on the loaded page (TD-30) | 03 |
 | BUG-017 | Medium | Web · Auth | JWT stored in localStorage (readable by any XSS) | Closed (verified 2026-11-14) | 01 |
 | BUG-018 | Low | API · Auth | PBKDF2 with 10,000 iterations (below current guidance) | Closed (verified 2026-11-14) | 01 |
 | BUG-019 | Low | Web · UI | ~380 classes from non-existent palettes + 8 opacity modifiers render unstyled | Open | 05 |
