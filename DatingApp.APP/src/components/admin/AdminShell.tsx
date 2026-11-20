@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -21,6 +22,7 @@ import {
 } from "iconsax-react";
 import { cn } from "@/lib/cn";
 import { LanguageSwitch, Logo, ThemeToggle } from "@/components/ui/Brand";
+import { Modal } from "@/components/ui/Modal";
 import { useAuthSession } from "@/lib/session";
 import { apiService } from "@/services/api";
 import { getQueue } from "@/lib/staff";
@@ -117,8 +119,7 @@ export function AdminShell({ children }: Readonly<{ children: React.ReactNode }>
             <HambergerMenu size={22} color="currentColor" />
           </button>
           <Link href="/admin" className="flex items-center gap-3" aria-label="Staff dashboard">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/brand/logo.png" alt="Vikasitha" style={{ height: 40, width: (40 * 122) / 72 }} />
+            <Image src="/brand/logo.png" alt="Vikasitha" width={68} height={40} priority style={{ height: 40, width: (40 * 122) / 72 }} />
             <span className="hidden h-6 items-center rounded-full bg-brand-subtle px-2.5 text-label-sm text-brand-text sm:inline-flex">Staff area</span>
           </Link>
           <div className="ml-auto flex items-center gap-2">
@@ -144,35 +145,18 @@ export function AdminShell({ children }: Readonly<{ children: React.ReactNode }>
   );
 }
 
-/** Phone / tablet menu: native modal <dialog> (focus trap, Esc to close) sliding in from the left. */
+/** Phone / tablet menu: the shared Modal as a drawer from the left (focus kept inside, Esc / backdrop close) — S05-T05. */
 function StaffDrawer({ onClose, children }: Readonly<{ onClose: () => void; children: React.ReactNode }>) {
-  const ref = useRef<HTMLDialogElement>(null);
-  useEffect(() => {
-    const d = ref.current;
-    d?.showModal();
-    return () => d?.close();
-  }, []);
   return (
-    <dialog
-      ref={ref}
-      aria-label="Staff menu"
-      onCancel={(e) => {
-        e.preventDefault();
-        onClose();
-      }}
-      className="fixed inset-0 m-0 h-dvh max-h-none w-full max-w-none bg-transparent p-0 backdrop:bg-black/45 lg:hidden"
-    >
-      <button type="button" tabIndex={-1} aria-hidden="true" className="absolute inset-0 cursor-default" onClick={onClose} />
-      <aside className="absolute inset-y-0 left-0 flex w-[280px] animate-fade-up flex-col bg-surface-card shadow-xl">
-        <div className="flex h-16 items-center justify-between border-b border-line px-4">
-          <Logo height={36} />
-          <button type="button" onClick={onClose} aria-label="Close menu" className="rounded-md p-1 text-ink-tertiary hover:text-ink">
-            <CloseSquare size={24} color="currentColor" />
-          </button>
-        </div>
-        {children}
-      </aside>
-    </dialog>
+    <Modal open onClose={onClose} placement="left" ariaLabel="Staff menu" hideClose className="lg:hidden">
+      <div className="flex h-16 shrink-0 items-center justify-between border-b border-line px-4">
+        <Logo height={36} />
+        <button type="button" onClick={onClose} aria-label="Close menu" className="rounded-md p-1 text-ink-tertiary hover:text-ink">
+          <CloseSquare size={24} color="currentColor" />
+        </button>
+      </div>
+      {children}
+    </Modal>
   );
 }
 

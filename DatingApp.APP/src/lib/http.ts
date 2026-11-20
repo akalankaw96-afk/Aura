@@ -1,3 +1,4 @@
+import { KEYS, storage } from "@/lib/storage";
 /**
  * One typed fetch helper for every API call (S01-T12, TD-04).
  *
@@ -13,7 +14,7 @@ const TIMEOUT_ERROR = "Vikasitha is taking too long to answer. Please try again.
 const DEFAULT_TIMEOUT_MS = 15_000;
 
 /** Signed-in member details kept in localStorage — never the token (see `SESSION_KEY`). */
-export const SESSION_KEY = "aura_session";
+export const SESSION_KEY = KEYS.session;
 
 /** Extra ProblemDetails fields. Plan limits (402 LIMIT_REACHED / PLAN_REQUIRED) add feature, limit, planId, resetsAt. */
 export interface ApiErrorExtras {
@@ -66,12 +67,7 @@ export function getAccessToken(): string | null {
 
 /** True when this browser has a signed-in member (the token itself may still need restoring). */
 export function hasStoredSession(): boolean {
-  if (typeof window === "undefined") return false;
-  try {
-    return !!window.localStorage.getItem(SESSION_KEY);
-  } catch {
-    return false;
-  }
+  return !!storage.get(SESSION_KEY);
 }
 
 /** Called with the new token after every successful refresh (api.ts keeps the stored session in step). */

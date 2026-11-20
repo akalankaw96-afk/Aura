@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import React, { useEffect, useState } from "react";
 import { AddCircle, Crown1, Lock1, Lovely, TickCircle } from "iconsax-react";
 import Link from "next/link";
@@ -34,8 +35,7 @@ export function DashboardHero() {
 
   return (
     <section aria-label="Welcome" className="relative isolate overflow-hidden rounded-2xl bg-rose-950 text-ink-on-brand">
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={HERO.image} alt="" className="absolute inset-0 -z-10 h-full w-full object-cover" />
+      <Image src={HERO.image} alt="" fill priority sizes="(min-width: 1280px) 1200px, 100vw" className="-z-10 object-cover" />
       <div aria-hidden className="absolute inset-0 -z-10 bg-black opacity-[0.62]" />
       <div aria-hidden className="absolute inset-0 -z-10 bg-[linear-gradient(90deg,rgba(107,5,38,0.85),rgba(222,5,71,0.35))]" />
 

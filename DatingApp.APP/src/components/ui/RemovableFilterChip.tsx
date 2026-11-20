@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { X } from "lucide-react";
+import { Add } from "iconsax-react";
 import { cn } from "@/lib/cn";
 
 /**
@@ -41,7 +41,8 @@ export function RemovableFilterChip({
         aria-label={`Remove ${label ? label + " " : ""}filter`}
         className="flex h-5 w-5 items-center justify-center rounded-full text-brand-text transition-all hover:rotate-90 hover:bg-white"
       >
-        <X size={14} strokeWidth={2.5} />
+        {/* iconsax has no plain ×: the plus turned 45° */}
+        <Add size={18} color="currentColor" className="rotate-45" />
       </button>
     </span>
   );

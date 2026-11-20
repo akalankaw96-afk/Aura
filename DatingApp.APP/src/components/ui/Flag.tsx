@@ -1,3 +1,4 @@
+import Image from "next/image";
 import React from "react";
 import { cn } from "@/lib/cn";
 
@@ -21,7 +22,6 @@ const NAMES: Record<CountryCode, string> = {
 
 export function Flag({ country, className }: { country: CountryCode; className?: string }) {
   return (
-    // eslint-disable-next-line @next/next/no-img-element
-    <img src={`/images/flags/${country}.png`} alt={NAMES[country]} width={18} height={20} className={cn("h-5 w-[18px] shrink-0 object-contain", className)} />
+    <Image src={`/images/flags/${country}.png`} alt={NAMES[country]} width={18} height={20} className={cn("h-5 w-[18px] shrink-0 object-contain", className)} />
   );
 }

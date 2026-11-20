@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { apiService, AuthSession } from "@/services/api";
 import { SESSION_KEY, hasStoredSession } from "@/lib/http";
+import { KEYS, readSessionData, storage } from "@/lib/storage";
 import { Profile } from "@/types";
 import { readKyc, type KycStatus } from "@/lib/verification";
 
@@ -33,11 +34,8 @@ export function useSignedIn(): boolean {
 /** Where "home" is for the current visitor: the dashboard (or /admin for staff) once signed in. */
 export function useHomeHref(): string {
   if (!useSignedIn()) return "/";
-  try {
-    const raw = typeof window !== "undefined" ? localStorage.getItem(SESSION_KEY) : null;
-    const role = raw ? (JSON.parse(raw) as { role?: string }).role : null;
-    if (role === "Admin" || role === "Moderator") return "/admin";
-  } catch {}
+  const role = readSessionData<{ role?: string }>()?.role;
+  if (role === "Admin" || role === "Moderator") return "/admin";
   return "/dashboard";
 }
 
@@ -52,20 +50,10 @@ export function useAuthSession() {
   useEffect(() => {
     const update = () => {
       if (typeof window === "undefined") return;
-      try {
-        const raw = localStorage.getItem(SESSION_KEY);
-        if (raw) {
-          const s = JSON.parse(raw) as AuthSession;
-          setSession(s);
-        } else {
-          setSession(null);
-          setProfile(null);
-        }
-      } catch {
-        setSession(null);
-      } finally {
-        setLoading(false);
-      }
+      const s = readSessionData<AuthSession>();
+      setSession(s);
+      if (!s) setProfile(null);
+      setLoading(false);
     };
 
     update();
@@ -125,7 +113,7 @@ export function useAuthSession() {
 /* ------------------------------------------------------------------ */
 /* Guest gate — actions on profiles need an account                    */
 /* ------------------------------------------------------------------ */
-const RETURN_KEY = "vk-return-to";
+const RETURN_KEY = KEYS.returnTo;
 const safePath = (p: string | null | undefined) => (p && p.startsWith("/") && !p.startsWith("//") ? p : null);
 
 export const LOGIN_REQUIRED_EVENT = "vk-login-required";
@@ -158,9 +146,7 @@ export function allowVerificationAction(action: string): boolean {
 export function requireMember(action = "continue"): boolean {
   if (hasSession()) return allowVerificationAction(action);
   const here = window.location.pathname + window.location.search;
-  try {
-    sessionStorage.setItem(RETURN_KEY, here);
-  } catch {}
+  storage.set(RETURN_KEY, here, "session");
   openMemberActionPrompt({ action, next: here });
   return false;
 }
@@ -168,9 +154,7 @@ export function requireMember(action = "continue"): boolean {
 /** Where to go after logging in: ?next=… or the page the guest came from, else the dashboard. */
 export function takeReturnTo(fallback = "/dashboard"): string {
   let next: string | null = null;
-  try {
-    next = safePath(new URLSearchParams(window.location.search).get("next")) ?? safePath(sessionStorage.getItem(RETURN_KEY));
-    sessionStorage.removeItem(RETURN_KEY);
-  } catch {}
+  next = safePath(new URLSearchParams(window.location.search).get("next")) ?? safePath(storage.get(RETURN_KEY, "session"));
+  storage.remove(RETURN_KEY, "session");
   return next ?? fallback;
 }

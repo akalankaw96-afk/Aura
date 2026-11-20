@@ -19,6 +19,8 @@ const eslintConfig = [
       "@typescript-eslint/no-explicit-any": "warn",
       "@next/next/no-img-element": "warn",
       "react-hooks/exhaustive-deps": "warn",
+      // Console output goes through lib/log.ts (dev only) — S05-T06, BUG-021.
+      "no-console": "warn",
     },
   },
 ];

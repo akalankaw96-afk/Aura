@@ -3,7 +3,8 @@
 import { useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { flashToast } from "@/components/ui/Toast";
-import { SESSION_KEY, hasStoredSession } from "@/lib/http";
+import { hasStoredSession } from "@/lib/http";
+import { readSessionData } from "@/lib/storage";
 
 /**
  * Member-only pages (S01-T08): guests are sent to /login?next=<this page> and come back after logging in.
@@ -23,12 +24,8 @@ export function RequireMember({ role }: { role?: string | string[] }) {
       }
       if (!role) return;
       const allowed = Array.isArray(role) ? role : [role];
-      let current = "";
-      try {
-        current = (JSON.parse(localStorage.getItem(SESSION_KEY) || "{}") as { role?: string }).role ?? "";
-      } catch {
-        /* unreadable session → treated as no role */
-      }
+      // unreadable session → treated as no role
+      const current = readSessionData<{ role?: string }>()?.role ?? "";
       if (!allowed.includes(current)) {
         flashToast("info", "Staff only", "This area needs a staff account.");
         router.replace("/dashboard");

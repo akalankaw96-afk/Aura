@@ -22,6 +22,19 @@ import type { Config } from "tailwindcss";
  */
 const v = (name: string) => `var(--${name})`;
 
+/**
+ * Colours: a plain `var(--…)`, except with an opacity modifier (`bg-black/40`, `border-brand/20`) where Tailwind
+ * can't fade a CSS variable by itself — then `color-mix()` does it (S05-T02, BUG-019). Plain classes stay a plain
+ * `var(--…)` (the `--tw-*-opacity` placeholders are ignored), so older browsers render them exactly as before.
+ */
+const c = (name: string) =>
+  (({ opacityValue }: { opacityValue?: string | number }) => {
+    const alpha = opacityValue === undefined ? "" : String(opacityValue);
+    return alpha === "" || alpha === "1" || alpha.startsWith("var(")
+      ? `var(--${name})`
+      : `color-mix(in srgb, var(--${name}) calc(${alpha} * 100%), transparent)`;
+  }) as unknown as string;
+
 const config: Config = {
   content: ["./src/**/*.{ts,tsx,mdx}"],
   darkMode: ["selector", '[data-theme="dark"]'],
@@ -36,69 +49,69 @@ const config: Config = {
     colors: {
       transparent: "transparent",
       current: "currentColor",
-      white: v("gray-0"),
-      black: v("gray-950"),
+      white: c("gray-0"),
+      black: c("gray-950"),
 
       // ── Primitives (prefer the semantic colours below) ────────────────
-      rose: { 50: v("rose-50"), 100: v("rose-100"), 200: v("rose-200"), 300: v("rose-300"), 400: v("rose-400"), 500: v("rose-500"), 600: v("rose-600"), 700: v("rose-700"), 800: v("rose-800"), 900: v("rose-900"), 950: v("rose-950") },
-      gray: { 0: v("gray-0"), 50: v("gray-50"), 100: v("gray-100"), 200: v("gray-200"), 300: v("gray-300"), 400: v("gray-400"), 500: v("gray-500"), 600: v("gray-600"), 700: v("gray-700"), 800: v("gray-800"), 900: v("gray-900"), 950: v("gray-950") },
-      gold: { 50: v("gold-50"), 100: v("gold-100"), 300: v("gold-300"), 500: v("gold-500"), 700: v("gold-700"), 900: v("gold-900") },
+      rose: { 50: c("rose-50"), 100: c("rose-100"), 200: c("rose-200"), 300: c("rose-300"), 400: c("rose-400"), 500: c("rose-500"), 600: c("rose-600"), 700: c("rose-700"), 800: c("rose-800"), 900: c("rose-900"), 950: c("rose-950") },
+      gray: { 0: c("gray-0"), 50: c("gray-50"), 100: c("gray-100"), 200: c("gray-200"), 300: c("gray-300"), 400: c("gray-400"), 500: c("gray-500"), 600: c("gray-600"), 700: c("gray-700"), 800: c("gray-800"), 900: c("gray-900"), 950: c("gray-950") },
+      gold: { 50: c("gold-50"), 100: c("gold-100"), 300: c("gold-300"), 500: c("gold-500"), 700: c("gold-700"), 900: c("gold-900") },
 
       // ── Semantic: color/bg/* and color/surface/* ──────────────────────
-      page: v("color-bg-page"),
+      page: c("color-bg-page"),
       surface: {
-        subtle: v("color-bg-subtle"),
-        muted: v("color-bg-muted"),
-        disabled: v("color-bg-disabled"),
-        inverse: v("color-bg-inverse"),
-        card: v("color-surface-card"),
-        raised: v("color-surface-raised"),
-        glass: v("color-surface-glass"),
-        "glass-strong": v("color-surface-glass-strong"),
-        scrim: v("color-bg-scrim"),
+        subtle: c("color-bg-subtle"),
+        muted: c("color-bg-muted"),
+        disabled: c("color-bg-disabled"),
+        inverse: c("color-bg-inverse"),
+        card: c("color-surface-card"),
+        raised: c("color-surface-raised"),
+        glass: c("color-surface-glass"),
+        "glass-strong": c("color-surface-glass-strong"),
+        scrim: c("color-bg-scrim"),
       },
       brand: {
-        DEFAULT: v("color-bg-brand"),
-        hover: v("color-bg-brand-hover"),
-        subtle: v("color-bg-brand-subtle"),
-        strong: v("color-bg-brand-strong"),
-        text: v("color-text-brand"),
-        link: v("color-text-link"),
-        border: v("color-border-brand"),
-        focus: v("color-border-focus"),
-        ring: v("rose-100"),
+        DEFAULT: c("color-bg-brand"),
+        hover: c("color-bg-brand-hover"),
+        subtle: c("color-bg-brand-subtle"),
+        strong: c("color-bg-brand-strong"),
+        text: c("color-text-brand"),
+        link: c("color-text-link"),
+        border: c("color-border-brand"),
+        focus: c("color-border-focus"),
+        ring: c("rose-100"),
       },
       // ── Semantic: color/text/* ─────────────────────────────────────────
       ink: {
-        DEFAULT: v("color-text-primary"),
-        secondary: v("color-text-secondary"),
-        tertiary: v("color-text-tertiary"),
-        disabled: v("color-text-disabled"),
-        inverse: v("color-text-inverse"),
-        "on-brand": v("color-text-on-brand"),
-        "on-brand-muted": v("color-text-on-brand-muted"),
+        DEFAULT: c("color-text-primary"),
+        secondary: c("color-text-secondary"),
+        tertiary: c("color-text-tertiary"),
+        disabled: c("color-text-disabled"),
+        inverse: c("color-text-inverse"),
+        "on-brand": c("color-text-on-brand"),
+        "on-brand-muted": c("color-text-on-brand-muted"),
       },
       // ── Semantic: color/border/* ───────────────────────────────────────
       line: {
-        DEFAULT: v("color-border-default"),
-        strong: v("color-border-strong"),
-        error: v("color-border-error"),
-        glass: v("color-border-glass"),
-        "glass-subtle": v("color-border-glass-subtle"),
+        DEFAULT: c("color-border-default"),
+        strong: c("color-border-strong"),
+        error: c("color-border-error"),
+        glass: c("color-border-glass"),
+        "glass-subtle": c("color-border-glass-subtle"),
       },
       // ── Semantic: color/icon/* ─────────────────────────────────────────
       icon: {
-        DEFAULT: v("color-icon-default"),
-        muted: v("color-icon-muted"),
-        brand: v("color-icon-brand"),
-        "on-brand": v("color-icon-on-brand"),
+        DEFAULT: c("color-icon-default"),
+        muted: c("color-icon-muted"),
+        brand: c("color-icon-brand"),
+        "on-brand": c("color-icon-on-brand"),
       },
       // ── Semantic: color/status/* ───────────────────────────────────────
-      success: { bg: v("color-status-success-bg"), fg: v("color-status-success-fg"), line: v("green-500") },
-      warning: { bg: v("color-status-warning-bg"), fg: v("color-status-warning-fg"), line: v("amber-500") },
-      error: { bg: v("color-status-error-bg"), fg: v("color-status-error-fg"), line: v("color-border-error"), ring: v("red-100") },
-      info: { bg: v("color-status-info-bg"), fg: v("color-status-info-fg"), line: v("blue-500") },
-      premium: { bg: v("color-status-premium-bg"), fg: v("color-status-premium-fg"), line: v("color-border-premium") },
+      success: { bg: c("color-status-success-bg"), fg: c("color-status-success-fg"), line: c("green-500") },
+      warning: { bg: c("color-status-warning-bg"), fg: c("color-status-warning-fg"), line: c("amber-500") },
+      error: { bg: c("color-status-error-bg"), fg: c("color-status-error-fg"), line: c("color-border-error"), ring: c("red-100") },
+      info: { bg: c("color-status-info-bg"), fg: c("color-status-info-fg"), line: c("blue-500") },
+      premium: { bg: c("color-status-premium-bg"), fg: c("color-status-premium-fg"), line: c("color-border-premium") },
     },
     fontFamily: {
       sans: [v("font-family-base")],

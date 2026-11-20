@@ -42,7 +42,7 @@ Aura/
 | next / react / react-dom | 15.1 / 19 / 19 | App Router |
 | tailwindcss / postcss / autoprefixer | 3.4 | theme **replaces** defaults with Figma tokens |
 | iconsax-react | 0.0.8 | main icon set |
-| lucide-react | 0.475 | used in a few places (Share2, Ban…) — second icon set, see debt TD-08 |
+| ~~lucide-react~~ | — | removed 2026-11-19 (S05-T08, TD-08); iconsax-react is the only icon set |
 | @microsoft/signalr | 10 | chat client |
 | clsx + tailwind-merge | — | `cn()` |
 | @fontsource nunito / yaldevi / noto-sans-tamil | 5 | self-hosted fonts |

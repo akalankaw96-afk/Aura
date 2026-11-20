@@ -1,6 +1,6 @@
 "use client";
 
-import { PlanLimitsEditor } from "@/components/sections/admin/StaffConsole";
+import { PlanLimitsEditor } from "@/components/admin/PlanLimitsEditor";
 import { AdminPageHeader, useAdmin } from "@/components/admin/AdminShell";
 
 /** /admin/limits — monthly allowances per plan (S03-T02). Admin only; the API checks too. */

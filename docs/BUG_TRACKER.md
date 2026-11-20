@@ -27,14 +27,14 @@ Baseline: 22 issues found during the analysis on 2026-11-11 (5 critical · 6 hig
 | BUG-011 | High | Web · Business | Plan, KYC, usage and boost state trusted from localStorage (self-upgrade) | **Verified** 2026-11-17 — KYC from server (S02); usage limits server-enforced (S03); plan from subscriptions + bank-transfer approval (S04-T02–T04); boost from the server (S04-T05); dashboard plan card / payments from the API (S04-T06). Browser values are only a cache of the session | 02–04 |
 | BUG-012 | Medium | Web · Routing | `/dashboard` has no guest guard; `KycGuard` treats missing state as approved | Closed (verified 2026-11-14) | 01 |
 | BUG-013 | Medium | API · DB | InMemory DB is the default (config key missing); `EnsureCreated`, no migrations | Closed (verified 2026-11-14) | 01 |
-| BUG-014 | Medium | API + Web | Services/clients swallow errors and serve fallback or mock data | In Progress — Search, Friends, Dashboard, staff area on the API with error states (S03-T10); left: chat REST helpers return [] on error | 03–05 |
+| BUG-014 | Medium | API + Web | Services/clients swallow errors and serve fallback or mock data | **Verified** 2026-11-19 — Search, Friends, Dashboard, staff area on the API with error states (S03-T10); left: chat REST helpers return [] on error; chat REST helpers now throw and Messages shows an error + retry (S05-T06, 2026-11-19) | 03–05 |
 | BUG-015 | Medium | API · DB | Demo user with a known password seeded in every environment | Closed (verified 2026-11-14) | 01 |
 | BUG-016 | Medium | API · Search | Profile search loads the whole table; no paging | **Fixed** — `GET /api/profiles/search` (S03-T01), owner verified 2026-11-16; some filters still run on the loaded page (TD-30) | 03 |
 | BUG-017 | Medium | Web · Auth | JWT stored in localStorage (readable by any XSS) | Closed (verified 2026-11-14) | 01 |
 | BUG-018 | Low | API · Auth | PBKDF2 with 10,000 iterations (below current guidance) | Closed (verified 2026-11-14) | 01 |
-| BUG-019 | Low | Web · UI | ~380 classes from non-existent palettes + 8 opacity modifiers render unstyled | Open | 05 |
+| BUG-019 | Low | Web · UI | ~380 classes from non-existent palettes + 8 opacity modifiers render unstyled | **Verified** 2026-11-19 — S05-T02: last `amber` classes → warning tokens; colour tokens made opacity-aware (`color-mix()`), so `/NN` modifiers render | 05 |
 | BUG-020 | Low | Web · Tooling | `npm run lint` unusable — no ESLint config | Closed (verified 2026-11-14) | 01 |
-| BUG-021 | Low | Web · Errors | `fetch` without timeout; ~31 empty `catch {}`; ~31 stray `console` calls | Open | 05 |
+| BUG-021 | Low | Web · Errors | `fetch` without timeout; ~31 empty `catch {}`; ~31 stray `console` calls | **Verified** 2026-11-19 — S05-T06 2026-11-19: 0 empty catches, `console` only in `lib/log.ts` (+ ESLint `no-console`); every fetch already has a timeout (`lib/http.ts`) | 05 |
 | BUG-022 | Low | Docs | Root `README.md` status section is out of date | Closed (verified 2026-11-14) | 01 |
 | BUG-023 | High | API · Data | Registration saved made-up data: fake `phone_…@auramatrimony.lk` e-mails, account name stuck at "New member", unverified sign-ups could log in and blocked the number, profession / education / height / religion defaults, age instead of birth date, SVG avatars stored in `PhotoUrl`, 9,000-value random profile codes, untrimmed text | Closed (verified 2026-11-14) | 01 |
 
@@ -147,6 +147,10 @@ BUG-014 web client and `ProfileService`/`ContentService` no longer serve mock da
 ### BUG-019 — Unstyled palette classes (Low)
 - **Where:** legacy files (see TD-01), `/admin` (39), messages (12), `Navbar` (6), plus 8 `token/NN` modifiers.
 - **Expected:** token classes only. Most disappear with the dead-code removal (TD-01).
+- **Fix (2026-11-19, S05-T02):** the legacy files are gone (TD-01); the messages page's safety banner used `amber-*` →
+  `warning-*` tokens; `tailwind.config.ts` colours are functions that return `var(--…)` normally and `color-mix(in srgb,
+  var(--…) N%, transparent)` with an opacity modifier, so the ~26 `/NN` classes (dialog backdrops, chips, overlays)
+  now render. Plain colour classes compile exactly as before.
 
 ### BUG-020 — Lint unusable (Low)
 - **Where:** `DatingApp.APP` — `next lint` prompts for setup.

@@ -1,7 +1,8 @@
 # Testing Guidelines
 
-Today there are **no automated tests and no CI** (TD-13). Sprint 01 sets up the tooling; every later task adds tests
-for what it touches. Until coverage exists, the manual checks in §4 are mandatory.
+Automated tests (TD-13, in progress): API — `DatingApp.Tests` (xUnit, 72 tests, Sprint 01–04); web — Vitest + Testing
+Library (40 tests, Sprint 05). Coverage, integration and E2E come in Sprint 06; every task adds tests for what it
+touches. The manual checks in §4 stay mandatory for UI changes.
 
 ## 1. Test pyramid
 | Level | Tool | Lives in | What |
@@ -21,6 +22,11 @@ for what it touches. Until coverage exists, the manual checks in §4 are mandato
   upgrade prompt; send interest → accept → chat; buy Gold; promote profile.
 
 ## 3. Conventions
+- **Web tests (S05-T10):** `vitest.config.mts` (jsdom, `@` alias); `src/test/setup.ts` adds the jest-dom matchers,
+  clears storage after each test, gives jsdom a `<dialog>` `showModal` / `close` stand-in, and restores jsdom's
+  `localStorage` / `sessionStorage` (Node 25 has empty ones of its own). Esc on a dialog = fire its `cancel` event.
+  Mock `fetch` with `vi.stubGlobal`; query by role / label (Testing Library), not by class names. Examples:
+  `components/ui/Modal.test.tsx`, `lib/storage.test.ts`, `lib/http.test.ts`.
 - Test names: `Method_State_Expected` (C#) / `it("blocks a 4th search on Free")` (TS).
 - Arrange-Act-Assert; one behaviour per test; no sleeps (await conditions).
 - Test data via builders/factories; no real member data; no secrets in fixtures.
@@ -37,7 +43,7 @@ Record results in the task report and `PROGRESS.md`.
 ## 5. Commands (after Sprint 01 setup)
 ```
 # Web
-npm run lint && npm run typecheck && npm test && npm run build
+npm run lint && npm run typecheck && npm test && npm run build   # npm run test:watch while working
 npx playwright test
 # API
 dotnet test DatingApp.API/DatingApp.sln

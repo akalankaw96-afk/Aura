@@ -1,11 +1,10 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import { Bank, Chart, CloseCircle, Crown1, Eye, Heart, Location, Profile2User, RecordCircle, Timer1 } from "iconsax-react";
-import { cn } from "@/lib/cn";
 import { Button } from "@/components/ui/Button";
+import { Modal } from "@/components/ui/Modal";
 import { useAuthSession } from "@/lib/session";
 import { useAccess } from "@/lib/verification";
 import { BOOST, OPEN_PROMOTE_EVENT, openPromote, useBoost } from "@/lib/promotion";
@@ -140,17 +139,13 @@ export function PromoteModal() {
   const boost = useBoost();
   const price = useBoostPrice();
   const [open, setOpen] = useState(false);
-  const [closing, setClosing] = useState(false);
   const { profileCode, photoUrl } = useAuthSession();
   const memberId = profileCode || "Your Profile";
   const memberPhoto = photoUrl || "/brand/couple.png";
 
   // open from the card, from ?promote=1 (Search → "Promote your profile"), or the event
   useEffect(() => {
-    const show = () => {
-      setClosing(false);
-      setOpen(true);
-    };
+    const show = () => setOpen(true);
     window.addEventListener(OPEN_PROMOTE_EVENT, show);
     const url = new URL(window.location.href);
     if (url.searchParams.get("promote")) {
@@ -161,25 +156,12 @@ export function PromoteModal() {
     return () => window.removeEventListener(OPEN_PROMOTE_EVENT, show);
   }, []);
 
-  useEffect(() => {
-    if (!open) return;
-    document.body.style.overflow = "hidden";
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && close();
-    document.addEventListener("keydown", onKey);
-    return () => {
-      document.body.style.overflow = "";
-      document.removeEventListener("keydown", onKey);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open]);
-
-  if (!open || typeof document === "undefined") return null;
+  if (!open) return null;
   // only approved Pro members can promote
   if (locked || !isPaid) return null;
 
   function close() {
-    setClosing(true);
-    window.setTimeout(() => setOpen(false), 180);
+    setOpen(false);
   }
   const extending = boost.active && !!boost.ends;
   const startDate = extending && boost.ends ? boost.ends : new Date();
@@ -187,22 +169,12 @@ export function PromoteModal() {
 
   // Paid by bank transfer like plans; the boost starts when our team confirms the receipt (S04-T05)
   const pay = () => {
-    document.body.style.overflow = "";
+    setOpen(false);
     router.push("/plans/checkout?product=boost");
   };
 
-  return createPortal(
-    <div className="fixed inset-0 z-[100] flex items-end justify-center sm:items-center sm:p-4">
-      <div aria-hidden onClick={close} className={cn("absolute inset-0 bg-black/40 backdrop-blur-[2px] transition-opacity duration-200", closing ? "opacity-0" : "animate-fade-in")} />
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="promote-title"
-        className={cn(
-          "relative flex max-h-[92vh] w-full max-w-[520px] flex-col overflow-y-auto rounded-t-xl bg-surface-card shadow-xl transition-all duration-200 sm:rounded-xl",
-          closing ? "translate-y-4 opacity-0" : "animate-dialog-in",
-        )}
-      >
+  return (
+    <Modal open onClose={close} labelledBy="promote-title" size="md" className="max-h-[92vh]" hideClose>
         <button type="button" aria-label="Close" onClick={close} className="absolute right-4 top-4 z-10 text-[rgba(255,255,255,0.8)] transition-colors hover:text-white">
           <CloseCircle size={24} color="currentColor" />
         </button>
@@ -276,8 +248,6 @@ export function PromoteModal() {
               </Button>
             </div>
         </>
-      </div>
-    </div>,
-    document.body,
+    </Modal>
   );
 }

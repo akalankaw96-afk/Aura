@@ -1,5 +1,6 @@
 import * as signalR from "@microsoft/signalr";
 import { API_BASE_URL, apiJson, ensureAccessToken, refreshAccessToken } from "@/lib/http";
+import { log } from "@/lib/log";
 
 const HUB_URL = API_BASE_URL.replace(/\/api\/?$/, "") + "/hubs/chat";
 
@@ -142,7 +143,7 @@ class SignalRService {
       this.setStatus("connected");
       return true;
     } catch (err) {
-      console.warn("SignalR connection attempt failed (offline fallback active):", err);
+      log.warn("chat connection failed — will retry", err);
       this.setStatus("disconnected");
       return false;
     }
@@ -153,7 +154,7 @@ class SignalRService {
       try {
         await this.hubConnection.invoke("JoinConversation", conversationId);
       } catch (err) {
-        console.warn("JoinConversation invoke failed:", err);
+        log.warn("JoinConversation failed", err);
       }
     }
   }
@@ -163,7 +164,7 @@ class SignalRService {
       try {
         await this.hubConnection.invoke("LeaveConversation", conversationId);
       } catch (err) {
-        console.warn("LeaveConversation invoke failed:", err);
+        log.warn("LeaveConversation failed", err);
       }
     }
   }
@@ -201,8 +202,8 @@ class SignalRService {
     if (this.hubConnection?.state === signalR.HubConnectionState.Connected) {
       try {
         await this.hubConnection.invoke("SendTyping", conversationId, isTyping);
-      } catch {
-        // silent fail
+      } catch (err) {
+        log.warn("typing indicator not sent", err); // harmless: the next keystroke tries again
       }
     }
   }
@@ -212,8 +213,8 @@ class SignalRService {
       try {
         void conversationId;
         await this.hubConnection.invoke("MarkAsRead", messageId);
-      } catch {
-        // silent fail
+      } catch (err) {
+        log.warn("read receipt not sent", err); // the next history load marks it again
       }
     }
   }
@@ -295,7 +296,9 @@ class SignalRService {
     if (this.hubConnection) {
       try {
         await this.hubConnection.stop();
-      } catch {}
+      } catch (err) {
+        log.warn("chat connection did not close cleanly", err);
+      }
       this.hubConnection = null;
       this.setStatus("disconnected");
     }
@@ -305,20 +308,14 @@ class SignalRService {
 export const signalrService = new SignalRService();
 
 // REST helpers — signed in only; the server decides whose chats these are from the access token.
-export async function getConversations(): Promise<ConversationDto[]> {
-  try {
-    return await apiJson<ConversationDto[]>("/chat/conversations", { cache: "no-store" });
-  } catch (err) {
-    console.warn("Failed to fetch conversations from API:", err);
-    return [];
-  }
+// They throw ApiError when the API fails (S05-T06, BUG-014) — the Messages page shows an error instead of "no chats".
+export function getConversations(): Promise<ConversationDto[]> {
+  return apiJson<ConversationDto[]>("/chat/conversations", { cache: "no-store", fallbackError: "We couldn’t load your chats." });
 }
 
-export async function getChatHistory(conversationId: string): Promise<ChatMessageDto[]> {
-  try {
-    return await apiJson<ChatMessageDto[]>(`/chat/history/${encodeURIComponent(conversationId)}`, { cache: "no-store" });
-  } catch (err) {
-    console.warn("Failed to fetch history from API:", err);
-    return [];
-  }
+export function getChatHistory(conversationId: string): Promise<ChatMessageDto[]> {
+  return apiJson<ChatMessageDto[]>(`/chat/history/${encodeURIComponent(conversationId)}`, {
+    cache: "no-store",
+    fallbackError: "We couldn’t load this conversation.",
+  });
 }

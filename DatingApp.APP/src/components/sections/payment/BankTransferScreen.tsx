@@ -81,7 +81,6 @@ export function BankTransferScreen() {
 
   useEffect(() => {
     let cancelled = false;
-    try { localStorage.removeItem("vk-payment-pending"); } catch {} // old demo record
     getBankAccount().then((b) => { if (!cancelled) setBank(b); }).catch(() => {});
     (async () => {
       try {

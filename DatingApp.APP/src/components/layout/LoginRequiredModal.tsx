@@ -2,16 +2,16 @@
 
 import React, { useEffect, useState } from "react";
 import { CloseCircle, Heart, Lock1, MessageText, ShieldTick } from "iconsax-react";
-import { cn } from "@/lib/cn";
 import { Button, ButtonLink } from "@/components/ui/Button";
 import { CoupleAvatar } from "@/components/ui/Brand";
+import { Modal } from "@/components/ui/Modal";
 import { LOGIN_REQUIRED_EVENT, type MemberActionPrompt } from "@/lib/session";
 
 /**
  * "Log in to continue" — opens when a guest taps a member-only action
  * (send interest, message, shortlist, share, report). Mounted once in the root layout;
  * anything opens it via lib/session → requireMember(action).
- * Same dialog pattern as the Upgrade prompt (bottom sheet on mobile).
+ * Uses the shared Modal (bottom sheet on mobile) — S05-T04.
  */
 const PERKS = [
   { Icon: Heart, label: "Send interests & shortlist profiles" },
@@ -21,31 +21,17 @@ const PERKS = [
 
 export function LoginRequiredModal() {
   const [state, setState] = useState<MemberActionPrompt | null>(null);
-  const [closing, setClosing] = useState(false);
 
   useEffect(() => {
     const open = (e: Event) => {
-      setClosing(false);
       setState((e as CustomEvent<MemberActionPrompt>).detail);
     };
     window.addEventListener(LOGIN_REQUIRED_EVENT, open);
     return () => window.removeEventListener(LOGIN_REQUIRED_EVENT, open);
   }, []);
 
-  useEffect(() => {
-    if (!state) return;
-    document.body.style.overflow = "hidden";
-    const esc = (e: KeyboardEvent) => e.key === "Escape" && close();
-    document.addEventListener("keydown", esc);
-    return () => {
-      document.body.style.overflow = "";
-      document.removeEventListener("keydown", esc);
-    };
-  });
-
   function close() {
-    setClosing(true);
-    window.setTimeout(() => setState(null), 200);
+    setState(null);
   }
 
   if (!state) return null;
@@ -63,14 +49,7 @@ export function LoginRequiredModal() {
       : "This feature is for members only. Log in, or create a free account in about 2 minutes.";
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-end justify-center p-0 sm:items-center sm:p-4" role="dialog" aria-modal="true" aria-labelledby="login-required-title" aria-describedby="login-required-description">
-      <div className={cn("absolute inset-0 bg-[rgba(0,0,0,0.45)] transition-opacity duration-200", closing ? "opacity-0" : "animate-fade-in")} onClick={close} aria-hidden />
-      <div
-        className={cn(
-          "relative w-full max-w-[440px] overflow-hidden rounded-t-[28px] bg-surface-card shadow-xl transition-all duration-200 sm:rounded-[28px]",
-          closing ? "translate-y-4 opacity-0" : "animate-dialog-in",
-        )}
-      >
+    <Modal open onClose={close} labelledBy="login-required-title" describedBy="login-required-description" size="sm" hideClose>
         {/* brand header */}
         <div className="relative flex flex-col items-center gap-3 bg-brand-subtle px-6 pb-6 pt-8 text-center">
           <button type="button" onClick={close} aria-label="Close" className="absolute right-3 top-3 rounded-full p-1 text-ink-tertiary transition-colors hover:text-ink">
@@ -94,7 +73,7 @@ export function LoginRequiredModal() {
               <ButtonLink href="/dashboard" size="md" fullWidth onClick={close}>
                 {needsChanges ? "Review flagged details" : "View verification status"}
               </ButtonLink>
-              <Button variant="ghost" size="md" fullWidth onClick={close} autoFocus>
+              <Button variant="ghost" size="md" fullWidth onClick={close} data-autofocus>
                 Got it
               </Button>
             </div>
@@ -124,7 +103,6 @@ export function LoginRequiredModal() {
           </>
           )}
         </div>
-      </div>
-    </div>
+    </Modal>
   );
 }

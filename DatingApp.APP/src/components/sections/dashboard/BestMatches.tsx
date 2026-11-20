@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import React, { useMemo, useState } from "react";
 import Link from "next/link";
 import { ArrowRight2 } from "iconsax-react";
@@ -32,8 +33,7 @@ export function BestMatches() {
 
   return (
     <section id="matches" aria-label={t.dashboard.bestMatchesTitle} className="relative isolate scroll-mt-28 overflow-hidden bg-rose-950 pb-10 pt-14 text-ink-on-brand">
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={HERO.image} alt="" className="absolute inset-0 -z-10 h-full w-full object-cover" />
+      <Image src={HERO.image} alt="" fill sizes="100vw" className="-z-10 object-cover" />
       <div aria-hidden className="absolute inset-0 -z-10 bg-black opacity-[0.62]" />
       <div aria-hidden className="absolute inset-0 -z-10 bg-[linear-gradient(90deg,rgba(107,5,38,0.85),rgba(222,5,71,0.35))]" />
 

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { apiService } from "@/services/api";
 import { getMySubscription, type MySubscription } from "@/lib/billing";
+import { KEYS, readSessionData, storage } from "@/lib/storage";
 
 /**
  * Profile verification (KYC) status and membership plan — read ONLY from the session the API returned
@@ -15,7 +16,6 @@ import { getMySubscription, type MySubscription } from "@/lib/billing";
 export type KycStatus = "pending" | "changes" | "resubmitted" | "live";
 export type Plan = "free" | "gold" | "platinum";
 
-const SESSION_KEY = "aura_session";
 const KYC_EVENT = "vk-kyc-change";
 const PLAN_EVENT = "vk-plan-change";
 
@@ -30,13 +30,7 @@ interface SessionFlags {
 }
 
 function readSession(): SessionFlags | null {
-  if (typeof window === "undefined") return null;
-  try {
-    const raw = localStorage.getItem(SESSION_KEY);
-    return raw ? (JSON.parse(raw) as SessionFlags) : null;
-  } catch {
-    return null;
-  }
+  return readSessionData<SessionFlags>();
 }
 
 /** Not signed in or not approved → "pending" (never assume approved — BUG-012). */
@@ -59,15 +53,8 @@ export function readKyc(): KycStatus {
  * shows the review panel straight away. Can't approve anything — approval only comes from the server.
  */
 export function setKyc(status: "pending" | "resubmitted") {
-  try {
-    const raw = localStorage.getItem(SESSION_KEY);
-    if (raw) {
-      const s = JSON.parse(raw);
-      localStorage.setItem(SESSION_KEY, JSON.stringify({ ...s, isUnderReview: true, isVerified: false, hasCompletedProfile: true, kycStatus: status }));
-    }
-  } catch {
-    /* storage unavailable */
-  }
+  const s = readSessionData();
+  if (s) storage.setJSON(KEYS.session, { ...s, isUnderReview: true, isVerified: false, hasCompletedProfile: true, kycStatus: status });
   window.dispatchEvent(new Event(KYC_EVENT));
 }
 

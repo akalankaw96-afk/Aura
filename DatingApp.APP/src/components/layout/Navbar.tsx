@@ -11,7 +11,6 @@ import {
   InfoCircle,
   Lock1,
   Logout,
-  LogoutCurve,
   Messages2,
   MessageText1,
   Setting2,
@@ -30,6 +29,7 @@ import { useKyc } from "@/lib/verification";
 import { openFeedback } from "@/lib/feedback";
 import { openAccountSettings } from "@/components/account/AccountSettingsDialog";
 import { apiService, type AuthSession } from "@/services/api";
+import { readSessionData } from "@/lib/storage";
 
 /**
  * Figma: Navbar (Style = Light / Style3 / Transparent) + Navbar Mobile.
@@ -50,18 +50,7 @@ export function Navbar({ variant = "light" }: { variant?: NavbarVariant }) {
 
   useEffect(() => {
     const updateSession = () => {
-      if (typeof window !== "undefined") {
-        const raw = localStorage.getItem("aura_session");
-        if (raw) {
-          try {
-            setSession(JSON.parse(raw));
-          } catch {
-            setSession(null);
-          }
-        } else {
-          setSession(null);
-        }
-      }
+      if (typeof window !== "undefined") setSession(readSessionData<AuthSession>());
     };
 
     updateSession();

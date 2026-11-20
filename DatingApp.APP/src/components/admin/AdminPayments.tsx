@@ -192,7 +192,7 @@ export function AdminPayments() {
                     p.reviewedAt && (
                       <p className="text-body-sm text-ink-secondary">
                         {status.label} by {p.reviewedBy ?? "staff"} · {when(p.reviewedAt)}
-                        {p.reviewNote ? ` — ${p.reviewNote}` : ""}
+                        {p.reviewNote ? `: ${p.reviewNote}` : ""}
                       </p>
                     )
                   )}

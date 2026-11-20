@@ -1,3 +1,4 @@
+import { KEYS, storage } from "@/lib/storage";
 /**
  * Registration draft: what the member has typed so far in the sign-up steps, kept in sessionStorage so a
  * refresh doesn't lose it. Submitted to the API on the last step (POST /api/profiles).
@@ -46,7 +47,7 @@ export interface RegistrationDraft {
   reviewStatus: "submitted" | "changes" | "resubmitted" | "live";
 }
 
-const KEY = "vk_registration";
+const KEY = KEYS.registrationDraft;
 
 export const emptyDraft: RegistrationDraft = {
   mobile: "",
@@ -82,31 +83,17 @@ export const emptyDraft: RegistrationDraft = {
 };
 
 export function loadDraft(): RegistrationDraft {
-  if (typeof window === "undefined") return emptyDraft;
-  try {
-    const raw = sessionStorage.getItem(KEY);
-    return raw ? { ...emptyDraft, ...JSON.parse(raw) } : emptyDraft;
-  } catch {
-    return emptyDraft;
-  }
+  return { ...emptyDraft, ...storage.getJSON<Partial<RegistrationDraft>>(KEY, {}, "session") };
 }
 
 /** After the profile is submitted: the server has everything, so the browser copy is dropped. */
 export function clearDraft(): void {
-  try {
-    sessionStorage.removeItem(KEY);
-  } catch {
-    /* storage unavailable */
-  }
+  storage.remove(KEY, "session");
 }
 
 export function saveDraft(patch: Partial<RegistrationDraft>): RegistrationDraft {
   const next = { ...loadDraft(), ...patch };
-  try {
-    sessionStorage.setItem(KEY, JSON.stringify(next));
-  } catch {
-    /* storage unavailable (private mode) — keep going in memory */
-  }
+  storage.setJSON(KEY, next, "session"); // private mode: keeps going in memory
   return next;
 }
 

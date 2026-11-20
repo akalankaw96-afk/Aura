@@ -1,9 +1,10 @@
 "use client";
 
-import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { CloseSquare } from "iconsax-react";
 import { cn } from "@/lib/cn";
 import { StatusIcon, type StatusType } from "./StatusIcon";
+import { KEYS, storage } from "@/lib/storage";
 
 /**
  * Figma: Toast (Type = Success / Error / Warning / Info)
@@ -114,13 +115,17 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
     []
   );
 
-  const api: ToastApi = {
-    show,
-    success: (t, m) => show("success", t, m),
-    error: (t, m) => show("error", t, m),
-    warning: (t, m) => show("warning", t, m),
-    info: (t, m) => show("info", t, m),
-  };
+  // stable object, so pages can list `toast` in hook deps without re-running effects (S05-T07)
+  const api = useMemo<ToastApi>(
+    () => ({
+      show,
+      success: (t, m) => show("success", t, m),
+      error: (t, m) => show("error", t, m),
+      warning: (t, m) => show("warning", t, m),
+      info: (t, m) => show("info", t, m),
+    }),
+    [show]
+  );
 
   return (
     <ToastContext.Provider value={api}>
@@ -164,15 +169,10 @@ export function useToast(): ToastApi {
 export function useFlashToast() {
   const toast = useToast();
   useEffect(() => {
-    try {
-      const raw = sessionStorage.getItem("vk_flash_toast");
-      if (raw) {
-        sessionStorage.removeItem("vk_flash_toast");
-        const t = JSON.parse(raw) as Omit<ToastItem, "id">;
-        toast.show(t.type, t.title, t.message);
-      }
-    } catch {
-      /* storage unavailable */
+    const t = storage.getJSON<Omit<ToastItem, "id"> | null>(KEYS.flashToast, null, "session");
+    if (t) {
+      storage.remove(KEYS.flashToast, "session");
+      toast.show(t.type, t.title, t.message);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -180,9 +180,5 @@ export function useFlashToast() {
 
 /** Queue a toast to show on the next page (survives router.push). */
 export function flashToast(type: StatusType, title: string, message?: string) {
-  try {
-    sessionStorage.setItem("vk_flash_toast", JSON.stringify({ type, title, message }));
-  } catch {
-    /* storage unavailable */
-  }
+  storage.setJSON(KEYS.flashToast, { type, title, message }, "session");
 }

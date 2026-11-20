@@ -1,5 +1,7 @@
 import { MatchRequest, Profile, ProfileKycDetails, SuccessStory, PricingPlan, FaqItem } from '../types';
 import { resolvePhoto } from '../content/avatars';
+import { readSessionData, storage } from '../lib/storage';
+import { log } from '../lib/log';
 
 import {
   API_BASE_URL,
@@ -28,13 +30,7 @@ function withPhoto<T extends { photoUrl?: string | null }>(item: T): T {
 }
 
 function readStoredSession(): AuthSession | null {
-  if (typeof window === 'undefined') return null;
-  try {
-    const raw = localStorage.getItem(SESSION_KEY);
-    return raw ? (JSON.parse(raw) as AuthSession) : null;
-  } catch {
-    return null;
-  }
+  return readSessionData<AuthSession>();
 }
 
 /**
@@ -46,21 +42,16 @@ function storeSession(session: AuthSession): void {
   if (typeof window === 'undefined') return;
   session = withPhoto(session);
   if (session.token) setAccessToken(session.token);
-  localStorage.setItem(SESSION_KEY, JSON.stringify({ ...session, token: '' }));
-  localStorage.removeItem('aura_token'); // older builds kept the token here
-  localStorage.removeItem('aura_auth_user');
+  storage.setJSON(SESSION_KEY, { ...session, token: '' });
+  storage.removeLegacy(); // older builds kept the token and plan / KYC flags here
   window.dispatchEvent(new Event('aura_auth_change'));
 }
 
 function clearLocalSession(): void {
   if (typeof window === 'undefined') return;
   setAccessToken(null);
-  localStorage.removeItem('aura_token');
-  localStorage.removeItem(SESSION_KEY);
-  localStorage.removeItem('aura_auth_user');
-  localStorage.removeItem('aura_review_status');
-  localStorage.removeItem('vk-kyc');
-  localStorage.removeItem('vk-plan');
+  storage.remove(SESSION_KEY);
+  storage.removeLegacy();
   window.dispatchEvent(new Event('aura_auth_change'));
   window.dispatchEvent(new Event('vk-kyc-change'));
   window.dispatchEvent(new Event('vk-plan-change'));
@@ -80,7 +71,8 @@ if (typeof window !== 'undefined') {
   const userOf = (raw: string | null) => {
     try {
       return raw ? ((JSON.parse(raw) as { userId?: string }).userId ?? null) : null;
-    } catch {
+    } catch (err) {
+      log.warn('session in storage is not JSON', err);
       return null;
     }
   };
@@ -91,13 +83,7 @@ if (typeof window !== 'undefined') {
 }
 
 // Older builds stored the access token in localStorage — remove it on load (BUG-017).
-if (typeof window !== 'undefined') {
-  try {
-    localStorage.removeItem('aura_token');
-  } catch {
-    /* storage blocked */
-  }
-}
+if (typeof window !== 'undefined') storage.removeLegacy();
 
 /** fetch with the access token (restored from the refresh cookie after a reload); refreshes once on 401. */
 function authFetch(path: string, init: RequestInit = {}): Promise<Response> {
@@ -257,8 +243,8 @@ export const apiService = {
       storeSession({ ...(readStoredSession() ?? me), ...me, token: '' });
       window.dispatchEvent(new Event('vk-kyc-change'));
       window.dispatchEvent(new Event('vk-plan-change'));
-    } catch {
-      /* offline: keep the cached session */
+    } catch (err) {
+      log.warn('session refresh failed (offline?) — keeping the cached session', err);
     }
   },
 
@@ -306,7 +292,7 @@ export const apiService = {
         body: JSON.stringify(credentials),
       });
     } catch (networkErr: unknown) {
-      console.warn('Network error connecting to API:', networkErr);
+      log.warn('network error reaching the API', networkErr);
       throw new Error(`Unable to connect to authentication server at ${API_BASE_URL}. Please ensure the API is running.`);
     }
 
@@ -460,13 +446,13 @@ export const apiService = {
       // End the session on the server and clear the httpOnly refresh cookie (fire-and-forget).
       fetch(`${API_BASE_URL}/auth/logout`, { method: 'POST', credentials: 'include', keepalive: true }).catch(() => undefined);
       clearLocalSession();
-      sessionStorage.clear();
+      storage.clear('session');
 
       try {
         const googleAuth = (window as unknown as { google?: { accounts?: { id?: { disableAutoSelect?: () => void } } } }).google;
         googleAuth?.accounts?.id?.disableAutoSelect?.();
       } catch (e) {
-        console.warn('Google auto-select disable notice:', e);
+        log.warn('Google auto-select could not be turned off', e);
       }
     }
   },

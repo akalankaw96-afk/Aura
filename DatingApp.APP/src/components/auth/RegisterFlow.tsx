@@ -67,6 +67,7 @@ import { ApiError, apiService, type CreateProfilePayload } from "@/services/api"
 import type { Profile } from "@/types";
 import { PhotoSlot } from "@/components/ui/PhotoSlot";
 import { SegmentedSwitch } from "@/components/ui/SegmentedSwitch";
+import { log } from "@/lib/log";
 
 /**
  * Registration journeys 3–6 (Figma 02 Account, 03 Verify, 04 Profile,
@@ -816,8 +817,8 @@ export function PhotosStep({
   const reload = async () => {
     try {
       setPhotos(await listMyPhotos());
-    } catch {
-      /* first visit before the profile exists, or offline — slots stay empty */
+    } catch (err) {
+      log.warn("photos not loaded (no profile yet, or offline) — slots stay empty", err);
     }
   };
   useEffect(() => {

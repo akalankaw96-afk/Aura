@@ -79,7 +79,7 @@ export function PaymentStatusNotice() {
         <InfoCircle size={22} color="currentColor" className="shrink-0" />
         <p className="flex-1">
           <span className="font-semibold">We couldn’t confirm your payment {latest.reference}</span>
-          {latest.reviewNote ? ` — ${latest.reviewNote}` : "."} Please pay again with a new reference, or contact support if you think this is a mistake.
+          {latest.reviewNote ? `: ${latest.reviewNote}.` : "."} Please pay again with a new reference, or contact support if you think this is a mistake.
         </p>
         <Link href={checkoutLink(latest)} className="shrink-0 font-semibold underline underline-offset-4">
           Try again

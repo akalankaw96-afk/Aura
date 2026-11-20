@@ -1,6 +1,6 @@
 "use client";
 
-import { PricesEditor } from "@/components/sections/admin/StaffConsole";
+import { PricesEditor } from "@/components/admin/PricesEditor";
 import { AdminPageHeader, useAdmin } from "@/components/admin/AdminShell";
 
 /** /admin/prices — plan and boost prices (S04-T01). Admin only; the API checks too. */

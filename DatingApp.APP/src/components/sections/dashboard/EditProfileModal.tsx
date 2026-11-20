@@ -2,10 +2,10 @@
 
 import React, { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { createPortal } from "react-dom";
 import { CloseCircle, Lock1 } from "iconsax-react";
 import { cn } from "@/lib/cn";
 import { Button } from "@/components/ui/Button";
+import { Modal } from "@/components/ui/Modal";
 import { SegmentedTabs } from "@/components/ui/SegmentedTabs";
 import { PhotoSlot } from "@/components/ui/PhotoSlot";
 import { ageFrom, containsContactDetails } from "@/lib/registrationDraft";
@@ -17,6 +17,7 @@ import { Textarea } from "@/components/ui/Textarea";
 import { useToast } from "@/components/ui/Toast";
 import { useKyc } from "@/lib/verification";
 import { useAuthSession } from "@/lib/session";
+import { log } from "@/lib/log";
 
 /**
  * Edit profile — approved members can change ONLY their description and photos.
@@ -39,7 +40,6 @@ export function EditProfileModal() {
   const toast = useToast();
   const { locked } = useKyc();
   const [open, setOpen] = useState(false);
-  const [closing, setClosing] = useState(false);
   const [tab, setTab] = useState<Tab>("about");
   const [savedAbout, setSavedAbout] = useState("");
   const [about, setAbout] = useState("");
@@ -52,8 +52,8 @@ export function EditProfileModal() {
   const reloadPhotos = async () => {
     try {
       setPhotos((await listMyPhotos()).filter((p) => p.status !== "Rejected" || p.isMain));
-    } catch {
-      /* offline — keep what we have */
+    } catch (err) {
+      log.warn("photos not refreshed (offline?) — keeping what we have", err);
     }
   };
 
@@ -61,7 +61,6 @@ export function EditProfileModal() {
     const show = (e: Event) => {
       setTried(false);
       setTab(((e as CustomEvent).detail as Tab) || "about");
-      setClosing(false);
       setOpen(true);
       void apiService.getMyProfile().then((p) => {
         setSavedAbout(p?.bio ?? "");
@@ -73,22 +72,10 @@ export function EditProfileModal() {
     return () => window.removeEventListener(OPEN_EVENT, show);
   }, []);
 
-  useEffect(() => {
-    if (!open) return;
-    document.body.style.overflow = "hidden";
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && close();
-    document.addEventListener("keydown", onKey);
-    return () => {
-      document.body.style.overflow = "";
-      document.removeEventListener("keydown", onKey);
-    };
-  }, [open]);
-
-  if (!open || locked || typeof document === "undefined") return null;
+  if (!open || locked) return null;
 
   function close() {
-    setClosing(true);
-    window.setTimeout(() => setOpen(false), 180);
+    setOpen(false);
   }
 
   const aboutError =
@@ -161,18 +148,8 @@ export function EditProfileModal() {
     }
   };
 
-  return createPortal(
-    <div className="fixed inset-0 z-[100] flex items-end justify-center sm:items-center sm:p-4">
-      <div aria-hidden onClick={close} className={cn("absolute inset-0 bg-black/40 backdrop-blur-[2px] transition-opacity duration-200", closing ? "opacity-0" : "animate-fade-in")} />
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="edit-profile-title"
-        className={cn(
-          "relative flex max-h-[92vh] w-full max-w-[560px] flex-col rounded-t-xl bg-surface-card shadow-xl transition-all duration-200 sm:rounded-xl",
-          closing ? "translate-y-4 opacity-0" : "animate-dialog-in",
-        )}
-      >
+  return (
+    <Modal open onClose={close} labelledBy="edit-profile-title" size="md" className="max-h-[92vh] sm:max-w-[560px]" bodyClassName="overflow-hidden" hideClose>
         {/* Header */}
         <div className="flex items-start gap-3 border-b border-line p-5 sm:px-6">
           <div className="flex-1">
@@ -287,9 +264,7 @@ export function EditProfileModal() {
             </>
           )}
         </div>
-      </div>
-    </div>,
-    document.body,
+    </Modal>
   );
 }
 

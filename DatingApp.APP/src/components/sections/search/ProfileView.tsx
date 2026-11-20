@@ -14,7 +14,6 @@ import {
   Flag as FlagIcon,
   Gallery,
   Heart,
-  Home2,
   Location,
   Lock1,
   Maximize4,
@@ -22,6 +21,7 @@ import {
   Profile,
   Ruler,
   SearchNormal1,
+  Share,
   Sms,
   Star1,
   Teacher,
@@ -30,7 +30,6 @@ import {
   Wallet2,
 } from "iconsax-react";
 import { createPortal } from "react-dom";
-import { Share2 } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { ShareProfileDialog } from "@/components/profile/ShareProfileDialog";
 import { ProfileActions } from "@/components/profile/ProfileActions";
@@ -44,6 +43,7 @@ import { BackButton } from "@/components/ui/BackButton";
 import { Button } from "@/components/ui/Button";
 import { Select } from "@/components/ui/Select";
 import { Textarea } from "@/components/ui/Textarea";
+import { Modal } from "@/components/ui/Modal";
 import { Flag, type CountryCode } from "@/components/ui/Flag";
 import { COUNTRIES } from "@/components/ui/PhoneField";
 import type { ProfileKycDetails } from "@/types";
@@ -369,7 +369,7 @@ function Detail({ p, x, onInterest }: { p: ViewProfile; x?: ProfileExtras; onInt
   const visible = sections
     .map((s) => ({ ...s, items: s.items.filter((i) => isHidden(i) || (i.value && i.value !== "—")) }))
     .filter((s) => s.items.length > 0);
-  const lockHint = (i: DetailItem) => (!signedIn ? "Log in to view" : connected ? "Share contacts in chat" : "Shared after you both agree");
+  const lockHint = (_i: DetailItem) => (!signedIn ? "Log in to view" : connected ? "Share contacts in chat" : "Shared after you both agree");
   const openLocked = (i: DetailItem) => {
     if (!requireMember(i.lock === "contact" ? "see contact details" : `see ${i.label.toLowerCase()}`)) return;
     if (connected) router.push("/messages");
@@ -468,7 +468,7 @@ function Detail({ p, x, onInterest }: { p: ViewProfile; x?: ProfileExtras; onInt
             </div>
             <div className="flex shrink-0 gap-2">
               <button type="button" aria-haspopup="dialog" aria-label="Share profile" onClick={share} className={iconButton}>
-                <Share2 size={18} strokeWidth={2} />
+                <Share size={18} color="currentColor" />
               </button>
               <button
                 type="button"
@@ -557,7 +557,7 @@ function Detail({ p, x, onInterest }: { p: ViewProfile; x?: ProfileExtras; onInt
       {/* portals: the article animates (transform), which would trap position:fixed */}
       {viewer !== null && createPortal(<PhotoViewer id={p.id} photos={photos} start={viewer} onClose={() => setViewer(null)} />, document.body)}
 
-      {reportOpen && createPortal(<ReportModal
+      <ReportModal
         id={p.id}
         open={reportOpen}
         onCancel={() => setReportOpen(false)}
@@ -579,7 +579,7 @@ function Detail({ p, x, onInterest }: { p: ViewProfile; x?: ProfileExtras; onInt
             toast.error(already ? "Already reported" : "Report not sent", err instanceof Error ? err.message : "Please try again.");
           }
         }}
-      />, document.body)}
+      />
     </article>
   );
 }
@@ -608,56 +608,27 @@ function ReportModal({ id, open, onCancel, onSubmit }: { id: string; open: boole
   const [reason, setReason] = useState("");
   const [details, setDetails] = useState("");
   const [tried, setTried] = useState(false);
-  const [closing, setClosing] = useState(false);
 
+  // fresh form each time it opens
   useEffect(() => {
     if (!open) return;
     setReason("");
     setDetails("");
     setTried(false);
-    setClosing(false);
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && close(onCancel);
-    document.addEventListener("keydown", onKey);
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.removeEventListener("keydown", onKey);
-      document.body.style.overflow = "";
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
-  if (!open) return null;
-
-  function close(after: () => void) {
-    setClosing(true);
-    window.setTimeout(after, 180);
-  }
   const needsDetails = reason === "Other" && details.trim().length < 10;
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
     setTried(true);
     if (!reason || needsDetails) return;
-    close(() => onSubmit(reason, details));
+    onSubmit(reason, details);
   };
 
   return (
-    <div className="fixed inset-0 z-[80] flex items-center justify-center p-4">
-      <div
-        aria-hidden
-        onClick={() => close(onCancel)}
-        className={cn("absolute inset-0 bg-black/40 backdrop-blur-[2px] transition-opacity duration-200", closing ? "opacity-0" : "animate-fade-in")}
-      />
-      <form
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="report-title"
-        onSubmit={submit}
-        className={cn("relative flex w-full max-w-[460px] flex-col gap-5 rounded-xl bg-surface-card p-6 shadow-xl transition-all duration-200", closing ? "scale-95 opacity-0" : "animate-dialog-in")}
-      >
-        <button type="button" aria-label="Close" onClick={() => close(onCancel)} className="absolute right-4 top-4 text-ink-tertiary transition-colors hover:text-ink">
-          <CloseCircle size={22} color="currentColor" />
-        </button>
-        <div className="flex items-center gap-3 pr-8">
+    <Modal open={open} onClose={onCancel} labelledBy="report-title" size="sm" className="sm:max-w-[460px]">
+      <form onSubmit={submit} className="flex flex-col gap-5 p-6 pb-[calc(24px+env(safe-area-inset-bottom))]">
+        <div className="flex items-center gap-3 pr-10">
           <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-error-bg text-error-fg">
             <FlagIcon size={22} color="currentColor" />
           </span>
@@ -686,7 +657,7 @@ function ReportModal({ id, open, onCancel, onSubmit }: { id: string; open: boole
         />
 
         <div className="flex justify-end gap-3">
-          <Button type="button" variant="outline" onClick={() => close(onCancel)}>
+          <Button type="button" variant="outline" onClick={onCancel}>
             Cancel
           </Button>
           <Button type="submit" variant="danger">
@@ -694,7 +665,7 @@ function ReportModal({ id, open, onCancel, onSubmit }: { id: string; open: boole
           </Button>
         </div>
       </form>
-    </div>
+    </Modal>
   );
 }
 

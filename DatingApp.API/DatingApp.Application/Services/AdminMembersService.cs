@@ -143,7 +143,7 @@ public class AdminMembersService : IAdminMembersService
                     Plan = plan switch { Plans.Platinum => "Platinum", Plans.Gold => "Gold", _ => "Free" },
                     Status = r.DeletionRequestedAt != null ? "Deactivated" : StatusOf(r.IsActive, r.DeactivatedAt, r.ProfileStatus),
                     StatusReason = r.DeletionRequestedAt != null
-                        ? $"Deleted by the member on {r.DeletionRequestedAt:d MMM yyyy} — data erased after {AccountService.EraseAfterDays} days"
+                        ? $"Deleted by the member on {r.DeletionRequestedAt:d MMM yyyy}; data erased after {AccountService.EraseAfterDays} days"
                         : r.StatusReason,
                     JoinedAt = r.CreatedAt,
                     LastActiveAt = lastActive.TryGetValue(r.Id, out var at) ? at : null
@@ -170,7 +170,7 @@ public class AdminMembersService : IAdminMembersService
         var reason = string.IsNullOrWhiteSpace(dto.Reason) ? null : dto.Reason.Trim();
         if (reason?.Length > 500) throw AppException.Validation("Keep the reason under 500 characters.", "reason");
         if (action is "deactivate" or "block" && reason == null)
-            throw AppException.Validation("Give a reason — it is kept in the member's history.", "reason");
+            throw AppException.Validation("Give a reason. It is kept in the member's history.", "reason");
         if (userId == staffUserId) throw AppException.Forbidden("You can't change your own account here.");
 
         var user = await _context.Users.Include(u => u.Profile).FirstOrDefaultAsync(u => u.Id == userId, ct)

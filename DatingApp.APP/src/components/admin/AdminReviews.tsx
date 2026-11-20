@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Refresh2 } from "iconsax-react";
 import { Alert, Button, SegmentedTabs } from "@/components/ui";
 import { getQueue, type QueueItem } from "@/lib/staff";
-import { PendingPhotos, QueueList, ReviewScreen } from "@/components/sections/admin/StaffConsole";
+import { PendingPhotos, QueueList, ReviewScreen } from "./ReviewQueue";
 import { AdminPageHeader, useAdmin } from "./AdminShell";
 
 /**

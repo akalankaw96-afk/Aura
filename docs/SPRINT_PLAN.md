@@ -103,9 +103,31 @@ branch **`S04-pay`**. Roles & staff (custom roles, staff usernames) postponed to
 | S04-T09 | Tests (prices, subscription dates, approve once, expiry, boost order in search) + docs | TD-13 | `dotnet test` green; docs updated |
 
 ## Sprint 05 — Cleanup & front-end debt
-Remove dead legacy UI (TD-01) and remaining palette violations (BUG-019); shared `Modal` and migrate 9 dialogs (TD-02);
-storage helper (TD-05) and remaining empty catches/console calls (BUG-021); split large route files (TD-07);
-single icon set (TD-08); `next/image` (TD-15).
+**Status:** completed 2026-11-19 — all 10 tasks owner checked; web tests 40 / 40 (see `PROGRESS.md`).
+**Goal:** no behaviour changes for members — make the web app easier and safer to change: one shared dialog, one
+storage helper, no silent errors, smaller route files, one icon set, colours that actually render, first web tests.
+**Branch:** `S05-Cleanup-&-front-end-debt` (from `main` after Sprint 04, 2026-11-17).
+**Decisions (owner, 2026-11-17):** `/components` showcase stays for development only (404 in production builds); admin
+member detail + payments CSV (TD-32) move to Sprint 06; add web tests with Vitest + Testing Library (owner runs one
+`npm install`).
+**Measured 2026-11-17:** legacy demo stubs (TD-01) already deleted; old staff console wrapper still in use by the
+admin pages (TD-29); 14 hand-built dialogs; 6 classes from a missing palette (`amber`) + ~18 opacity modifiers on
+CSS-variable colours that render nothing (BUG-019); 19 empty `catch {}`, 11 `console` calls, 66 direct
+localStorage / sessionStorage calls in 25 files; `messages/page.tsx` 1,033 lines, `search/page.tsx` 790;
+`lucide-react` in 4 files; 48 `<img>` tags.
+
+| ID | Task | Fixes | Acceptance criteria |
+|---|---|---|---|
+| S05-T01 | Dead code: move the parts of `sections/admin/StaffConsole.tsx` used by `/admin/*` into `components/admin/`, delete `AdminScreen` + the tabbed wrapper; `/components` page dev-only; remove unused exports / files found by a search | TD-01 (close), TD-29 | Every admin page works as before; deleted files listed in CHANGELOG; `tsc` + build green |
+| S05-T02 | Colours: replace the `amber` classes with warning tokens; make opacity modifiers work (alpha-ready colour tokens or scrim tokens) for black / white / brand / surface / error | BUG-019 | No class from a missing palette; every `/NN` modifier renders (checked in light + dark) |
+| S05-T03 | Shared `ui/Modal` (portal, focus trap, Esc, click-outside option, scroll lock, `aria-modal`, labelled title, mobile sheet style) + `ConfirmDialog` | TD-02 | Keyboard: Tab stays inside, Esc closes, focus returns to the opener; screen-reader title |
+| S05-T04 | Move the member dialogs to `Modal`: login required, upgrade, edit profile, promote, profile view, share profile, chat safety, account settings, feedback, guided tour | TD-02 | Same look and steps as now; no hand-built overlay left in member screens |
+| S05-T05 | Move the admin dialogs to `Modal` / `ConfirmDialog` (members, roles, mobile sidebar drawer) | TD-02 | Same as T04 for the staff area |
+| S05-T06 | `lib/storage.ts` (typed keys, safe read / write / remove, session + local) and replace direct storage calls; no empty `catch {}` (log once in dev or show an error); remove stray `console` calls; chat REST helpers throw `ApiError` instead of returning `[]` | TD-05, BUG-021, BUG-014 (rest) | 0 empty catches, 0 `console` outside `lib/log.ts`, storage keys in one file; chat shows an error state when the API fails |
+| S05-T07 | Split `messages/page.tsx` and `search/page.tsx` into hooks + components (`components/sections/messages/*`, `…/search/*`); each file ≤ 400 lines | TD-07 | Chat and search behave the same (send, read, typing, contact share, block; filters, paging, saved searches, promoted row) |
+| S05-T08 | One icon set: replace `lucide-react` (4 files) with iconsax; remove the dependency | TD-08 | `lucide-react` gone from `package.json` and `src` |
+| S05-T09 | `next/image` for static images (brand, illustrations, avatars); member photos keep `useApiImage` (private files need the token) | TD-15 | No `<img>` for files under `public/`; layout unchanged |
+| S05-T10 | Web tests (Vitest + Testing Library + jsdom): `Modal` (focus, Esc), `ConfirmDialog`, `lib/storage`, `lib/http` error mapping; `npm test` script; docs | TD-13 (web) | `npm test` green; `tsc`, `npm run lint`, `next build` green; docs updated |
 
 ## Sprint 06 — Quality & launch prep
 Coverage on services and endpoints, E2E journeys at 1440/390, accessibility audit, performance (bundle, LCP),

@@ -5,6 +5,77 @@ Sections: Added · Changed · Fixed · Security · Removed · Breaking.
 
 ## [Unreleased]
 
+### Added
+- 2026-11-19 — **Web unit tests (S05-T10, TD-13).** Vitest + Testing Library + jsdom (`vitest.config.mts`, `src/test/setup.ts`),
+  scripts `npm test` / `npm run test:watch`, 40 tests: `components/ui/Modal.test.tsx` (Modal + ConfirmDialog),
+  `lib/storage.test.ts`, `lib/http.test.ts`. New dev dependencies: `vitest`, `@vitejs/plugin-react`, `jsdom`,
+  `@testing-library/{react,dom,jest-dom,user-event}`.
+
+### Changed
+- 2026-11-19 — **`next/image` for static images (S05-T09, TD-15).** 18 `<img>` for files under `public/` → `next/image`:
+  `ui/{Brand,Decor,Flag}`, `admin/AdminShell`, `motion/PageLoader`, `home/Hero` (hero photo `fill` + `priority`, bride / groom),
+  `dashboard/{DashboardHero,BestMatches}`, `howto/HowToUseScreen`, `tour/{GuidedTourDialog,TourWelcomeCard}`,
+  `feedback/{FeedbackDialog,ShareFeedbackCard}`, `account/AccountSettingsDialog`, `layout/InstallAppBanner`. Sizes unchanged.
+  Member photos, API files, previews and `data:` URIs stay `<img>`.
+
+### Removed
+- 2026-11-19 — **`lucide-react` (S05-T08, TD-08).** Its icons in `RemovableFilterChip`, `ChatSafety`, `ProfileView` and
+  `messages/MessageThread` are now iconsax (`Add` turned 45°, `User`, `Call`, `VolumeHigh` / `VolumeSlash`, `Slash`, `Flag`,
+  `TickCircle`, `ShieldCross`, `Share`, `Danger`, `Message`); dependency removed from `package.json`.
+
+### Added
+- 2026-11-19 — **Shared dialog (S05-T03, TD-02).** `components/ui/Modal.tsx`: `Modal` (native `<dialog>` + Esc /
+  backdrop / close button, `dismissible`, counted scroll lock, focus back to the opener, labelled title and
+  description, phone sheet / centred card, sizes) and `ConfirmDialog` (Cancel + Confirm, danger tone, busy state,
+  extra field slot). Exported from `components/ui`; demo on `/components` → Dialogs; COMPONENT_GUIDELINES §2 / §4.
+
+### Changed
+- 2026-11-19 — **Messages and Search split into hooks + parts (S05-T07, TD-07).** `app/messages/page.tsx`
+  (1,055 → 80 lines) → `components/sections/messages/{useChat,useContactShare,useChatSafety}.ts` +
+  `{ConversationList,ChatHeader,MessageThread,ChatComposer}.tsx`. `app/search/page.tsx` (790 → 222) →
+  `components/sections/search/{searchQuery,useSearchResults,useSavedSearches,useProfileDetail}.ts` +
+  `{ActiveFilters,ResultsHeader,ResultsBody,FilterDrawer}.tsx`. The Search filter drawer uses `Modal placement="left"`
+  (Esc, focus trap / return, scroll lock). `ToastProvider` returns a memoised API (stable `toast` in hook deps).
+  Lint: hook deps in Messages and `GoogleSignInButton`, unused `unreadTotal` and `eslint-disable` removed. No behaviour change.
+- 2026-11-19 — **Browser storage helper, no silent errors (S05-T06, TD-05, BUG-021, BUG-014).** New `lib/storage.ts`
+  (`KEYS`, `LEGACY_KEYS`, safe `storage.*`, `readSessionData`) and `lib/log.ts` (dev-only console). All direct
+  localStorage / sessionStorage calls moved to it: `services/api.ts`, `services/accountClosure.ts`, `lib/{http,session,
+  verification,tour,feedback,registrationDraft,kycDetails,backgroundAnimation}.ts`, `context/LanguageContext.tsx`,
+  `components/ui/{Toast,Brand}.tsx`, `ProPlanCard`, `PlanUsageCard`, `InstallAppBanner`, `AccountSettingsDialog`,
+  `Navbar`, `RequireMember`, `CompleteProfileFlow`, `BankTransferScreen`. Empty catches now log (`RegisterFlow`,
+  `ShareProfileDialog`, `EditProfileModal`, `api.ts`, `signalrService.ts`); `console.*` → `log.*` (`signalrService`,
+  `GoogleSignInButton`, `api.ts`); ESLint `no-console` on. `getConversations` / `getChatHistory` throw `ApiError`;
+  Messages shows an error with Try again. Lint warnings cleared in 10 files (unused imports, `aria-invalid` on the
+  Select button). ERROR_HANDLING §2 updated.
+- 2026-11-19 — **Admin dialogs on the shared `Modal` (S05-T05, TD-02).** `AdminMembers` confirm → `ConfirmDialog`;
+  `AdminRoles` add-staff / temporary-password dialogs → `ui/Modal`; `AdminShell` phone menu → `Modal` with the new
+  `placement="left"` drawer option (`components/ui/Modal.tsx`). Their own `<dialog>` / `showModal` code removed.
+- 2026-11-19 — **Member dialogs on the shared `Modal` (S05-T04, TD-02).** `LoginRequiredModal`, `UpgradePrompt`,
+  `ShareProfileDialog`, `FeedbackDialog`, `GuidedTourDialog`, `ChatSafety` → `BlockConfirmDialog`, `ProfileView` →
+  report dialog, `EditProfileModal`, `PromoteFlow` → `PromoteModal`, `AccountSettingsDialog`, `InstallAppBanner` sheet:
+  their own overlays, portals, Esc / scroll-lock code and close timers removed; headers and steps unchanged. `Modal`:
+  `data-autofocus` for first focus; backdrop is a plain element (can't take focus). Kept: the full-screen photo
+  viewer and the Search filter drawer (T07).
+- 2026-11-19 — **Colours that render (S05-T02, BUG-019).** `tailwind.config.ts`: colour tokens go through `c()` —
+  plain `var(--…)` as before, `color-mix(in srgb, var(--…) N%, transparent)` when a class has an opacity modifier, so
+  `backdrop:bg-black/45` (dialog backdrops), `bg-black/40`, `bg-white/25`, `bg-surface-card/90`, `border-brand/20`,
+  `ring-brand/20`, `bg-error-bg/50` and `/80` work. Messages: the safety banner's `amber-*` classes → `warning-*`
+  tokens. UI text: em dashes removed from Sprint 04 strings (`ProPlanCard`, `PaymentStatus`, `AdminPayments`,
+  `AdminMembersService`). Guidelines: opacity modifiers allowed (UI_UX, COMPONENT).
+- 2026-11-17 — **Dead code removed (S05-T01, TD-01 / TD-29).** The old tabbed staff console was split into
+  `components/admin/ReviewQueue.tsx` (queue list, review screen, new photos, `Thumb`), `StaffManager.tsx`,
+  `PlanLimitsEditor.tsx`, `ReportsQueue.tsx`, `PricesEditor.tsx` and `staffHelpers.ts`; `AdminDashboard`,
+  `AdminReviews`, `AdminRoles` and `app/admin/{limits,prices,reports}` import from there. **Deleted:**
+  `components/sections/admin/StaffConsole.tsx`, `components/sections/admin/AdminScreen.tsx`,
+  `content/featuredAbout.ts` (unused demo text). `/components` is now development-only (404 + `noindex` in
+  production); its content moved to `components/dev/ComponentsShowcase.tsx`.
+
+### Planned
+- 2026-11-17 — **Sprint 05 planned** (branch `S05-Cleanup-&-front-end-debt`): dead code + old staff console wrapper,
+  colours that render, shared `Modal` and 14 dialogs moved to it, storage helper and no silent errors, split the
+  messages / search routes, one icon set, `next/image`, first web tests (Vitest). `/components` becomes dev-only;
+  TD-32 moves to Sprint 06. See `SPRINT_PLAN.md`.
+
 ### Fixed
 - 2026-11-16 — **Merge of `main` (new admin area) into `S04-Pay` checked.** Resolved the conflicts left by `git stash
   pop`: `PlansScreen.tsx` (main's checkout button and "How do I pay?" + database prices + real Free limits) and

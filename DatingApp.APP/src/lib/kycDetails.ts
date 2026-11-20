@@ -1,7 +1,7 @@
 "use client";
 
+import { KEYS, readSessionData, storage } from "@/lib/storage";
 import { loadDraft, type RegistrationDraft } from "@/lib/registrationDraft";
-import { SESSION_KEY } from "@/lib/session";
 import type { AuthSession } from "@/services/api";
 import type { ProfileKycDetails } from "@/types";
 
@@ -48,8 +48,8 @@ export function profileDetailsFromKyc(draft: RegistrationDraft): ProfileKycDetai
 }
 
 function storageKey(session: Identity) {
-  if (session.userId) return `vk-kyc-details:user:${session.userId}`;
-  return session.profileId ? `vk-kyc-details:profile:${session.profileId}` : null;
+  if (session.userId) return `${KEYS.kycDetailsPrefix}user:${session.userId}`;
+  return session.profileId ? `${KEYS.kycDetailsPrefix}profile:${session.profileId}` : null;
 }
 
 const phoneDigits = (value?: string) => value?.replace(/\D/g, "").replace(/^(94|0)(?=\d{9}$)/, "");
@@ -64,25 +64,20 @@ function draftBelongsToAccount(draft: RegistrationDraft, session: Identity) {
 }
 
 export function saveSubmittedKycDetails(draft: RegistrationDraft, requireMatchingDraft = false) {
-  try {
-    const session = JSON.parse(localStorage.getItem(SESSION_KEY) || "null") as Identity | null;
-    if (!session || (requireMatchingDraft && !draftBelongsToAccount(draft, session))) return;
-    const key = storageKey(session);
-    if (!key) return;
-    const details = Object.fromEntries(DETAIL_KEYS.map((field) => [field, draft[field]]));
-    localStorage.setItem(key, JSON.stringify(details));
-  } catch {
-    // The registration draft remains available if browser storage is blocked.
-  }
+  // The registration draft remains available if browser storage is blocked.
+  const session = readSessionData<Identity>();
+  if (!session || (requireMatchingDraft && !draftBelongsToAccount(draft, session))) return;
+  const key = storageKey(session);
+  if (!key) return;
+  const details = Object.fromEntries(DETAIL_KEYS.map((field) => [field, draft[field]]));
+  storage.setJSON(key, details);
 }
 
 export function readSubmittedKycDetails(session: Identity | null): KycDetails | undefined {
   if (!session) return undefined;
-  try {
-    const key = storageKey(session);
-    const stored = key && localStorage.getItem(key);
-    if (stored) return JSON.parse(stored) as KycDetails;
-  } catch {}
+  const key = storageKey(session);
+  const stored = key ? storage.getJSON<KycDetails | null>(key, null) : null;
+  if (stored) return stored;
 
   // Existing registrations may only have the original draft in this tab.
   const draft = loadDraft();

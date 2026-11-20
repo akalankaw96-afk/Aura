@@ -1,7 +1,7 @@
 "use client";
 
 import { favouriteProfile, useFavourites } from "@/lib/connections";
-import React, { useState } from "react";
+import React from "react";
 import Link from "next/link";
 import { Book1, Heart, LanguageSquare, Verify } from "iconsax-react";
 import { cn } from "@/lib/cn";

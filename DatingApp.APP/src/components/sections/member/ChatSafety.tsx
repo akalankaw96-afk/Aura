@@ -1,11 +1,12 @@
 "use client";
 
 import React, { useEffect, useRef, useState } from "react";
-import { Ban, Bell, BellOff, CircleCheck, Flag, Phone, ShieldX, UserRound } from "lucide-react";
+import { Call, Flag, ShieldCross, Slash, TickCircle, User, VolumeHigh, VolumeSlash } from "iconsax-react";
 import { cn } from "@/lib/cn";
 import { Button } from "@/components/ui/Button";
 import { Select } from "@/components/ui/Select";
 import { Checkbox } from "@/components/ui/Checkbox";
+import { Modal } from "@/components/ui/Modal";
 import { useLanguage } from "@/context/LanguageContext";
 
 /* ------------------------------------------------------------------ */
@@ -77,21 +78,21 @@ export function ChatActionMenu({
         >
           {compactItems.length > 0 && (
             <div className="md:hidden">
-              {compactItems.map((c, i) => item(c.key === "profile" ? <UserRound size={18} /> : <Phone size={18} />, c.label, c.onClick, false, i))}
+              {compactItems.map((c, i) => item(c.key === "profile" ? <User size={18} color="currentColor" /> : <Call size={18} color="currentColor" />, c.label, c.onClick, false, i))}
               <div className="my-1 h-px bg-line" />
             </div>
           )}
-          {onViewProfile && item(<UserRound size={18} />, t.messages.viewProfile, onViewProfile, false, 0)}
+          {onViewProfile && item(<User size={18} color="currentColor" />, t.messages.viewProfile, onViewProfile, false, 0)}
           {item(
-            muted ? <Bell size={18} /> : <BellOff size={18} />,
+            muted ? <VolumeHigh size={18} color="currentColor" /> : <VolumeSlash size={18} color="currentColor" />,
             muted ? t.messages.unmuteNotifications : t.messages.muteNotifications,
             onToggleMute,
             false,
             1
           )}
           <div className="my-1 h-px bg-line" />
-          {item(<Ban size={18} />, t.messages.block, onBlock, true, 2)}
-          {item(<Flag size={18} />, t.messages.report, onReport, true, 3)}
+          {item(<Slash size={18} color="currentColor" />, t.messages.block, onBlock, true, 2)}
+          {item(<Flag size={18} color="currentColor" />, t.messages.report, onReport, true, 3)}
         </div>
       )}
     </div>
@@ -115,52 +116,22 @@ export function BlockConfirmDialog({
   const { t } = useLanguage();
   const [reason, setReason] = useState("");
   const [report, setReport] = useState(false);
-  const [closing, setClosing] = useState(false);
-  const cancelRef = useRef<HTMLButtonElement>(null);
 
+  // fresh form each time it opens
   useEffect(() => {
     if (!open) return;
     setReason("");
     setReport(false);
-    setClosing(false);
-    cancelRef.current?.focus();
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && close(onCancel);
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
-
-  if (!open) return null;
-
-  function close(after: () => void) {
-    setClosing(true);
-    window.setTimeout(after, 180);
-  }
 
   const points = [t.messages.blockPoint1, t.messages.blockPoint2, t.messages.blockPoint3];
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
-      <div
-        aria-hidden
-        onClick={() => close(onCancel)}
-        className={cn(
-          "absolute inset-0 bg-black/40 backdrop-blur-[2px] transition-opacity duration-200",
-          closing ? "opacity-0" : "animate-fade-in"
-        )}
-      />
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="block-dialog-title"
-        className={cn(
-          "relative w-full max-w-[440px] rounded-xl bg-surface-card p-6 shadow-xl transition-all duration-200",
-          closing ? "scale-95 opacity-0" : "animate-dialog-in"
-        )}
-      >
+    <Modal open={open} onClose={onCancel} labelledBy="block-dialog-title" size="sm" hideClose>
+      <div className="p-6 pb-[calc(24px+env(safe-area-inset-bottom))]">
         <div className="flex items-center gap-3">
           <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-error-bg text-error-fg">
-            <Ban size={22} />
+            <Slash size={22} color="currentColor" />
           </span>
           <h2 id="block-dialog-title" className="text-h5 text-ink">
             {t.messages.blockTitle(name)}
@@ -174,7 +145,7 @@ export function BlockConfirmDialog({
               className="flex items-center gap-2 text-body-sm text-ink-secondary"
               style={{ animation: `fade-up 300ms ease-out ${120 + i * 60}ms backwards` }}
             >
-              <CircleCheck size={16} className="shrink-0 text-error-fg" />
+              <TickCircle size={16} color="currentColor" className="shrink-0 text-error-fg" />
               {p}
             </li>
           ))}
@@ -196,15 +167,15 @@ export function BlockConfirmDialog({
         </Checkbox>
 
         <div className="mt-6 flex justify-end gap-3">
-          <Button ref={cancelRef} variant="outline" onClick={() => close(onCancel)}>
+          <Button variant="outline" onClick={onCancel} data-autofocus>
             {t.messages.cancel}
           </Button>
-          <Button variant="danger" onClick={() => close(() => onConfirm({ reason, report }))}>
+          <Button variant="danger" onClick={() => onConfirm({ reason, report })}>
             {t.messages.block}
           </Button>
         </div>
       </div>
-    </div>
+    </Modal>
   );
 }
 
@@ -251,7 +222,7 @@ export function BlockedRow({
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={photo} alt="" className="h-12 w-12 rounded-full bg-brand-subtle object-cover grayscale-[60%]" />
             <span className="absolute -bottom-0.5 -right-0.5 flex h-[18px] w-[18px] items-center justify-center rounded-full border-2 border-surface-card bg-error-fg text-white">
-              <Ban size={10} strokeWidth={3} />
+              <Slash size={11} color="currentColor" variant="Bold" />
             </span>
           </div>
           <div className="min-w-0 flex-1">
@@ -283,7 +254,7 @@ export function BlockedNotice({ name, onReport, onUnblock }: { name: string; onR
   return (
     <div className="mx-auto flex w-full max-w-[440px] animate-dialog-in flex-col items-center gap-3 rounded-xl border border-line bg-surface-card p-6 text-center shadow-lg">
       <span className="flex h-14 w-14 items-center justify-center rounded-full bg-error-bg text-error-fg">
-        <ShieldX size={24} />
+        <ShieldCross size={24} color="currentColor" />
       </span>
       <h3 className="text-h6 text-ink">{t.messages.youBlocked(name)}</h3>
       <p className="text-body-sm text-ink-secondary">{t.messages.youBlockedBody}</p>
@@ -315,7 +286,7 @@ export function BlockedEmpty() {
   return (
     <div className="flex animate-fade-up flex-col items-center gap-2 px-6 py-12 text-center">
       <span className="flex h-12 w-12 items-center justify-center rounded-full bg-surface-subtle text-icon-muted">
-        <Ban size={22} />
+        <Slash size={22} color="currentColor" />
       </span>
       <p className="text-label-lg text-ink">{t.messages.noBlockedTitle}</p>
       <p className="text-body-sm text-ink-secondary">{t.messages.noBlockedBody}</p>
