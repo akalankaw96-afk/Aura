@@ -3,7 +3,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Add, Copy, Key, Lock1, More, Refresh, SecurityUser, Trash, UserAdd, UserMinus, UserTick } from "iconsax-react";
 import { cn } from "@/lib/cn";
-import { Badge, Button, Checkbox, Input, SegmentedTabs, Select, useToast } from "@/components/ui";
+import { Badge, Button, Checkbox, Input, SegmentedTabs, Select, useToast, Modal as SharedModal } from "@/components/ui";
 import {
   ALL_PERMISSIONS,
   PERMISSION_GROUPS,
@@ -19,7 +19,7 @@ import {
   type Permission,
   type StaffAccount,
 } from "@/lib/adminApi";
-import { StaffManager } from "@/components/sections/admin/StaffConsole";
+import { StaffManager } from "./StaffManager";
 import { AdminPageHeader, DemoBanner } from "./AdminShell";
 
 /**
@@ -450,29 +450,12 @@ function StaffActions({ s, roles, onAct }: Readonly<{ s: StaffAccount; roles: Ad
   );
 }
 
+/** Small wrapper so the staff forms keep their spacing — the dialog itself is the shared `ui/Modal` (S05-T05). */
 function Modal({ title, onClose, children }: Readonly<{ title: string; onClose: () => void; children: React.ReactNode }>) {
-  const ref = useRef<HTMLDialogElement>(null);
-  useEffect(() => {
-    ref.current?.showModal();
-  }, []);
   return (
-    <dialog
-      ref={ref}
-      aria-label={title}
-      onCancel={(e) => {
-        e.preventDefault();
-        onClose();
-      }}
-      className="fixed inset-0 m-0 h-dvh max-h-none w-full max-w-none bg-transparent p-0 backdrop:bg-black/45 backdrop:backdrop-blur-sm"
-    >
-      <div className="relative flex h-full items-end justify-center sm:items-center sm:p-4">
-        <button type="button" tabIndex={-1} aria-hidden="true" className="absolute inset-0 cursor-default" onClick={onClose} />
-        <div className="relative flex max-h-full w-full max-w-[520px] animate-dialog-in flex-col gap-5 overflow-y-auto rounded-t-[24px] bg-surface-card p-6 shadow-xl sm:rounded-[24px]">
-          <h2 className="text-h5 text-ink">{title}</h2>
-          {children}
-        </div>
-      </div>
-    </dialog>
+    <SharedModal open onClose={onClose} title={title} size="md" bodyClassName="gap-5">
+      {children}
+    </SharedModal>
   );
 }
 

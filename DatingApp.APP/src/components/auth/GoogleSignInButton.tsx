@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { takeReturnTo } from "@/lib/session";
 import { apiService, AuthSession } from "@/services/api";
 import { useToast } from "@/components/ui/Toast";
+import { log } from "@/lib/log";
 
 interface GoogleSignInButtonProps {
   isSignUp?: boolean;
@@ -49,6 +50,11 @@ export function GoogleSignInButton({ isSignUp = false, onSuccess, className = ""
   const toast = useToast();
   const [loading, setLoading] = useState(false);
   const tokenClientRef = useRef<GoogleTokenClient | null>(null);
+  // latest handlers for the Google callbacks, which are set up once (S05-T07: hook deps lint)
+  const handlersRef = useRef<{
+    onCredential: (response: { credential?: string }) => Promise<void>;
+    login: (data: { email: string; fullName: string; photoUrl?: string; idToken?: string }) => Promise<void>;
+  } | null>(null);
 
   const rawClientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
   const isRealClientId =
@@ -83,7 +89,7 @@ export function GoogleSignInButton({ isSignUp = false, onSuccess, className = ""
         try {
           google.accounts.id.initialize({
             client_id: googleClientId!,
-            callback: handleGoogleCredentialResponse,
+            callback: (response) => void handlersRef.current?.onCredential(response),
             auto_select: false,
             cancel_on_tap_outside: true,
           });
@@ -91,7 +97,7 @@ export function GoogleSignInButton({ isSignUp = false, onSuccess, className = ""
           // Show One-Tap prompt if eligible
           google.accounts.id.prompt();
         } catch (e) {
-          console.warn("Google One-Tap initialization notice:", e);
+          log.warn("Google One Tap could not start", e);
         }
       }
 
@@ -103,7 +109,7 @@ export function GoogleSignInButton({ isSignUp = false, onSuccess, className = ""
             scope: "openid email profile",
             callback: async (tokenResponse) => {
               if (tokenResponse.error) {
-                console.error("Google OAuth error:", tokenResponse);
+                log.error("Google sign-in returned an error", tokenResponse);
                 toast.error(
                   "Google Sign-In Error",
                   tokenResponse.error_description || tokenResponse.error || "Authentication was cancelled."
@@ -126,7 +132,7 @@ export function GoogleSignInButton({ isSignUp = false, onSuccess, className = ""
                   }
 
                   const userInfo = await res.json();
-                  await executeLogin({
+                  await handlersRef.current?.login({
                     email: userInfo.email,
                     fullName: userInfo.name || userInfo.email?.split("@")[0] || "Google Member",
                     photoUrl: userInfo.picture,
@@ -141,17 +147,17 @@ export function GoogleSignInButton({ isSignUp = false, onSuccess, className = ""
               }
             },
             error_callback: (error) => {
-              console.error("Google OAuth client error:", error);
+              log.error("Google sign-in client error", error);
               setLoading(false);
               toast.error("Google Service Notice", error.message || "Could not open Google authentication window.");
             },
           });
         } catch (e) {
-          console.warn("Google OAuth token client initialization notice:", e);
+          log.warn("Google sign-in button could not start", e);
         }
       }
     }
-  }, [googleClientId]);
+  }, [googleClientId, toast]);
 
   // Decode JWT payload returned by Google One-Tap credential
   const parseJwt = (token: string) => {
@@ -220,6 +226,8 @@ export function GoogleSignInButton({ isSignUp = false, onSuccess, className = ""
       setLoading(false);
     }
   };
+
+  handlersRef.current = { onCredential: handleGoogleCredentialResponse, login: executeLogin };
 
   const handleClick = () => {
     if (loading) return;

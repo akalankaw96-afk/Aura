@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { CloseCircle, Eye, Key, More, Refresh2, SearchNormal1, Slash, TickCircle, UserMinus } from "iconsax-react";
 import { cn } from "@/lib/cn";
-import { Badge, Button, Pagination, Textarea, useToast } from "@/components/ui";
+import { Badge, Button, ConfirmDialog, Pagination, Textarea, useToast } from "@/components/ui";
 import {
   getMembers,
   resetMemberPassword,
@@ -329,16 +329,11 @@ const ACTION_COPY: Record<MemberAction | "reset", { title: string; text: string;
 };
 
 function ConfirmAction({ pending, onClose, onDone }: Readonly<{ pending: NonNullable<Pending>; onClose: () => void; onDone: (msg: string) => void }>) {
-  const ref = useRef<HTMLDialogElement>(null);
   const [reason, setReason] = useState("");
   const [tried, setTried] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const c = ACTION_COPY[pending.action];
-
-  useEffect(() => {
-    ref.current?.showModal();
-  }, []);
 
   const submit = async () => {
     setTried(true);
@@ -356,53 +351,39 @@ function ConfirmAction({ pending, onClose, onDone }: Readonly<{ pending: NonNull
     }
   };
 
+  // shared ConfirmDialog (S05-T05): Esc / backdrop / Cancel close it, except while the change is being saved
   return (
-    <dialog
-      ref={ref}
-      onCancel={(e) => {
-        e.preventDefault();
-        onClose();
-      }}
-      className="fixed inset-0 m-0 h-dvh max-h-none w-full max-w-none bg-transparent p-0 backdrop:bg-black/45 backdrop:backdrop-blur-sm"
+    <ConfirmDialog
+      open
+      title={c.title}
+      description={c.text}
+      confirmLabel={c.button}
+      tone={c.danger ? "danger" : "primary"}
+      busy={busy}
+      onConfirm={() => void submit()}
+      onCancel={onClose}
     >
-      <div className="relative flex h-full items-end justify-center sm:items-center sm:p-4">
-        <button type="button" tabIndex={-1} aria-hidden="true" className="absolute inset-0 cursor-default" onClick={onClose} />
-        <div className="relative flex w-full max-w-[460px] animate-dialog-in flex-col gap-4 rounded-t-[24px] bg-surface-card p-6 shadow-xl sm:rounded-[24px]">
-          <div className="flex items-center gap-3 rounded-lg bg-surface-subtle p-3">
-            <MemberCell m={pending.member} />
-            <span className="ml-auto">
-              <Badge tone={STATUS_META[pending.member.status].tone} icon={false}>
-                {STATUS_META[pending.member.status].label}
-              </Badge>
-            </span>
-          </div>
-          <div>
-            <h2 className="text-h5 text-ink">{c.title}</h2>
-            <p className="mt-1 text-body-sm text-ink-secondary">{c.text}</p>
-          </div>
-          {c.reason && (
-            <Textarea
-              label="Reason"
-              hint="Saved in the audit log"
-              rows={3}
-              maxLength={300}
-              value={reason}
-              onChange={setReason}
-              placeholder={pending.action === "block" ? "For example: asked members for money" : "For example: member asked to pause their account"}
-              error={tried && reason.trim().length < 5 ? "Write a short reason (5+ characters)" : undefined}
-            />
-          )}
-          {error && <p className="text-body-sm text-error-fg">{error}</p>}
-          <div className="flex flex-col-reverse gap-3 sm:flex-row">
-            <Button variant="outline" size="md" className="sm:flex-1" onClick={onClose}>
-              Cancel
-            </Button>
-            <Button variant={c.danger ? "danger" : "primary"} size="md" className="sm:flex-1" loading={busy} onClick={submit}>
-              {c.button}
-            </Button>
-          </div>
-        </div>
+      <div className="flex items-center gap-3 rounded-lg bg-surface-subtle p-3">
+        <MemberCell m={pending.member} />
+        <span className="ml-auto">
+          <Badge tone={STATUS_META[pending.member.status].tone} icon={false}>
+            {STATUS_META[pending.member.status].label}
+          </Badge>
+        </span>
       </div>
-    </dialog>
+      {c.reason && (
+        <Textarea
+          label="Reason"
+          hint="Saved in the audit log"
+          rows={3}
+          maxLength={300}
+          value={reason}
+          onChange={setReason}
+          placeholder={pending.action === "block" ? "For example: asked members for money" : "For example: member asked to pause their account"}
+          error={tried && reason.trim().length < 5 ? "Write a short reason (5+ characters)" : undefined}
+        />
+      )}
+      {error && <p className="text-body-sm text-error-fg">{error}</p>}
+    </ConfirmDialog>
   );
 }

@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import React, { useEffect, useState } from "react";
 import { Crown1, PlayCircle } from "iconsax-react";
 import { Button, LoveSticker } from "@/components/ui";
@@ -32,8 +33,7 @@ export function TourWelcomeCard() {
     >
       <LoveSticker variant="double" size={44} rotate={14} className="absolute -right-2 -top-3 -z-10 opacity-80 max-sm:hidden" />
       <span className="relative shrink-0 self-start sm:self-center">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/brand/couple.png" alt="" width={64} height={64} className="h-16 w-16 rounded-full border-4 border-surface-card object-cover shadow-md" />
+        <Image src="/brand/couple.png" alt="" width={64} height={64} className="h-16 w-16 rounded-full border-4 border-surface-card object-cover shadow-md" />
         <span className="absolute -bottom-1 -right-1 flex h-7 w-7 items-center justify-center rounded-full border-2 border-surface-card bg-[linear-gradient(135deg,var(--gold-300),var(--gold-500))] text-gold-900">
           <Crown1 size={14} color="currentColor" variant="Bold" />
         </span>

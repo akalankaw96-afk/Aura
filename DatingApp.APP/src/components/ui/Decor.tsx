@@ -1,3 +1,4 @@
+import Image from "next/image";
 import React from "react";
 import { cn } from "@/lib/cn";
 
@@ -77,8 +78,7 @@ export type LoveStickerStyle = "filled" | "outline" | "double" | "sticker" | "sp
 
 export function LoveSticker({ variant, size = 64, rotate = 0, className, style }: { variant: LoveStickerStyle; size?: number; rotate?: number; className?: string; style?: React.CSSProperties }) {
   return (
-    // eslint-disable-next-line @next/next/no-img-element
-    <img
+    <Image
       aria-hidden
       alt=""
       src={`/images/decor/sticker-${variant}.png`}

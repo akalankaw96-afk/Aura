@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useEffect, useRef, useState } from "react";
+import Image from "next/image";
+import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import {
   ArrowLeft,
@@ -17,8 +18,7 @@ import {
   Warning2,
 } from "iconsax-react";
 import { cn } from "@/lib/cn";
-import { Alert, Button, Checkbox, LoveSticker, OtpInput, Textarea, useToast } from "@/components/ui";
-import { SESSION_KEY } from "@/lib/http";
+import { Alert, Button, Checkbox, LoveSticker, Modal, OtpInput, Textarea, useToast } from "@/components/ui";
 import { apiService } from "@/services/api";
 import { openFeedback } from "@/lib/feedback";
 import {
@@ -31,6 +31,7 @@ import {
   sendDeleteCode,
   setProfileHidden,
 } from "@/services/accountClosure";
+import { readSessionData } from "@/lib/storage";
 
 /**
  * Account settings popup (profile menu → Account settings). Mounted once in the root layout,
@@ -60,11 +61,7 @@ const REASONS = [
 ];
 
 function readSession(): { fullName?: string; phoneNumber?: string } {
-  try {
-    return JSON.parse(localStorage.getItem(SESSION_KEY) || "{}");
-  } catch {
-    return {};
-  }
+  return readSessionData<{ fullName?: string; phoneNumber?: string }>() ?? {};
 }
 const maskPhone = (p?: string) => {
   const d = (p || "").replace(/\D/g, "").replace(/^94/, "").replace(/^0/, "");
@@ -73,7 +70,6 @@ const maskPhone = (p?: string) => {
 
 export function AccountSettingsDialog() {
   const toast = useToast();
-  const dialogRef = useRef<HTMLDialogElement>(null);
   const [open, setOpen] = useState(false);
   const [step, setStep] = useState<Step>("home");
   const [session, setSession] = useState<{ fullName?: string; phoneNumber?: string }>({});
@@ -110,18 +106,6 @@ export function AccountSettingsDialog() {
     window.addEventListener(ACCOUNT_SETTINGS_EVENT, onOpen);
     return () => window.removeEventListener(ACCOUNT_SETTINGS_EVENT, onOpen);
   }, []);
-
-  useEffect(() => {
-    const d = dialogRef.current;
-    if (!open || !d) return;
-    const prev = document.documentElement.style.overflow;
-    d.showModal();
-    document.documentElement.style.overflow = "hidden";
-    return () => {
-      d.close();
-      document.documentElement.style.overflow = prev;
-    };
-  }, [open]);
 
   // resend countdown
   useEffect(() => {
@@ -196,10 +180,7 @@ export function AccountSettingsDialog() {
   }
 
   function finishDeleted() {
-    apiService.logoutAllDevices();
-    try {
-      localStorage.removeItem("vk-profile-hidden");
-    } catch {}
+    apiService.logoutAllDevices(); // also clears the old local "hidden" flag (legacy key)
     setOpen(false);
     // full reload: clears every in-memory member state (tokens, caches) after deletion
     window.location.assign("/");
@@ -286,18 +267,7 @@ export function AccountSettingsDialog() {
   }
 
   return (
-    <dialog
-      ref={dialogRef}
-      aria-labelledby="account-title"
-      onCancel={(e) => {
-        e.preventDefault();
-        close();
-      }}
-      className="fixed inset-0 m-0 h-dvh max-h-none w-full max-w-none bg-transparent p-0 backdrop:bg-black/45 backdrop:backdrop-blur-md"
-    >
-      <div className="relative flex h-full items-end justify-center sm:items-center sm:p-4">
-        <button type="button" tabIndex={-1} aria-hidden="true" className="absolute inset-0 cursor-default" onClick={close} />
-        <div key={step} className="relative max-h-full w-full max-w-[520px] animate-dialog-in overflow-y-auto rounded-t-[28px] bg-surface-card shadow-xl sm:rounded-[28px]">
+    <Modal open onClose={close} labelledBy="account-title" size="md" animationKey={step} hideClose>
           <DialogHeader step={step} back={back[step]} onBack={setStep} onClose={close} />
 
           <div className="flex flex-col gap-5 p-5 pb-[calc(20px+env(safe-area-inset-bottom))] sm:p-6">
@@ -305,9 +275,7 @@ export function AccountSettingsDialog() {
 
             {(step === "reason" || step === "confirm") && <SupportLine onLeave={() => setOpen(false)} />}
           </div>
-        </div>
-      </div>
-    </dialog>
+    </Modal>
   );
 }
 
@@ -782,8 +750,7 @@ function Illustration({ tone }: Readonly<{ tone: "calm" | "bye" }>) {
     <div className="relative mx-auto flex h-[120px] w-full items-center justify-center overflow-hidden rounded-lg bg-[linear-gradient(180deg,var(--color-bg-brand-subtle),var(--color-surface-card))]">
       <LoveSticker variant="outline" size={36} rotate={-14} className="kyc-pop absolute left-[18%] top-5" />
       <LoveSticker variant={tone === "bye" ? "sparkle" : "outline"} size={34} rotate={12} className="kyc-pop absolute right-[18%] top-4 [animation-delay:120ms]" />
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src="/brand/couple.png" alt="" width={88} height={88} className={cn("kyc-pop h-[88px] w-[88px] rounded-full border-4 border-surface-card object-cover shadow-md", tone === "calm" && "grayscale-[25%]")} />
+      <Image src="/brand/couple.png" alt="" width={88} height={88} className={cn("kyc-pop h-[88px] w-[88px] rounded-full border-4 border-surface-card object-cover shadow-md", tone === "calm" && "grayscale-[25%]")} />
     </div>
   );
 }

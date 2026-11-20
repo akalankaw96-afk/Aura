@@ -8,7 +8,7 @@ import { Badge, Button } from "@/components/ui";
 import { getQueue, type QueueItem } from "@/lib/staff";
 import { getAdminStats, getMembers, STATUS_META, type AdminMember, type AdminStats } from "@/lib/adminApi";
 import { AdminPageHeader, DemoBanner } from "./AdminShell";
-import { Thumb } from "@/components/sections/admin/StaffConsole";
+import { Thumb } from "./ReviewQueue";
 
 /**
  * /admin — overview: KPI cards, two review tables (new profiles · KYC updates = resubmitted),

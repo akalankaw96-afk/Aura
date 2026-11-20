@@ -1,8 +1,9 @@
 "use client";
 
+import { KEYS, storage } from "@/lib/storage";
 import { useSyncExternalStore } from "react";
 
-const KEY = "vk-background-animation";
+const KEY = KEYS.backgroundAnimation;
 const CHANGE_EVENT = "vk-background-animation-change";
 const REDUCED_MOTION = "(prefers-reduced-motion: reduce)";
 let inMemoryPreference: boolean | undefined;
@@ -10,11 +11,7 @@ let inMemoryPreference: boolean | undefined;
 function getState(): "on" | "off" | "reduced" {
   if (window.matchMedia(REDUCED_MOTION).matches) return "reduced";
   if (inMemoryPreference !== undefined) return inMemoryPreference ? "on" : "off";
-  try {
-    return localStorage.getItem(KEY) === "off" ? "off" : "on";
-  } catch {
-    return "on";
-  }
+  return storage.get(KEY) === "off" ? "off" : "on";
 }
 
 function subscribe(update: () => void) {
@@ -36,12 +33,8 @@ function subscribe(update: () => void) {
 }
 
 function setEnabled(enabled: boolean) {
-  try {
-    localStorage.setItem(KEY, enabled ? "on" : "off");
-    inMemoryPreference = undefined;
-  } catch {
-    inMemoryPreference = enabled;
-  }
+  // storage blocked → remember it for this visit only
+  inMemoryPreference = storage.set(KEY, enabled ? "on" : "off") ? undefined : enabled;
   window.dispatchEvent(new Event(CHANGE_EVENT));
 }
 

@@ -30,7 +30,6 @@ import {
 } from "@/services/passwordReset";
 import { AuthShell } from "./AuthShell";
 import { IdentifierTabs } from "./IdentifierTabs";
-import { formatPhone } from "./shared";
 
 type Step = "identify" | "code" | "password";
 const STEP_NO: Record<Step, number> = { identify: 1, code: 2, password: 3 };

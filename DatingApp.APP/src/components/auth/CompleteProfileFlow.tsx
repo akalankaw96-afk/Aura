@@ -11,6 +11,7 @@ import { ApiError, apiService } from "@/services/api";
 import { isIllustration } from "@/content/avatars";
 import { AuthShell } from "./AuthShell";
 import { IdentityStep, PhotosStep, ProfileStep, profileToDraft, saveProfileDraft } from "./RegisterFlow";
+import { readSessionData } from "@/lib/storage";
 
 type Step = "details" | "photos" | "identity";
 const STEPS: { id: Step; label: string }[] = [
@@ -61,10 +62,7 @@ export function CompleteProfileFlow() {
         return;
       }
       // the server's copy wins — the browser draft may be from another device or missing
-      let session: { phoneNumber?: string; email?: string } = {};
-      try {
-        session = JSON.parse(localStorage.getItem("aura_session") || "{}");
-      } catch {}
+      const session = readSessionData<{ phoneNumber?: string; email?: string }>() ?? {};
       const d = profile ? saveDraft({ ...profileToDraft(profile, session) }) : loadDraft();
       setDraft(d);
       setStatus(info);

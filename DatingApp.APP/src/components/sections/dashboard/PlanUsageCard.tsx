@@ -6,6 +6,7 @@ import { cn } from "@/lib/cn";
 import { ButtonLink } from "@/components/ui/Button";
 import { useAccess } from "@/lib/verification";
 import { USAGE_LABEL, useUsage } from "@/lib/usage";
+import { KEYS, storage } from "@/lib/storage";
 
 /**
  * Plan & usage card — approved members on the Free plan.
@@ -43,15 +44,11 @@ export function PlanUsageCard() {
   const { left, limit, usage, loaded } = useUsage();
   const [open, setOpen] = useState(false);
   useEffect(() => {
-    try {
-      setOpen(localStorage.getItem("vk-usage-card-open") === "1");
-    } catch {}
+    setOpen(storage.get(KEYS.usageCardOpen) === "1");
   }, []);
   const toggle = () =>
     setOpen((o) => {
-      try {
-        localStorage.setItem("vk-usage-card-open", o ? "0" : "1");
-      } catch {}
+      storage.set(KEYS.usageCardOpen, o ? "0" : "1");
       return !o;
     });
   if (locked || isPaid || !loaded) return null;

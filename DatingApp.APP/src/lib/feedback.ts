@@ -1,5 +1,6 @@
 "use client";
 
+import { KEYS, storage } from "@/lib/storage";
 import { FRIENDS } from "@/content/dashboard";
 import { readKyc, readMembership } from "@/lib/verification";
 
@@ -18,11 +19,11 @@ export type FeedbackStep = "rate" | "story";
 export type FeedbackMoment = "contact" | "upgrade" | "renewal";
 
 export const FEEDBACK_EVENT = "vk-feedback-open";
-const STATE_KEY = "vk-feedback";
-const SUBMISSIONS_KEY = "vk-feedback-submissions";
-const CONTACT_KEY = "vk-contact-accepted-at";
-const SAFETY_KEY = "vk-safety-event-at";
-export const RENEWED_KEY = "vk-plan-renewed-at";
+const STATE_KEY = KEYS.feedbackState;
+const SUBMISSIONS_KEY = KEYS.feedbackSubmissions;
+const CONTACT_KEY = KEYS.contactAcceptedAt;
+const SAFETY_KEY = KEYS.safetyEventAt;
+export const RENEWED_KEY = KEYS.planRenewedAt;
 
 const DAY = 86_400_000;
 
@@ -44,17 +45,10 @@ export interface FeedbackSubmission {
 }
 
 function readJson<T>(key: string, fallback: T): T {
-  try {
-    const v = JSON.parse(localStorage.getItem(key) || "null");
-    return (v ?? fallback) as T;
-  } catch {
-    return fallback;
-  }
+  return storage.getJSON<T | null>(key, null) ?? fallback;
 }
 function write(key: string, value: unknown) {
-  try {
-    localStorage.setItem(key, JSON.stringify(value));
-  } catch {}
+  storage.setJSON(key, value);
 }
 const since = (iso?: string | null) => (iso ? (Date.now() - new Date(iso).getTime()) / DAY : Infinity);
 
@@ -65,9 +59,7 @@ export function openFeedback(step: FeedbackStep = "rate") {
 
 /** Call when a contact share becomes "accepted" (first time only). */
 export function markContactAccepted() {
-  try {
-    if (!localStorage.getItem(CONTACT_KEY)) write(CONTACT_KEY, new Date().toISOString());
-  } catch {}
+  if (!storage.get(CONTACT_KEY)) write(CONTACT_KEY, new Date().toISOString());
 }
 
 /** Call after the member reports or blocks someone. */
@@ -119,7 +111,5 @@ export function feedbackDue(): FeedbackMoment | null {
 
 /** Demo only: clears the popup history so it can be tried again. */
 export function resetFeedbackDemo() {
-  try {
-    [STATE_KEY, CONTACT_KEY, SAFETY_KEY, RENEWED_KEY].forEach((k) => localStorage.removeItem(k));
-  } catch {}
+  [STATE_KEY, CONTACT_KEY, SAFETY_KEY, RENEWED_KEY].forEach((k) => storage.remove(k));
 }

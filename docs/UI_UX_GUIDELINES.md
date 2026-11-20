@@ -14,8 +14,9 @@ plain — "Send interest", not "Swipe". Bilingual English/Sinhala (Tamil planned
 - Sinhala font: Figma = Yaldevi; **code currently trials Noto Sans Sinhala** (2026-11-11). Keep Figma and code in sync once decided.
 - Colours: semantic CSS variables in `styles/tokens.css` (`--color-bg-*`, `--color-surface-*`, `--color-text-*`,
   `--color-border-*`, `--color-icon-*`, `--color-status-{success|warning|error}-{bg|fg}`) exposed as Tailwind classes.
-  Only scales: `rose`, `gray`, `gold`. **No hex, no default Tailwind palette, no `token/NN` modifiers** — use
-  `rgba()`/`color-mix()` arbitrary values when you need transparency.
+  Only scales: `rose`, `gray`, `gold`. **No hex, no default Tailwind palette.** Opacity modifiers on design-system
+  colours work since 2026-11-19 (`bg-black/45`, `border-brand/20`, `bg-surface-card/70` → `color-mix()`; S05-T02) —
+  use the default opacity steps (5, 10 … 95).
 - Type, spacing, radius, shadow: Tailwind theme values from the token file; no arbitrary pixel sizes unless Figma demands it.
 - **Copy: never use the em dash (—)** in UI text. Use a comma, full stop or colon instead; "-" for empty values.
 - Light and dark themes both required; check contrast in both.

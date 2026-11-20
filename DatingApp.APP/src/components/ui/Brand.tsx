@@ -1,19 +1,20 @@
 "use client";
 
+import Image from "next/image";
 import React, { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { Global, Moon, Sun1 } from "iconsax-react";
 import { cn } from "@/lib/cn";
 import { useLanguage } from "@/context/LanguageContext";
 import { useHomeHref } from "@/lib/session";
+import { KEYS, storage } from "@/lib/storage";
 
 /** Figma: Logo (Variant = Default) — 122 × 72. Links to Home, or the Dashboard once signed in. */
 export function Logo({ height = 72, className }: { height?: number; className?: string }) {
   const home = useHomeHref();
   return (
     <Link href={home} aria-label={home === "/" ? "Vikasitha home" : "Go to your dashboard"} className={cn("inline-flex shrink-0", className)}>
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src="/brand/logo.png" alt="Vikasitha" style={{ height, width: (height * 122) / 72 }} />
+      <Image src="/brand/logo.png" alt="Vikasitha" width={Math.round((height * 122) / 72)} height={height} priority style={{ height, width: (height * 122) / 72 }} />
     </Link>
   );
 }
@@ -21,8 +22,7 @@ export function Logo({ height = 72, className }: { height?: number; className?: 
 /** Figma: Illustration / Avatar (Style = Illustrated) */
 export function CoupleAvatar({ size = 64, type = "couple", className }: { size?: number; type?: "couple" | "bride" | "groom"; className?: string }) {
   return (
-    // eslint-disable-next-line @next/next/no-img-element
-    <img src={`/brand/${type}.png`} alt="" width={size} height={size} className={cn("rounded-full", className)} style={{ width: size, height: size }} />
+    <Image src={`/brand/${type}.png`} alt="" width={size} height={size} className={cn("rounded-full", className)} style={{ width: size, height: size }} />
   );
 }
 
@@ -116,11 +116,7 @@ export function ThemeToggle({ surface = "default" }: { surface?: Surface }) {
     setDark(next);
     if (next) document.documentElement.setAttribute("data-theme", "dark");
     else document.documentElement.removeAttribute("data-theme");
-    try {
-      localStorage.setItem("vk-theme", next ? "dark" : "light");
-    } catch {
-      /* storage blocked */
-    }
+    storage.set(KEYS.theme, next ? "dark" : "light");
   };
 
   const Icon = dark ? Moon : Sun1;

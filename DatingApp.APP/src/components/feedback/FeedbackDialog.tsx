@@ -1,11 +1,12 @@
 "use client";
 
+import Image from "next/image";
 import React, { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { CloseCircle, Crown1, Heart, MessageQuestion, Star1, TickCircle } from "iconsax-react";
+import { Crown1, Heart, MessageQuestion, Star1, TickCircle } from "iconsax-react";
 import { cn } from "@/lib/cn";
-import { Button, Checkbox, FilterChip, Input, LoveSticker, Textarea, useToast } from "@/components/ui";
+import { Button, Checkbox, FilterChip, Input, LoveSticker, Modal, Textarea, useToast } from "@/components/ui";
 import { PhotoSlot } from "@/components/ui/PhotoSlot";
 import { requireMember, useSignedIn } from "@/lib/session";
 import { useAccess } from "@/lib/verification";
@@ -38,7 +39,6 @@ export function FeedbackDialog() {
   const signedIn = useSignedIn();
   const { locked, isPaid } = useAccess();
   const toast = useToast();
-  const dialogRef = useRef<HTMLDialogElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const [open, setOpen] = useState(false);
@@ -98,18 +98,6 @@ export function FeedbackDialog() {
     }, 2000);
     return () => window.clearTimeout(t);
   }, [pathname, signedIn, locked, isPaid]);
-
-  useEffect(() => {
-    const dialog = dialogRef.current;
-    if (!open || !dialog) return;
-    const prev = document.documentElement.style.overflow;
-    dialog.showModal();
-    document.documentElement.style.overflow = "hidden";
-    return () => {
-      dialog.close();
-      document.documentElement.style.overflow = prev;
-    };
-  }, [open]);
 
   if (!open) return null;
 
@@ -171,25 +159,7 @@ export function FeedbackDialog() {
   const titleId = "feedback-title";
 
   return (
-    <dialog
-      ref={dialogRef}
-      aria-labelledby={titleId}
-      onCancel={(e) => {
-        e.preventDefault();
-        close();
-      }}
-      className="fixed inset-0 m-0 h-dvh max-h-none w-full max-w-none bg-transparent p-0 backdrop:bg-black/45 backdrop:backdrop-blur-md"
-    >
-      <div className="flex h-full items-end justify-center sm:items-center sm:p-4" onMouseDown={(e) => e.target === e.currentTarget && close()}>
-        <div key={step} className="relative max-h-full w-full max-w-[460px] animate-dialog-in overflow-y-auto rounded-t-[28px] bg-surface-card shadow-xl sm:rounded-[28px]">
-          <button
-            type="button"
-            onClick={close}
-            aria-label="Close"
-            className="absolute right-3 top-3 z-10 rounded-full p-1 text-ink-tertiary transition-colors hover:bg-surface-card hover:text-ink focus-visible:outline-none focus-visible:shadow-ring-brand"
-          >
-            <CloseCircle size={24} color="currentColor" />
-          </button>
+    <Modal open onClose={close} labelledBy={titleId} size="sm" className="sm:max-w-[460px]" animationKey={step}>
 
           <Illustration step={step} />
 
@@ -342,9 +312,7 @@ export function FeedbackDialog() {
               </div>
             )}
           </div>
-        </div>
-      </div>
-    </dialog>
+    </Modal>
   );
 }
 
@@ -385,8 +353,7 @@ function Illustration({ step }: { step: Step }) {
       <LoveSticker variant="filled" size={24} rotate={-8} className={cn("kyc-pop absolute bottom-6 left-[27%] [animation-delay:200ms]", calm && "opacity-50")} />
       <LoveSticker variant="sticker" size={30} rotate={10} className={cn("kyc-pop absolute bottom-5 right-[26%] [animation-delay:260ms]", calm && "opacity-50")} />
       <span className="kyc-pop relative">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/brand/couple.png" alt="" width={104} height={104} className={cn("h-[104px] w-[104px] rounded-full border-4 border-surface-card object-cover shadow-md", calm && "grayscale-[35%]")} />
+        <Image src="/brand/couple.png" alt="" width={104} height={104} className={cn("h-[104px] w-[104px] rounded-full border-4 border-surface-card object-cover shadow-md", calm && "grayscale-[35%]")} />
         <span className={cn("absolute -bottom-0.5 -right-0.5 flex h-9 w-9 items-center justify-center rounded-full border-[3px] border-surface-card text-white", badge.cls)}>
           <badge.Icon size={16} color="currentColor" variant="Bold" />
         </span>

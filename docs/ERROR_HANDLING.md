@@ -25,16 +25,18 @@ log entry with context. Silence (empty `catch {}`, mock-data fallbacks) is the m
 - Forms: keep user input on failure; focus the first invalid field; disable submit while pending.
 - Route-level crashes: `app/error.tsx` (friendly message + "Try again") and `app/not-found.tsx`; `global-error.tsx`
   for the root layout.
-- Browser storage access goes through the storage helper (TD-05) — the **only** allowed silent catch, because
-  Safari private mode and quota errors are not actionable.
-- No `console.log` in committed UI code; `console.error` only inside the fetch helper / error boundaries in development.
+- Browser storage access goes through `lib/storage.ts` (`storage.get/set/remove/getJSON/setJSON`, keys in `KEYS`,
+  S05-T06) — it never throws; failures (private mode, quota) are logged in development only.
+- Console output only through `lib/log.ts` (`log.warn` / `log.error`, development only); ESLint `no-console` warns
+  everywhere else. A `catch` that can carry on calls `log.warn(…)` with what it keeps doing — never an empty block.
+- Chat REST helpers (`getConversations`, `getChatHistory`) throw `ApiError`; Messages shows "couldn't load" + Try again.
 
 ## 3. Message style
 Short, human, actionable, no blame, no internals: "We couldn't load profiles. Check your connection and try again."
 Never show stack traces, SQL, exception names or raw status codes to members.
 
 ## 4. Checklist
-- [ ] No empty catch (except the storage helper)
+- [ ] No empty catch (log with `log.warn` and say what happens next)
 - [ ] No mock/demo data returned on failure
 - [ ] Error shown to the user with a next step; input preserved
 - [ ] Logged once, with context, without PII

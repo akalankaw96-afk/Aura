@@ -8,7 +8,8 @@
  * The "hidden" flag comes from the session (profileHidden), so every device agrees.
  * An API without these endpoints (404) still switches to the labelled demo in development builds only.
  */
-import { SESSION_KEY, apiRequest } from "@/lib/http";
+import { apiRequest } from "@/lib/http";
+import { readSessionData } from "@/lib/storage";
 import { apiService } from "@/services/api";
 
 export const DELETE_RULES = { codeLength: 6, resendSeconds: 60, maxAttempts: 5 } as const;
@@ -60,12 +61,7 @@ export async function setProfileHidden(hidden: boolean, reason?: string): Promis
 
 /** From the session the API returned (login / refresh / GET /auth/me). */
 export function readProfileHidden(): boolean {
-  try {
-    const s = JSON.parse(localStorage.getItem(SESSION_KEY) || "{}") as { profileHidden?: boolean };
-    return s.profileHidden === true;
-  } catch {
-    return false;
-  }
+  return readSessionData<{ profileHidden?: boolean }>()?.profileHidden === true;
 }
 
 /** Sends the SMS code to the member's verified mobile. `demo: true` = server endpoint not built yet (dev only). */

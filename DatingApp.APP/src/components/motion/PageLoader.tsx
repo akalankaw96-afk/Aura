@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import React, { useEffect, useState } from "react";
 import { Heart } from "iconsax-react";
 
@@ -48,8 +49,7 @@ export function PageLoader() {
       }`}
     >
       <div className="flex flex-col items-center gap-6">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/brand/logo.png" alt="Vikasitha" style={{ height: 72, width: 122 }} />
+        <Image src="/brand/logo.png" alt="Vikasitha" width={122} height={72} priority style={{ height: 72, width: 122 }} />
         <div className="relative flex h-14 w-14 items-center justify-center">
           <span aria-hidden className="loader-ring absolute inset-0 rounded-full bg-brand-subtle" />
           <span className="loader-beat relative flex h-12 w-12 items-center justify-center rounded-full bg-brand-gradient text-ink-on-brand shadow-lg">

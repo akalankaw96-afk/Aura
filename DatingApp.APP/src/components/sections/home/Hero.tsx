@@ -1,13 +1,13 @@
 "use client";
 
+import Image from "next/image";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowDown2, Heart, SearchNormal1, TickCircle, User, Verify } from "iconsax-react";
+import { ArrowDown2, Heart, SearchNormal1, TickCircle, User } from "iconsax-react";
 import { cn } from "@/lib/cn";
 import { Navbar } from "@/components/layout/Navbar";
 import { Chip } from "@/components/ui/Chip";
 import { AgeRangePopover, formatAgeRange, type AgeRange } from "./AgeRangePopover";
-import { useToast } from "@/components/ui/Toast";
 import { useLanguage } from "@/context/LanguageContext";
 import { ProfilePhotoCard } from "@/components/cards/ProfilePhotoCard";
 import { HERO } from "@/content/home";
@@ -31,8 +31,7 @@ export function Hero() {
 
   return (
     <section aria-label="Find a partner" className="relative isolate overflow-hidden bg-rose-950 text-ink-on-brand">
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={HERO.image} alt="" className="absolute inset-0 -z-10 h-full w-full object-cover" />
+      <Image src={HERO.image} alt="" fill priority sizes="100vw" className="-z-10 object-cover" />
       <div aria-hidden className="absolute inset-0 -z-10 bg-black opacity-[0.62]" />
       <div aria-hidden className="absolute inset-0 -z-10 bg-hero-overlay opacity-80" />
 
@@ -211,8 +210,7 @@ export function HeroSearch() {
                   )}
                 >
                   <span className={cn("flex h-12 w-12 shrink-0 items-center justify-center rounded-full overflow-hidden", tint)}>
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={img} alt="" className="h-10 w-10 object-contain" />
+                    <Image src={img} alt="" width={40} height={40} className="h-10 w-10 object-contain" />
                   </span>
                   <span className="flex flex-1 flex-col">
                     <span className="text-body-md font-semibold text-ink">{label}</span>

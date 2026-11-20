@@ -40,7 +40,7 @@ export interface DropdownOptionProps {
 
 export function DropdownOption({
   label,
-  value,
+  value: _value,
   state,
   selected = false,
   active = false,
@@ -358,7 +358,7 @@ export function Select({
           aria-haspopup="listbox"
           aria-expanded={open}
           aria-controls={open ? listId : undefined}
-          aria-invalid={!!error}
+          data-invalid={error ? "" : undefined}
           onClick={() => (open ? close() : openMenu())}
           className={cn(
             controlShell({ error: !!error, disabled }),

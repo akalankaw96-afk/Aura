@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { Crown1, MessageText1 } from "iconsax-react";
 import { Button, Card, LoveSticker } from "@/components/ui";
 import { openFeedback } from "@/lib/feedback";
@@ -9,8 +10,7 @@ export function ShareFeedbackCard() {
   return (
     <Card className="relative flex flex-col gap-5 overflow-hidden p-5 shadow-sm sm:p-6 md:flex-row md:items-center">
       <span className="relative shrink-0 self-start md:self-center">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/brand/couple.png" alt="" width={72} height={72} className="h-[72px] w-[72px] rounded-full border-4 border-surface-card object-cover shadow-md" />
+        <Image src="/brand/couple.png" alt="" width={72} height={72} className="h-[72px] w-[72px] rounded-full border-4 border-surface-card object-cover shadow-md" />
         <LoveSticker variant="double" size={30} rotate={12} className="absolute -right-3 -top-2" />
       </span>
       <div className="flex min-w-0 flex-1 flex-col gap-1.5">

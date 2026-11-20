@@ -1,6 +1,7 @@
 "use client";
 
 import React, { createContext, useContext, useEffect, useState } from "react";
+import { KEYS, storage } from "@/lib/storage";
 import { TRANSLATIONS, type Language, type Translations } from "@/content/translations";
 
 interface LanguageContextType {
@@ -19,29 +20,18 @@ const LanguageContext = createContext<LanguageContextType>({
 
 export function LanguageProvider({ children }: { children: React.ReactNode }) {
   const [lang, setLangState] = useState<Language>("en");
-  const [mounted, setMounted] = useState(false);
-
   useEffect(() => {
-    try {
-      const saved = localStorage.getItem("vk-lang") as Language | null;
-      if (saved && (saved === "en" || saved === "si")) {
-        setLangState(saved);
-        document.documentElement.lang = saved;
-      }
-    } catch {
-      // Storage unavailable
+    const saved = storage.get(KEYS.language);
+    if (saved === "en" || saved === "si") {
+      setLangState(saved);
+      document.documentElement.lang = saved;
     }
-    setMounted(true);
   }, []);
 
   const setLanguage = (newLang: Language) => {
     setLangState(newLang);
     document.documentElement.lang = newLang;
-    try {
-      localStorage.setItem("vk-lang", newLang);
-    } catch {
-      // Storage unavailable
-    }
+    storage.set(KEYS.language, newLang);
   };
 
   const currentTranslations = TRANSLATIONS[lang] || TRANSLATIONS.en;

@@ -1,12 +1,12 @@
 "use client";
 
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { ArrowLeft, CloseCircle, Crown1, Eye, Heart, Messages2, SearchNormal1, Sms, TickCircle } from "iconsax-react";
 import { allSearchLimitsExhausted, UPGRADE_EVENT, USAGE_LABEL, useUsage, type UsageKind } from "@/lib/usage";
 import { useSignedIn } from "@/lib/session";
-import { Button } from "@/components/ui";
+import { Button, Modal } from "@/components/ui";
 
 /**
  * Upgrade prompt — opens whenever a Free member hits a monthly limit set by the admin
@@ -41,12 +41,10 @@ export function UpgradePrompt() {
   const signedIn = useSignedIn();
   const { usage } = useUsage();
   const [promptKind, setPromptKind] = useState<UsageKind | null>(null);
-  const dialogRef = useRef<HTMLDialogElement>(null);
   // both browsing allowances used up → the Search page stays behind the prompt
   const browsingUsedUp = signedIn && allSearchLimitsExhausted(usage);
   const searchLimit: UsageKind | undefined = browsingUsedUp && pathname === "/search" ? "searches" : undefined;
   const kind = promptKind ?? searchLimit;
-  const open = Boolean(kind);
 
   useEffect(() => {
     const open = (e: Event) => {
@@ -66,18 +64,6 @@ export function UpgradePrompt() {
     return () => window.removeEventListener("popstate", reset);
   }, []);
 
-  useEffect(() => {
-    const dialog = dialogRef.current;
-    if (!open || !dialog) return;
-    const previousOverflow = document.documentElement.style.overflow;
-    dialog.showModal();
-    document.documentElement.style.overflow = "hidden";
-    return () => {
-      dialog.close();
-      document.documentElement.style.overflow = previousOverflow;
-    };
-  }, [open]);
-
   function backToDashboard() {
     setPromptKind(null);
     if (pathname !== "/dashboard") router.push("/dashboard");
@@ -96,18 +82,17 @@ export function UpgradePrompt() {
     : "the 1st";
 
   return (
-    <dialog
-      ref={dialogRef}
-      aria-labelledby="upgrade-title"
-      aria-describedby="upgrade-description"
-      onCancel={(event) => {
-        event.preventDefault();
-        if (goldFeature) setPromptKind(null); // Esc closes a Gold-feature prompt, never a reached limit
-      }}
-      className="fixed inset-0 m-0 h-dvh max-h-none w-full max-w-none bg-transparent p-0 backdrop:bg-black/45 backdrop:backdrop-blur-md"
+    // Esc closes a Gold-feature prompt, never a reached limit (dismissible); the backdrop never closes it
+    <Modal
+      open
+      onClose={() => setPromptKind(null)}
+      labelledBy="upgrade-title"
+      describedBy="upgrade-description"
+      size="sm"
+      dismissible={goldFeature}
+      closeOnBackdrop={false}
+      hideClose
     >
-      <div className="flex h-full items-end justify-center sm:items-center sm:p-4">
-        <div className="relative max-h-full w-full max-w-[440px] animate-dialog-in overflow-y-auto rounded-t-[28px] bg-surface-card shadow-xl sm:rounded-[28px]">
           {/* gold header */}
           <div className="relative flex flex-col items-center gap-3 bg-premium-bg px-6 pb-6 pt-8 text-center">
             {goldFeature && (
@@ -171,8 +156,6 @@ export function UpgradePrompt() {
               </Button>
             )}
           </div>
-        </div>
-      </div>
-    </dialog>
+    </Modal>
   );
 }

@@ -1,10 +1,11 @@
 "use client";
 
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import Image from "next/image";
+import React, { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { ArrowLeft, ArrowRight, CloseCircle, Crown1, TickCircle } from "iconsax-react";
 import { cn } from "@/lib/cn";
-import { Button, LoveSticker } from "@/components/ui";
+import { Button, LoveSticker, Modal } from "@/components/ui";
 import { useLanguage } from "@/context/LanguageContext";
 import { useAccess } from "@/lib/verification";
 import { HOW_TO_USE, type TourItem } from "@/content/howToUse";
@@ -20,7 +21,6 @@ import { TOUR_EVENT, TOUR_ITEM_IDS, setTourStatus } from "@/lib/tour";
 export function GuidedTourDialog() {
   const { lang } = useLanguage();
   const { isPaid, locked } = useAccess();
-  const dialogRef = useRef<HTMLDialogElement>(null);
   const [open, setOpen] = useState(false);
   const [i, setI] = useState(0);
 
@@ -39,18 +39,6 @@ export function GuidedTourDialog() {
     window.addEventListener(TOUR_EVENT, onOpen);
     return () => window.removeEventListener(TOUR_EVENT, onOpen);
   }, [isPaid, locked]);
-
-  useEffect(() => {
-    const d = dialogRef.current;
-    if (!open || !d) return;
-    const prev = document.documentElement.style.overflow;
-    d.showModal();
-    document.documentElement.style.overflow = "hidden";
-    return () => {
-      d.close();
-      document.documentElement.style.overflow = prev;
-    };
-  }, [open]);
 
   const n = slides.length;
   const last = i === n; // final "you're all set" slide
@@ -74,17 +62,7 @@ export function GuidedTourDialog() {
   const item = slides[Math.min(i, n - 1)];
 
   return (
-    <dialog
-      ref={dialogRef}
-      aria-labelledby="tour-title"
-      onCancel={(e) => {
-        e.preventDefault();
-        close();
-      }}
-      className="fixed inset-0 m-0 h-dvh max-h-none w-full max-w-none bg-transparent p-0 backdrop:bg-black/55 backdrop:backdrop-blur-md"
-    >
-      <div className="flex h-full items-end justify-center sm:items-center sm:p-4" onMouseDown={(e) => e.target === e.currentTarget && close()}>
-        <div className="relative flex max-h-full w-full max-w-[880px] animate-dialog-in flex-col overflow-hidden rounded-t-[28px] bg-surface-card shadow-xl sm:rounded-[28px]">
+    <Modal open onClose={() => close()} labelledBy="tour-title" size="xl" hideClose bodyClassName="overflow-hidden">
           {/* header: progress + skip */}
           <div className="flex items-center gap-3 border-b border-line px-5 py-3 sm:px-6">
             <span className="inline-flex h-7 items-center gap-1.5 rounded-full bg-premium-bg px-2.5 text-label-sm text-premium-fg">
@@ -145,8 +123,7 @@ export function GuidedTourDialog() {
               <div className="relative flex items-center justify-center bg-[linear-gradient(180deg,var(--color-bg-brand-subtle),var(--color-surface-card))] px-6 py-6 sm:py-10">
                 <LoveSticker variant="outline" size={36} rotate={-14} className="absolute left-6 top-6 opacity-70" />
                 <figure className="w-[46%] max-w-[230px] -rotate-2 rounded-[28px] bg-gray-900 p-1.5 shadow-xl ring-1 ring-line sm:w-[72%]">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={item.shots[0].src} alt={item.shots[0].alt} width={585} height={1266} className="block h-auto w-full rounded-[22px]" />
+                  <Image src={item.shots[0].src} alt={item.shots[0].alt} width={585} height={1266} sizes="230px" className="block h-auto w-full rounded-[22px]" />
                 </figure>
               </div>
               {/* text */}
@@ -180,9 +157,7 @@ export function GuidedTourDialog() {
               </div>
             </div>
           )}
-        </div>
-      </div>
-    </dialog>
+    </Modal>
   );
 }
 

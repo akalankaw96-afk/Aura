@@ -51,3 +51,5 @@ export type { SegmentedTabItem } from "./SegmentedTabs";
 export { PhotoSlot } from "./PhotoSlot";
 export type { PhotoSlotProps } from "./PhotoSlot";
 export type { ResultsView } from "./ViewToggle";
+export { Modal, ConfirmDialog } from "./Modal";
+export type { ModalProps, ModalSize, ConfirmDialogProps } from "./Modal";

@@ -22,6 +22,7 @@ import { cn } from "@/lib/cn";
 import { ButtonLink } from "@/components/ui/Button";
 import { useAccess, useMembership } from "@/lib/verification";
 import { PaymentHistory } from "@/components/sections/dashboard/PaymentStatus";
+import { KEYS, storage } from "@/lib/storage";
 
 /**
  * Pro membership card — approved Gold / Platinum members (replaces the Free usage card).
@@ -58,15 +59,11 @@ export function ProPlanCard() {
   // collapsed by default to save space — the choice is remembered
   const [open, setOpen] = useState(false);
   useEffect(() => {
-    try {
-      setOpen(localStorage.getItem("vk-plan-card-open") === "1");
-    } catch {}
+    setOpen(storage.get(KEYS.planCardOpen) === "1");
   }, []);
   const toggle = () =>
     setOpen((o) => {
-      try {
-        localStorage.setItem("vk-plan-card-open", o ? "0" : "1");
-      } catch {}
+      storage.set(KEYS.planCardOpen, o ? "0" : "1");
       return !o;
     });
 
@@ -210,7 +207,7 @@ export function ProPlanCard() {
 
         <div className="flex flex-wrap items-center gap-3 border-t border-line pt-4">
           <p className="min-w-[200px] flex-1 text-body-sm text-ink-tertiary">
-            Renew any time — the new months start on {fmt(m.expires)}, so you never lose days.
+            Renew any time: the new months start on {fmt(m.expires)}, so you never lose days.
           </p>
           {!platinum && (
             <ButtonLink href="/plans" variant="secondary" size="md" leftIcon={<Crown1 size={18} color="currentColor" />}>

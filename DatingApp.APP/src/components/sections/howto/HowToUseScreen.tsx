@@ -1,7 +1,7 @@
 "use client";
 
+import Image from "next/image";
 import React, { useRef, useState } from "react";
-import Link from "next/link";
 import {
   ArrowDown,
   ArrowRight2,
@@ -297,8 +297,7 @@ function TourCard({ item, index, whereLabel }: { item: TourItem; index: number; 
 function PhoneFrame({ shot, className, style }: { shot: Shot; className?: string; style?: React.CSSProperties }) {
   return (
     <figure className={cn("shrink-0 rounded-[28px] bg-gray-900 p-1.5 shadow-xl ring-1 ring-line", className)} style={style}>
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={shot.src} alt={shot.alt} width={585} height={1266} loading="lazy" className="block h-auto w-full rounded-[22px]" />
+      <Image src={shot.src} alt={shot.alt} width={585} height={1266} sizes="(min-width: 1024px) 300px, 60vw" className="block h-auto w-full rounded-[22px]" />
       <figcaption className="sr-only">{shot.alt}</figcaption>
     </figure>
   );

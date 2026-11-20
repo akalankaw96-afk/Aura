@@ -54,7 +54,8 @@ payments or data retention · any breaking API change · touching another develo
 ## 7. Useful commands
 ```
 # Web (DatingApp.APP)
-npm install · npm run dev · npm run typecheck · npm run check · npm run build
+npm install · npm run dev · npm run typecheck · npm test · npm run check · npm run build
+# web tests: Vitest + Testing Library, files next to the code as *.test.ts(x); `npm run test:watch` while working
 # API
 dotnet build DatingApp.API/DatingApp.sln · dotnet run --project DatingApp.API/DatingApp.WebApi
 dotnet ef migrations add <Name> -p DatingApp.API/DatingApp.Infrastructure -s DatingApp.API/DatingApp.WebApi

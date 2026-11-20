@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import React, { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import {
@@ -16,7 +17,9 @@ import {
 } from "iconsax-react";
 import { cn } from "@/lib/cn";
 import { Button } from "@/components/ui/Button";
+import { Modal } from "@/components/ui/Modal";
 import { useLanguage } from "@/context/LanguageContext";
+import { KEYS, storage } from "@/lib/storage";
 
 /* ------------------------------------------------------------------ */
 /* Install the web app (PWA)                                          */
@@ -28,7 +31,7 @@ import { useLanguage } from "@/context/LanguageContext";
 /*  "not now".                                                          */
 /* ------------------------------------------------------------------ */
 
-const DISMISS_KEY = "vk-install-dismissed";
+const DISMISS_KEY = KEYS.installDismissed;
 const DISMISS_DAYS = 14;
 const HIDDEN_ON = [/^\/admin/, /^\/components/];
 
@@ -156,11 +159,8 @@ export function InstallAppBanner() {
     setMobileDevice(ios || /android/i.test(ua));
     setSupportsInstall(window.isSecureContext && typeof (navigator as InstallNavigator).install === "function");
 
-    let dismissedRecently = false;
-    try {
-      const at = Number(localStorage.getItem(DISMISS_KEY) || 0);
-      dismissedRecently = Date.now() - at < DISMISS_DAYS * 864e5;
-    } catch {}
+    const at = Number(storage.get(DISMISS_KEY) || 0);
+    const dismissedRecently = Date.now() - at < DISMISS_DAYS * 864e5;
     if (!isStandalone() && !dismissedRecently) {
       // let the page loader finish first
       const t = window.setTimeout(() => setVisible(true), 1200);
@@ -183,22 +183,11 @@ export function InstallAppBanner() {
         window.removeEventListener("appinstalled", onInstalled);
       };
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  // lock scroll while the sheet is open
-  useEffect(() => {
-    document.body.style.overflow = sheet ? "hidden" : "";
-    return () => {
-      document.body.style.overflow = "";
-    };
-  }, [sheet]);
 
   function close(remember = true) {
     if (remember) {
-      try {
-        localStorage.setItem(DISMISS_KEY, String(Date.now()));
-      } catch {}
+      storage.set(DISMISS_KEY, String(Date.now()));
     }
     setLeaving(true);
     window.setTimeout(() => setVisible(false), 300);
@@ -257,8 +246,7 @@ export function InstallAppBanner() {
             >
               <CloseCircle size={18} color="currentColor" />
             </button>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/icons/vk-icon-192.png" alt="" className="install-icon h-11 w-11 shrink-0 rounded-[12px] border border-line shadow-sm" />
+            <Image src="/icons/vk-icon-192.png" alt="" width={44} height={44} className="install-icon h-11 w-11 shrink-0 rounded-[12px] border border-line shadow-sm" />
             <div className="min-w-0 flex-1">
               <p className="truncate text-label-md text-ink">{c.title}</p>
               <p className="flex min-w-0 items-center gap-1.5 text-caption text-ink-secondary">
@@ -284,17 +272,14 @@ export function InstallAppBanner() {
       )}
 
       {/* Install sheet — what you get + steps */}
-      {sheet && (
-        <div className="fixed inset-0 z-[80] flex items-end justify-center lg:items-center" role="dialog" aria-modal="true" aria-label={c.sheetTitle}>
-          <div className="absolute inset-0 animate-fade-in bg-black/45" onClick={() => setSheet(false)} aria-hidden />
-          <div className="install-sheet relative max-h-[92dvh] w-full max-w-[480px] overflow-y-auto rounded-t-[28px] bg-surface-card px-5 pb-[calc(20px+env(safe-area-inset-bottom))] pt-3 shadow-xl lg:rounded-[28px]">
+      <Modal open={sheet} onClose={() => setSheet(false)} labelledBy="install-sheet-title" size="sm" className="sm:max-w-[480px]" hideClose>
+          <div className="px-5 pb-[calc(20px+env(safe-area-inset-bottom))] pt-3">
             <div className="mx-auto mb-4 h-1.5 w-10 rounded-full bg-surface-muted lg:hidden" />
 
             <div className="flex items-start gap-3">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/icons/vk-icon-192.png" alt="" className="install-icon h-14 w-14 shrink-0 rounded-[16px] border border-line shadow-md" />
+              <Image src="/icons/vk-icon-192.png" alt="" width={56} height={56} className="install-icon h-14 w-14 shrink-0 rounded-[16px] border border-line shadow-md" />
               <div className="min-w-0 flex-1">
-                <h2 className="text-h5 text-ink">{c.sheetTitle}</h2>
+                <h2 id="install-sheet-title" className="text-h5 text-ink">{c.sheetTitle}</h2>
                 <p className="mt-1 text-body-sm text-ink-secondary">{c.sheetSub}</p>
               </div>
               <button type="button" onClick={() => setSheet(false)} aria-label="Close" className="-mr-1 rounded-full p-1 text-ink-tertiary hover:bg-surface-subtle">
@@ -384,8 +369,7 @@ export function InstallAppBanner() {
               )}
             </div>
           </div>
-        </div>
-      )}
+      </Modal>
 
       {done && (
         <span className="sr-only" role="status">
