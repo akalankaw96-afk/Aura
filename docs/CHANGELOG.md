@@ -6,12 +6,77 @@ Sections: Added · Changed · Fixed · Security · Removed · Breaking.
 ## [Unreleased]
 
 ### Added
+- 2026-11-21 — **Payment page demo: 4 banks + sample QR codes (development only).** `appsettings.Development.json`
+  (`BankTransfer`) lists Commercial Bank, Bank of Ceylon, People's Bank and Hatton National Bank (HNB) with fake SAMPLE
+  numbers, and LankaQR codes for three of them (People's stays "coming soon" to show that state). The QR images
+  `public/payments/qr/sample-{combank,boc,hnb}.png` say "SAMPLE · NOT FOR PAYMENT" and encode only that text.
+  `content/payment.ts` shows the same samples when the API isn't running — development builds only; production builds
+  and `appsettings.json` keep the [placeholders]. Before launch: real accounts + real LankaQR images in `appsettings.json`
+  (or environment settings), and delete the sample PNGs.
+- 2026-11-21 — **New Contact support page (`/support`).** Left: a wine "Talk to our team" card (same style as the
+  payment page) with Email, WhatsApp and Hotline rows — tap to open the app, **Copy** button on each (numbers not set
+  yet show "Not available yet") — plus support hours, reply time and quick links (How it works, Privacy policy, Delete
+  account). Right: **Send us a message** — topic chips (Payments, Account and login, Verification, Report a member,
+  Technical problem, Other), name, **email (required — we reply there)** and **mobile (optional, the shared
+  `PhoneField` with country picker)**, both pre-filled for members (a stored number like +44… opens on the right
+  country), payment reference (only for Payments),
+  subject, message (1,000 characters), optional screenshot / PDF (≤ 10 MB, drag and drop), inline errors with focus on
+  the first one, then "Message sent" with a ticket number. Sends to planned **`POST /api/support/messages`**
+  (`services/support.ts`): labelled demo in development, "please email us" on the live site until the API exists.
+  The WhatsApp / hotline numbers are still read on the server (`app/support/page.tsx` passes them in). Shared
+  `ui/CopyButton.tsx` (`CopyButton`, `useCopy`), moved out of `BankTransferScreen.tsx`. Hours and reply time are
+  example values in `content/support.ts`. `PhoneField` gained a `hint` prop ("Optional"), like `Input`.
+- 2026-11-21 — **Preview my profile.** New "Preview my profile" button on the dashboard hero (approved members, next
+  to Edit profile) opens **`/profile/preview`**: the member's own profile in the same Profile details layout and the
+  same card members see in search (`ProfileDetail` from `ProfileView.tsx`, new `preview` prop) — public display name
+  (never the full name), approved photo count, private fields (WhatsApp, contact details) hidden. Send interest, Save,
+  Share and Report are replaced by a note. A wine preview bar on top has **Edit profile** and **Exit preview** (→
+  dashboard); Back also exits. Left: **Profile strength** (main photo, 3+ photos, About you 80+ characters, family
+  background) — photo and description tips open the editor, family background points to support; photos still in
+  review are counted separately. The preview reloads after edits (`PROFILE_UPDATED_EVENT` from `EditProfileModal`).
+  Files: `components/profile/ProfilePreviewScreen.tsx`, `app/profile/preview/page.tsx`, `ProfileView.tsx`
+  (`Detail` → exported `ProfileDetail`), `EditProfileModal.tsx`, `DashboardHero.tsx`.
+- 2026-11-21 — **Payment page: Bank accounts and QR code tabs.** The wine "how to pay" card on `/plans/checkout` now
+  has two tabs (shared `SegmentedTabs`, new `tone="onBrand"`). **Bank accounts**: one section per bank (Commercial
+  Bank, Bank of Ceylon, People's Bank) that opens and closes (one open at a time, first open by default); each shows
+  the account number, name, branch, SWIFT with copy buttons and its own "Copy all details". **QR code**: one section
+  per bank with the LankaQR image, "Save QR code" (for paying from the same phone), the 4 scan steps and copyable
+  amount + reference; a bank without an image says "QR code is coming soon". Closed sections are `inert` (no hidden
+  tab stops); ← → Home End move between the tabs. Data from new **`GET /api/payments/methods`**
+  (`BankTransfer:Accounts` + `BankTransfer:QrCodes` in appsettings; old single-account settings still work, and
+  `GET bank-account` now returns the first account). Placeholders in `content/payment.ts` (`BANK_ACCOUNTS`,
+  `PAYMENT_QR`) show only if the API can't be reached. Files: `BankTransferScreen.tsx`, `ui/SegmentedTabs.tsx`
+  (`tone`, `icon`, `idBase` for tab ↔ panel ids, arrow keys), `lib/billing.ts` (`getPaymentMethods`, falls back to
+  `bank-account` on a 404), API `PaymentsController`, `BillingDtos` (`PaymentMethodsDto`, `PaymentQrDto`,
+  `BankAccountDto.Id`), `appsettings.json`.
 - 2026-11-19 — **Web unit tests (S05-T10, TD-13).** Vitest + Testing Library + jsdom (`vitest.config.mts`, `src/test/setup.ts`),
   scripts `npm test` / `npm run test:watch`, 40 tests: `components/ui/Modal.test.tsx` (Modal + ConfirmDialog),
   `lib/storage.test.ts`, `lib/http.test.ts`. New dev dependencies: `vitest`, `@vitejs/plugin-react`, `jsdom`,
   `@testing-library/{react,dom,jest-dom,user-event}`.
 
 ### Changed
+- 2026-11-21 — **Plans page.** Plan cards: fade up one after another on load; on hover / keyboard focus they lift 8 px
+  with a deeper shadow and the tick icons pop in turn; Gold gets a soft glow and a light sweep, Free and Platinum a
+  brand bar growing along the top and a rose border; no movement with "reduce motion". The "Pay with Bank transfer ·
+  Visa · Mastercard · LankaQR · eZ Cash · cards and wallets coming soon" row under the cards is removed (owner: not
+  needed). File: `components/auth/PlansScreen.tsx`.
+- 2026-11-21 — **Dashboard lock cards: more room.** "See who viewed & shortlisted you" and the "unlocks after approval"
+  cards: padding 24/28 → 40/32 on desktop, 12 px between lines, larger icon (56), title `text-h6`, text up to 320 px
+  wide, full-size Upgrade button. Card and blurred content now share one grid cell, so the section grows to fit the card
+  instead of the card spilling over the rows around it. File: `components/sections/dashboard/FeatureGate.tsx`.
+- 2026-11-21 — **Theme switch: circular reveal.** Switching light ↔ dark now grows the new theme as a circle from the
+  toggle (top right) until it covers the farthest corner (bottom left), 650 ms. View Transitions API
+  (`revealTheme` in `ui/Brand.tsx`, `.theme-reveal` rules in `globals.css`, scoped so other transitions are untouched);
+  browsers without it and "reduce motion" switch instantly as before. Same for every `ThemeToggle` (navbar, phone
+  menu, sign-in pages, staff area). While the theme changes, `.theme-switching` turns off every CSS colour fade, so the
+  circle shows the final colours and nothing fades or "blinks" after it. The circle itself is a CSS animation on
+  `::view-transition-new(root)` (`@keyframes theme-reveal`, position from `--reveal-x / -y / -r`), clipped from the
+  first frame to the last — no one-frame flash of the full new theme at the start or end (the earlier script-driven
+  version could show one). A toggle with no box (inside a closed menu) starts the circle from the top-right corner.
+- 2026-11-21 — **Profile details: Share is now a labelled button.** The round icon-only button next to Save is a pill
+  with the classic share symbol (three connected dots, "<" shape) and the word "Share"; same dialog, same login check.
+  iconsax has no such icon, so it's a small shared `ui/ShareIcon.tsx` in the iconsax line style (24 grid, 1.5 stroke).
+  Files: `components/sections/search/ProfileView.tsx`, `components/ui/ShareIcon.tsx`.
 - 2026-11-19 — **`next/image` for static images (S05-T09, TD-15).** 18 `<img>` for files under `public/` → `next/image`:
   `ui/{Brand,Decor,Flag}`, `admin/AdminShell`, `motion/PageLoader`, `home/Hero` (hero photo `fill` + `priority`, bride / groom),
   `dashboard/{DashboardHero,BestMatches}`, `howto/HowToUseScreen`, `tour/{GuidedTourDialog,TourWelcomeCard}`,

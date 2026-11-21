@@ -63,11 +63,33 @@ public class CancelSubscriptionDto
 /// <summary>Our bank account for transfers (S04-T03) — from configuration "BankTransfer", never from the database.</summary>
 public class BankAccountDto
 {
+    /// <summary>Stable key from configuration, e.g. "combank" (the web app uses it to open / close the bank's section).</summary>
+    public string Id { get; set; } = string.Empty;
     public string BankName { get; set; } = string.Empty;
     public string AccountName { get; set; } = string.Empty;
     public string AccountNumber { get; set; } = string.Empty;
     public string Branch { get; set; } = string.Empty;
     public string Swift { get; set; } = string.Empty;
+}
+
+/// <summary>A QR code members can scan from their banking app (LankaQR) — from configuration "BankTransfer:QrCodes".</summary>
+public class PaymentQrDto
+{
+    public string Id { get; set; } = string.Empty;
+    /// <summary>Bank shown on the page, e.g. "Commercial Bank".</summary>
+    public string Name { get; set; } = string.Empty;
+    public string Provider { get; set; } = "LankaQR";
+    public string AccountName { get; set; } = string.Empty;
+    /// <summary>Image of the QR: a path in the web app ("/payments/qr/combank.png") or an https URL. Empty = coming soon.</summary>
+    public string ImageUrl { get; set; } = string.Empty;
+    public string? Note { get; set; }
+}
+
+/// <summary>GET /api/payments/methods — every bank account and QR code we accept (S04-T03 follow-up).</summary>
+public class PaymentMethodsDto
+{
+    public List<BankAccountDto> Accounts { get; set; } = new();
+    public List<PaymentQrDto> QrCodes { get; set; } = new();
 }
 
 /// <summary>POST /api/payments/bank-transfer — start (or reuse) an order. The amount always comes from the price list.</summary>

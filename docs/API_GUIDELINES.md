@@ -23,7 +23,7 @@ https://claude.ai/artifact/LP2mSaiPiJYZCij2bLU1p6 — this file holds the conven
 | `PlansController` `/api/plans` | `GET` → `[{ product, planId, months, days, amountCents, amount, currency, savePercent }]` | anonymous | S04-T01 |
 | `MeController` `/api/me` | `GET subscription` (S04-T02), `GET usage` → `{ planId, periodStart, resetsAt, items: [{ feature, used, limit, remaining }] }`; `GET dashboard` → usage + viewers, interests, matches, shortlistedBy, unread, recentConversations | all | S03-T03, S03-T09 |
 | `BoostsController` `/api/boosts` | `GET me` → `{ active, startsAt, endsAt, daysLeft, totalDays, views, interests, canBuy }` | all | S04-T05 — search results carry `promoted` and list promoted profiles first |
-| `PaymentsController` `/api/payments` | `GET bank-account` (anonymous, from appsettings `BankTransfer`), `POST bank-transfer` `{ product?: plan·boost, planId, months, days? }` (boost: approved + Gold / Platinum, else 403 `KYC_REQUIRED` / 402 `PLAN_REQUIRED`) → `PaymentDto { id, product, planId, months, days, amountCents, amount, currency, reference, status: Pending·AwaitingReview·Approved·Rejected, hasReceipt, receiptFileName, paidOn, memberNote, createdAt, submittedAt, reviewedAt, reviewNote }`, `POST {id}/receipt` (multipart `receipt` ≤ 10 MB, `paidOn` yyyy-mm-dd, `note?`), `GET mine`, `GET {id}/receipt` | all but `bank-account` (receipt: owner / staff, staff views logged) | S04-T03 — 409 `PAYMENT_UNDER_REVIEW` when a receipt is already waiting |
+| `PaymentsController` `/api/payments` | `GET methods` (anonymous) → `{ accounts: [{ id, bankName, accountName, accountNumber, branch, swift }], qrCodes: [{ id, name, provider, accountName, imageUrl, note? }] }` from appsettings `BankTransfer:Accounts` / `BankTransfer:QrCodes` (old single-account keys still read; `imageUrl` only `/…` or `https://…`, else blanked), `GET bank-account` (anonymous, first account — kept for older clients), `POST bank-transfer` `{ product?: plan·boost, planId, months, days? }` (boost: approved + Gold / Platinum, else 403 `KYC_REQUIRED` / 402 `PLAN_REQUIRED`) → `PaymentDto { id, product, planId, months, days, amountCents, amount, currency, reference, status: Pending·AwaitingReview·Approved·Rejected, hasReceipt, receiptFileName, paidOn, memberNote, createdAt, submittedAt, reviewedAt, reviewNote }`, `POST {id}/receipt` (multipart `receipt` ≤ 10 MB, `paidOn` yyyy-mm-dd, `note?`), `GET mine`, `GET {id}/receipt` | all but `methods` and `bank-account` (receipt: owner / staff, staff views logged) | S04-T03 — 409 `PAYMENT_UNDER_REVIEW` when a receipt is already waiting |
 | `PaymentsQueueController` `/api/moderation/payments` | `GET ?status=review·pending·approved·rejected·all`, `POST {id}/approve` `{ note? }`, `POST {id}/reject` `{ reason }` → `StaffPaymentDto` (+ member name, code, phone, current plan, reviewedBy) | `Staff` policy | S04-T04 — approve once (409 `PAYMENT_ALREADY_USED`); member told in-app + SMS |
 | `AccountController` `/api/account` | `POST visibility`, `POST delete/send-code`, `POST delete` | all | S04-T08 — see below |
 | `NotificationsController` `/api/notifications` | `GET`, `GET unread-count`, `POST {id}/read`, `POST read-all` | all | S02-T12 |
@@ -89,6 +89,13 @@ One global exception handler produces these (TD-12). Never leak stack traces or 
 6. Web client function in `src/services/` using the typed fetch helper (TD-04). 7. Update §1 table + `CHANGELOG.md`.
 
 ## Bank transfer payments — built 2026-11-16 (S04-T03 / T04)
+Payment methods (2026-11-21): several bank accounts and LankaQR codes live in appsettings `BankTransfer` →
+`"Accounts": [{ "Id", "BankName", "AccountName", "AccountNumber", "Branch", "Swift" }]` and
+`"QrCodes": [{ "Id", "Name", "Provider", "AccountName", "ImageUrl", "Note" }]`. Put QR images in the web app's
+`public/payments/qr/` and use `"/payments/qr/combank.png"`. Accounts without a number and QR codes without a name are
+left out. Change them per environment (user secrets / environment variables), never in code.
+`appsettings.Development.json` holds 4 SAMPLE banks and 3 sample QR codes (`/payments/qr/sample-*.png`) so the page can
+be tried locally; .NET loads it only when `ASPNETCORE_ENVIRONMENT=Development`. Never copy those values to production.
 The earlier plan (one multipart call with a reference made in the browser) changed: the order comes first so the
 **server** sets the amount and the reference the member types into the transfer. See `PaymentsController` above.
 
@@ -119,3 +126,12 @@ Still planned (owner postponed custom roles, 2026-11-16):
 - Permissions: `dashboard.view`, `reviews.view`, `reviews.decide`, `photos.moderate`, `documents.view`,
   `members.view`, `members.status`, `members.resetPassword`, `payments.verify`, `reports.handle`, `staff.manage`.
   Return the signed-in staff member's permissions in the session so the sidebar can hide what they can't use.
+
+## Planned: support messages (front end ready 2026-11-21)
+`POST /api/support/messages` — multipart, anonymous allowed (members are matched by their token):
+`topic` (payments · account · verification · report · technical · other), `subject` (4–120), `message` (20–1000),
+`name`, `email` (required, the reply goes here), `mobile?` (international, e.g. `+94771234567`), `paymentReference?` (payments), `attachment?` (JPG / PNG / WebP / PDF
+≤ 10 MB, kept private like receipts) → 201 `{ reference: "SUP-4821" }`. Rate-limit by IP and account.
+Staff side (planned): a
+"Support messages" page in the staff area with topic filter, status (New · Answered · Closed) and reply by email.
+Front end: `services/support.ts` (404 → demo in development, "please email us" in production).

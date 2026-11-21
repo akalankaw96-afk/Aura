@@ -1,6 +1,6 @@
 "use client";
 
-import { API_BASE_URL, apiJson, apiRequest, toApiError } from "@/lib/http";
+import { API_BASE_URL, ApiError, apiJson, apiRequest, toApiError } from "@/lib/http";
 
 /**
  * Plans, prices and the member's subscription (Sprint 04). Prices come from the database (amounts in cents);
@@ -69,6 +69,8 @@ export interface Payment {
 }
 
 export interface BankAccount {
+  /** stable key from the API config (e.g. "combank"); older APIs don't send it */
+  id?: string;
   bankName: string;
   accountName: string;
   accountNumber: string;
@@ -76,8 +78,38 @@ export interface BankAccount {
   swift: string;
 }
 
-/** GET /api/payments/bank-account — our account, from the API's configuration. */
+/** GET /api/payments/bank-account — our first account, from the API's configuration (kept for older clients). */
 export const getBankAccount = () => apiJson<BankAccount>("/payments/bank-account", { cache: "no-store", auth: false });
+
+/** A LankaQR (or bank) QR code members can scan from their banking app. */
+export interface PaymentQr {
+  id: string;
+  name: string;
+  provider: string;
+  accountName: string;
+  /** "/payments/qr/combank.png" (web app public folder) or an https URL; empty = not ready yet */
+  imageUrl: string;
+  note?: string;
+}
+
+export interface PaymentMethods {
+  accounts: BankAccount[];
+  qrCodes: PaymentQr[];
+}
+
+/**
+ * GET /api/payments/methods — every bank account + QR code we accept, from the API's configuration.
+ * An API without that endpoint (404) still works: we use its single bank account and show no QR codes.
+ */
+export async function getPaymentMethods(): Promise<PaymentMethods> {
+  try {
+    const m = await apiJson<PaymentMethods>("/payments/methods", { cache: "no-store", auth: false });
+    return { accounts: m.accounts ?? [], qrCodes: m.qrCodes ?? [] };
+  } catch (err) {
+    if (!(err instanceof ApiError) || err.status !== 404) throw err;
+    return { accounts: [await getBankAccount()], qrCodes: [] };
+  }
+}
 
 /** POST /api/payments/bank-transfer — start (or reuse) an order; the server sets the amount and reference. */
 export const createBankTransfer = (planId: "gold" | "platinum", months: number) =>

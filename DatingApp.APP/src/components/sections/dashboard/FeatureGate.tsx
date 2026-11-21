@@ -31,30 +31,32 @@ export function FeatureGate({
   if (!kycLock && !planLock) return <>{children}</>;
 
   return (
-    <div className={cn("relative", className)}>
-      <div aria-hidden inert className="pointer-events-none select-none opacity-60 blur-[3px] saturate-50 transition-all duration-500">
+    // content and card share one grid cell: the section is as tall as the taller of the two, so a roomy card
+    // never spills over the rows above and below
+    <div className={cn("relative grid", className)}>
+      <div aria-hidden inert className="pointer-events-none col-start-1 row-start-1 select-none opacity-60 blur-[3px] saturate-50 transition-all duration-500">
         {children}
       </div>
-      <div className="absolute inset-0 z-10 flex items-center justify-center p-4">
-        <div className="kyc-in flex max-w-sm flex-col items-center gap-2 rounded-xl border border-line bg-surface-card px-6 py-5 text-center shadow-xl">
+      <div className="z-10 col-start-1 row-start-1 flex items-center justify-center p-4 sm:p-6">
+        <div className="kyc-in flex w-full max-w-md flex-col items-center gap-3 rounded-xl border border-line bg-surface-card px-6 py-7 text-center shadow-xl sm:px-10 sm:py-8">
           <span
             className={cn(
-              "kyc-pop flex h-12 w-12 items-center justify-center rounded-full shadow-glow",
+              "kyc-pop mb-1 flex h-14 w-14 items-center justify-center rounded-full shadow-glow",
               planLock ? "bg-premium-fg text-white" : "bg-brand-gradient text-ink-on-brand"
             )}
           >
-            {planLock ? <Crown1 size={22} color="currentColor" /> : <Lock1 size={22} color="currentColor" variant="Bold" />}
+            {planLock ? <Crown1 size={26} color="currentColor" /> : <Lock1 size={26} color="currentColor" variant="Bold" />}
           </span>
-          <p className="text-label-lg text-ink">{planLock ? title ?? "A Gold feature" : title ?? "Unlocks after your profile is approved"}</p>
-          <p className="text-body-sm text-ink-secondary">
+          <p className="text-h6 text-ink">{planLock ? title ?? "A Gold feature" : title ?? "Unlocks after your profile is approved"}</p>
+          <p className="max-w-xs text-body-sm leading-relaxed text-ink-secondary">
             {planLock
               ? text ?? "Upgrade to Gold or Platinum to unlock this."
               : status === "changes"
               ? "Fix the flagged details above and resubmit to unlock this."
-              : "We’re reviewing your profile. This usually takes less than 24 hours."}
+              : "We’re reviewing your profile — this usually takes less than 24 hours."}
           </p>
           {planLock && (
-            <ButtonLink href="/plans" size="sm" className="mt-1" leftIcon={<Crown1 size={16} color="currentColor" />}>
+            <ButtonLink href="/plans" size="md" className="mt-3" leftIcon={<Crown1 size={18} color="currentColor" />}>
               Upgrade to Gold
             </ButtonLink>
           )}

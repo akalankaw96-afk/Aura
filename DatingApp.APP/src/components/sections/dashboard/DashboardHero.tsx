@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import React, { useEffect, useState } from "react";
-import { AddCircle, Crown1, Lock1, Lovely, TickCircle } from "iconsax-react";
+import { AddCircle, Crown1, Eye, Lock1, Lovely, TickCircle } from "iconsax-react";
 import Link from "next/link";
 import { cn } from "@/lib/cn";
 import { Button, ButtonLink } from "@/components/ui/Button";
@@ -87,9 +87,18 @@ export function DashboardHero() {
               </ButtonLink>
             ) : (
               // approved members: only the description and photos can be changed
-              <Button variant="secondary" size="md" onClick={openEditProfile}>
-                {t.dashboard.editProfile}
-              </Button>
+              <>
+                <Button variant="secondary" size="md" onClick={openEditProfile}>
+                  {t.dashboard.editProfile}
+                </Button>
+                {/* see the live profile exactly as other members do */}
+                <Link
+                  href="/profile/preview"
+                  className="flex h-11 items-center gap-2 rounded-full bg-[rgba(255,255,255,0.14)] px-5 text-button-md text-ink-on-brand ring-1 ring-inset ring-[rgba(255,255,255,0.4)] transition-colors hover:bg-[rgba(255,255,255,0.24)]"
+                >
+                  <Eye size={18} color="currentColor" /> {lang === "si" ? "මගේ පැතිකඩ පෙරදසුන" : "Preview my profile"}
+                </Link>
+              </>
             )}
           </div>
         </div>

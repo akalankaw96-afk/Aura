@@ -44,6 +44,8 @@ export const formatMobile = (digits: string) =>
 
 export interface PhoneFieldProps {
   label?: string;
+  /** right side of the label, e.g. "Optional" (same as Input) */
+  hint?: string;
   value: string; // digits only
   onChange: (digits: string) => void;
   /** ISO country (controlled). Leave it out to let the field manage the country itself. */
@@ -57,7 +59,7 @@ export interface PhoneFieldProps {
   compact?: boolean;
 }
 
-export function PhoneField({ label = "Mobile number", value, onChange, country, onCountryChange, helper, error, disabled, autoFocus, compact }: PhoneFieldProps) {
+export function PhoneField({ label = "Mobile number", hint, value, onChange, country, onCountryChange, helper, error, disabled, autoFocus, compact }: PhoneFieldProps) {
   const id = useId();
   const [internal, setInternal] = useState<CountryCode>("lk");
   const iso = country ?? internal;
@@ -70,7 +72,7 @@ export function PhoneField({ label = "Mobile number", value, onChange, country, 
   };
 
   return (
-    <Field label={label} htmlFor={id} helper={helper} error={error}>
+    <Field label={label} hint={hint} htmlFor={id} helper={helper} error={error}>
       <div className="flex gap-2">
         <CountryPicker current={current} onPick={pick} disabled={disabled} />
         <div className={controlShell({ error: !!error, disabled })}>

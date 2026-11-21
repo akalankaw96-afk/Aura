@@ -40,4 +40,27 @@ export const SUPPORT = {
     },
   ],
   unavailable: "Not available yet. Please contact us by email.",
+  /** ⚠️ example values — change to the team's real hours / reply promise */
+  hours: "Mon–Sat, 9.00 am – 6.00 pm",
+  replyTime: "We reply within 24 hours",
+  quickLinks: [
+    { label: "How it works", href: "/how-to-use" },
+    { label: "Privacy policy", href: "/privacy" },
+    { label: "Delete account", href: "/privacy#delete-account" },
+  ],
 } as const;
+
+/** "Send us a message" topics — the API stores the id, staff filter by it. */
+export const SUPPORT_TOPICS = [
+  { id: "payments", label: "Payments" },
+  { id: "account", label: "Account and login" },
+  { id: "verification", label: "Verification" },
+  { id: "report", label: "Report a member" },
+  { id: "technical", label: "Technical problem" },
+  { id: "other", label: "Other" },
+] as const;
+export type SupportTopic = (typeof SUPPORT_TOPICS)[number]["id"];
+
+export const SUPPORT_MESSAGE_MAX = 1000;
+export const SUPPORT_ATTACHMENT_TYPES = ["image/jpeg", "image/png", "image/webp", "application/pdf"];
+export const SUPPORT_ATTACHMENT_MAX_MB = 10;

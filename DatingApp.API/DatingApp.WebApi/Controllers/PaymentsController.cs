@@ -25,12 +25,49 @@ public class PaymentsController : BaseApiController
         _configuration = configuration;
     }
 
-    /// <summary>Our bank account for transfers — from configuration ("BankTransfer"), so it can change without a release.</summary>
+    /// <summary>
+    /// Every bank account and QR code members can pay with — from configuration ("BankTransfer:Accounts" and
+    /// "BankTransfer:QrCodes"), so they can change without a release. The older single-account layout
+    /// ("BankTransfer:BankName" …) still works and comes back as one account.
+    /// </summary>
+    [AllowAnonymous]
+    [HttpGet("methods")]
+    [ProducesResponseType(typeof(PaymentMethodsDto), StatusCodes.Status200OK)]
+    public IActionResult Methods() => Ok(ReadPaymentMethods());
+
+    /// <summary>Our first bank account (kept for older app versions; new clients use GET methods).</summary>
     [AllowAnonymous]
     [HttpGet("bank-account")]
     [ProducesResponseType(typeof(BankAccountDto), StatusCodes.Status200OK)]
-    public IActionResult BankAccount() =>
-        Ok(_configuration.GetSection("BankTransfer").Get<BankAccountDto>() ?? new BankAccountDto());
+    public IActionResult BankAccount() => Ok(ReadPaymentMethods().Accounts.FirstOrDefault() ?? new BankAccountDto());
+
+    private PaymentMethodsDto ReadPaymentMethods()
+    {
+        var section = _configuration.GetSection("BankTransfer");
+        var accounts = section.GetSection("Accounts").Get<List<BankAccountDto>>() ?? new List<BankAccountDto>();
+        if (accounts.Count == 0)
+        {
+            var single = section.Get<BankAccountDto>();
+            if (single != null && !string.IsNullOrWhiteSpace(single.AccountNumber)) accounts.Add(single);
+        }
+
+        var qrCodes = (section.GetSection("QrCodes").Get<List<PaymentQrDto>>() ?? new List<PaymentQrDto>())
+            .Where(q => !string.IsNullOrWhiteSpace(q.Name))
+            .ToList();
+        // only our own files or https images reach the page
+        foreach (var q in qrCodes)
+        {
+            var url = q.ImageUrl?.Trim() ?? string.Empty;
+            var safe = (url.StartsWith('/') && !url.StartsWith("//")) || url.StartsWith("https://", StringComparison.OrdinalIgnoreCase);
+            q.ImageUrl = safe ? url : string.Empty;
+        }
+
+        return new PaymentMethodsDto
+        {
+            Accounts = accounts.Where(a => !string.IsNullOrWhiteSpace(a.AccountNumber)).ToList(),
+            QrCodes = qrCodes,
+        };
+    }
 
     /// <summary>
     /// Start a Gold / Platinum order, or get the open one for the same plan and length. The amount comes from the price

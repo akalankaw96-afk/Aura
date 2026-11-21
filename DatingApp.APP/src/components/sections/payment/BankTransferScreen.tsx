@@ -4,15 +4,18 @@ import React, { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import {
+  ArrowDown2,
   Bank,
   Clock,
   Copy,
   CopySuccess,
   Crown1,
+  DocumentDownload,
   DocumentText,
   DocumentUpload,
   Edit2,
   ReceiptText,
+  ScanBarcode,
   SecuritySafe,
   TickCircle,
   Trash,
@@ -20,13 +23,25 @@ import {
 } from "iconsax-react";
 import { cn } from "@/lib/cn";
 import { MemberShell } from "@/components/layout/MemberShell";
-import { Button, ButtonLink, Input, LoveSticker, PinNote, Textarea, useToast } from "@/components/ui";
+import { Button, ButtonLink, Input, LoveSticker, PinNote, SegmentedTabs, Textarea, useToast } from "@/components/ui";
+import { CopyButton, useCopy } from "@/components/ui/CopyButton";
 import { PhotoSlot } from "@/components/ui/PhotoSlot";
 import { ApiError } from "@/lib/http";
 import { BOOST } from "@/lib/promotion";
-import { createBankTransfer, createBoostTransfer, getBankAccount, getMyPayments, uploadReceipt, type BankAccount, type Payment } from "@/lib/billing";
 import {
-  BANK_ACCOUNT,
+  createBankTransfer,
+  createBoostTransfer,
+  getMyPayments,
+  getPaymentMethods,
+  uploadReceipt,
+  type BankAccount,
+  type Payment,
+  type PaymentMethods,
+  type PaymentQr,
+} from "@/lib/billing";
+import {
+  BANK_ACCOUNTS,
+  PAYMENT_QR,
   PERIODS,
   PLAN_NAME,
   PLAN_PRICES,
@@ -41,7 +56,8 @@ import {
 /**
  * Payment page (/plans/checkout?plan=gold&months=3, or ?product=boost) — phase 1: bank transfer only (S04-T03, T05).
  * 1. Order summary + the member's payment reference (order made by the API: amount from the price list)
- * 2. Bank account card with copy buttons ("Copy all" too) — details from GET /api/payments/bank-account
+ * 2. "How to pay" card: Bank accounts tab (one collapsible section per bank, copy buttons) and QR code tab
+ *    (one collapsible LankaQR code per bank) — from GET /api/payments/methods
  * 3. How to pay — pinned notes, same style as Home → How it works
  * 4. Upload the bank receipt (photo or PDF) → POST /api/payments/{id}/receipt
  * After submit the member sees "Payment under review" on every device (GET /api/payments/mine).
@@ -71,7 +87,7 @@ export function BankTransferScreen() {
   const wantedMonths: Period = (PERIODS as number[]).includes(m) ? (m as Period) : 3;
 
   const [order, setOrder] = useState<Payment | null>(null);
-  const [bank, setBank] = useState<BankAccount>(BANK_ACCOUNT);
+  const [methods, setMethods] = useState<PaymentMethods>({ accounts: BANK_ACCOUNTS, qrCodes: PAYMENT_QR });
   const [underReview, setUnderReview] = useState<Payment | null>(null);
   const [rejected, setRejected] = useState<Payment | null>(null);
   const [replacing, setReplacing] = useState(false);
@@ -81,7 +97,7 @@ export function BankTransferScreen() {
 
   useEffect(() => {
     let cancelled = false;
-    getBankAccount().then((b) => { if (!cancelled) setBank(b); }).catch(() => {});
+    getPaymentMethods().then((m) => { if (!cancelled) setMethods(m); }).catch(() => {});
     (async () => {
       try {
         const mine = (await getMyPayments()).filter((p) => p.product === (isBoost ? "boost" : "plan"));
@@ -151,7 +167,7 @@ export function BankTransferScreen() {
           )}
           {/* top: bank details + order summary (summary first on phones) */}
           <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_380px]">
-            <BankCard bank={bank} amount={amount} reference={reference} onPaid={goToUpload} isBoost={isBoost} />
+            <BankCard methods={methods} amount={amount} reference={reference} onPaid={goToUpload} isBoost={isBoost} />
             <div className="order-first lg:order-none lg:sticky lg:top-28">
               <OrderSummary title={title} isBoost={isBoost} amount={amount} reference={reference} />
             </div>
@@ -175,50 +191,6 @@ export function BankTransferScreen() {
         </div>
       )}
     </MemberShell>
-  );
-}
-
-/* ─────────────────────────── Copy button ─────────────────────────── */
-
-function useCopy() {
-  const toast = useToast();
-  const [copied, setCopied] = useState<string | null>(null);
-  const copy = async (key: string, value: string, label: string) => {
-    try {
-      await navigator.clipboard.writeText(value);
-    } catch {
-      toast.error("Couldn’t copy", `Select the ${label.toLowerCase()} and copy it yourself.`);
-      return;
-    }
-    setCopied(key);
-    toast.success(`${label} copied`);
-    window.setTimeout(() => setCopied((c) => (c === key ? null : c)), 1800);
-  };
-  return { copied, copy };
-}
-
-function copyButtonTone(onBrand: boolean, done: boolean) {
-  if (onBrand) {
-    return done ? "bg-white text-success-fg" : "bg-[rgba(255,255,255,0.18)] text-white ring-1 ring-inset ring-[rgba(255,255,255,0.35)] hover:bg-[rgba(255,255,255,0.28)]";
-  }
-  return done ? "bg-success-bg text-success-fg" : "bg-brand-subtle text-brand-text hover:bg-brand hover:text-ink-on-brand";
-}
-
-function CopyButton({ done, onClick, label, onBrand = false }: Readonly<{ done: boolean; onClick: () => void; label: string; onBrand?: boolean }>) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-label={`Copy ${label}`}
-      title={`Copy ${label}`}
-      className={cn(
-        "flex h-9 shrink-0 items-center gap-1.5 rounded-full px-3 text-label-sm transition-[background-color,color,transform] duration-150 active:scale-95 focus-visible:outline-none focus-visible:shadow-ring-brand",
-        copyButtonTone(onBrand, done),
-      )}
-    >
-      {done ? <CopySuccess size={16} color="currentColor" /> : <Copy size={16} color="currentColor" />}
-      {done ? "Copied" : "Copy"}
-    </button>
   );
 }
 
@@ -270,74 +242,322 @@ function OrderSummary({ title, isBoost, amount, reference }: Readonly<{ title: s
 
 /* ─────────────────────────── Bank account card ─────────────────────────── */
 
-function BankCard({ bank, amount, reference, onPaid, isBoost }: Readonly<{ bank: BankAccount; amount: number; reference: string; onPaid: () => void; isBoost: boolean }>) {
+type PayTab = "bank" | "qr";
+
+const keyOf = (x: { id?: string }, i: number) => x.id || `item-${i}`;
+
+/** "Commercial Bank" → CB · "Bank of Ceylon (BOC)" → BOC · "People’s Bank" → PB */
+function monogram(name: string) {
+  const inBrackets = /\(([^)]+)\)/.exec(name)?.[1];
+  if (inBrackets) return inBrackets.slice(0, 3).toUpperCase();
+  return name
+    .split(/\s+/)
+    .filter((w) => /^[A-Za-z]/.test(w) && !["of", "and", "the"].includes(w.toLowerCase()))
+    .map((w) => w[0])
+    .join("")
+    .slice(0, 3)
+    .toUpperCase();
+}
+
+/** Collapsed-row hint: "Account ending 4521" (or the branch while the number is a placeholder) */
+function accountHint(a: BankAccount) {
+  const digits = a.accountNumber.replace(/\D/g, "");
+  if (digits.length >= 4 && !a.accountNumber.startsWith("[")) return `Account ending ${digits.slice(-4)}`;
+  return a.branch;
+}
+
+/** Only our own files or https images (the URL comes from the API config). */
+const safeImage = (url?: string) => (url && (url.startsWith("/") || url.startsWith("https://")) ? url : "");
+
+function BankCard({ methods, amount, reference, onPaid, isBoost }: Readonly<{ methods: PaymentMethods; amount: number; reference: string; onPaid: () => void; isBoost: boolean }>) {
   const { copied, copy } = useCopy();
-  const rows: { key: string; label: string; value: string; big?: boolean }[] = [
-    { key: "acc", label: "Account number", value: bank.accountNumber, big: true },
-    { key: "name", label: "Account name", value: bank.accountName },
-    { key: "bank", label: "Bank", value: bank.bankName },
-    { key: "branch", label: "Branch", value: bank.branch },
-    { key: "swift", label: "SWIFT (from overseas)", value: bank.swift },
-  ];
-  const all = [
-    `Bank: ${bank.bankName}`,
-    `Account name: ${bank.accountName}`,
-    `Account number: ${bank.accountNumber}`,
-    `Branch: ${bank.branch}`,
-    `Amount: ${lkr(amount)}`,
-    `Reference: ${reference}`,
-  ].join("\n");
+  const { accounts, qrCodes } = methods;
+  const [tab, setTab] = useState<PayTab>("bank");
+  const [openBank, setOpenBank] = useState<string | null>(accounts.length ? keyOf(accounts[0], 0) : null);
+  const [openQr, setOpenQr] = useState<string | null>(qrCodes.length ? keyOf(qrCodes[0], 0) : null);
+
+  // real accounts replace the placeholders after load: keep the first one open
+  useEffect(() => {
+    setOpenBank(accounts.length ? keyOf(accounts[0], 0) : null);
+    setOpenQr(qrCodes.length ? keyOf(qrCodes[0], 0) : null);
+  }, [accounts, qrCodes]);
 
   return (
-    <section aria-label="Bank account details" className="relative isolate overflow-hidden rounded-xl bg-[linear-gradient(135deg,var(--rose-950)_0%,var(--rose-900)_55%,var(--rose-800)_100%)] p-5 text-white shadow-xl ring-1 ring-inset ring-[rgba(255,255,255,0.08)] sm:p-8">
+    <section aria-label="How to pay us" className="relative isolate overflow-hidden rounded-xl bg-[linear-gradient(135deg,var(--rose-950)_0%,var(--rose-900)_55%,var(--rose-800)_100%)] p-5 text-white shadow-xl ring-1 ring-inset ring-[rgba(255,255,255,0.08)] sm:p-8">
       {/* decor: soft rings + bank watermark */}
       <span aria-hidden className="pointer-events-none absolute -right-16 -top-20 -z-10 h-64 w-64 rounded-full border-[28px] border-[rgba(255,255,255,0.08)]" />
       <span aria-hidden className="pointer-events-none absolute -bottom-24 left-1/3 -z-10 h-56 w-56 rounded-full bg-[rgba(255,255,255,0.06)]" />
       <Bank aria-hidden size={140} color="currentColor" className="pointer-events-none absolute -bottom-6 right-4 -z-10 text-white opacity-10" />
 
-      <div className="flex flex-wrap items-center gap-3">
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-4">
         <span className="flex h-11 w-11 items-center justify-center rounded-full bg-[linear-gradient(135deg,var(--gold-300),var(--gold-500))] text-gold-900 shadow-md">
-          <Bank size={22} color="currentColor" variant="Bold" />
+          {tab === "bank" ? <Bank size={22} color="currentColor" variant="Bold" /> : <ScanBarcode size={22} color="currentColor" variant="Bold" />}
         </span>
         <div className="min-w-0 flex-1">
-          <p className="text-overline uppercase text-[rgba(255,255,255,0.8)]">Bank transfer</p>
-          <h2 className="text-h5">Our bank account</h2>
+          <p className="text-overline uppercase text-[rgba(255,255,255,0.8)]">{tab === "bank" ? "Bank transfer" : "Scan & pay"}</p>
+          <h2 className="text-h5">{tab === "bank" ? "Our bank accounts" : "Pay with a QR code"}</h2>
         </div>
-        <button
-          type="button"
-          onClick={() => copy("all", all, "Bank details")}
-          className="flex h-10 items-center gap-2 rounded-full bg-white px-4 text-button-sm text-rose-700 shadow-md transition-transform hover:-translate-y-0.5 active:scale-95"
-        >
-          {copied === "all" ? <CopySuccess size={18} color="currentColor" /> : <Copy size={18} color="currentColor" />}
-          {copied === "all" ? "Copied" : "Copy all details"}
-        </button>
+        <SegmentedTabs
+          tone="onBrand"
+          idBase="pay"
+          label="How to pay"
+          value={tab}
+          onChange={setTab}
+          className="max-sm:w-full max-sm:[&>button]:flex-1 max-sm:[&>button]:justify-center"
+          tabs={[
+            { id: "bank" as PayTab, label: "Bank accounts", count: accounts.length, icon: <Bank size={16} color="currentColor" /> },
+            { id: "qr" as PayTab, label: "QR code", count: qrCodes.length, icon: <ScanBarcode size={16} color="currentColor" /> },
+          ]}
+        />
       </div>
 
-      <dl className="mt-6 grid gap-3 sm:grid-cols-2">
-        {rows.map((r) => (
-          <div
-            key={r.key}
-            className={cn(
-              "flex items-center gap-3 rounded-lg bg-[rgba(255,255,255,0.07)] px-4 py-3 ring-1 ring-inset ring-[rgba(255,255,255,0.12)] backdrop-blur-[6px]",
-              r.big && "sm:col-span-2",
-            )}
-          >
-            <div className="min-w-0 flex-1">
-              <dt className="text-label-sm text-[rgba(255,255,255,0.75)]">{r.label}</dt>
-              <dd className={cn("break-words", r.big ? "font-mono text-h3 tracking-[0.08em]" : "text-body-lg font-semibold")}>{r.value}</dd>
-            </div>
-            <CopyButton onBrand done={copied === r.key} onClick={() => copy(r.key, r.value.replace(/\s/g, r.big ? "" : " "), r.label)} label={r.label.toLowerCase()} />
-          </div>
-        ))}
-      </dl>
+      <div role="tabpanel" id={`pay-panel-${tab}`} aria-labelledby={`pay-tab-${tab}`} className="mt-6 flex flex-col gap-3">
+        {tab === "bank" &&
+          (accounts.length ? (
+            <>
+              <p className="text-body-sm text-[rgba(255,255,255,0.8)]">Pay into any one of these accounts. Open a bank to see its details.</p>
+              {accounts.map((a, i) => {
+                const k = keyOf(a, i);
+                return (
+                  <PayAccordion
+                    key={k}
+                    id={`bank-${k}`}
+                    open={openBank === k}
+                    onToggle={() => setOpenBank((o) => (o === k ? null : k))}
+                    mark={monogram(a.bankName)}
+                    title={a.bankName}
+                    subtitle={accountHint(a)}
+                  >
+                    <BankDetails account={a} k={k} amount={amount} reference={reference} copied={copied} copy={copy} />
+                  </PayAccordion>
+                );
+              })}
+            </>
+          ) : (
+            <EmptyMethod text="Bank details aren’t available right now. Please try again soon, or talk to support." />
+          ))}
 
-      <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-center">
-        <p className="flex-1 text-body-sm text-[rgba(255,255,255,0.85)]">Transferred the money? Upload the receipt so we can {isBoost ? "promote your profile" : "activate your plan"}.</p>
+        {tab === "qr" &&
+          (qrCodes.length ? (
+            <>
+              <p className="text-body-sm text-[rgba(255,255,255,0.8)]">Scan with your bank app (LankaQR). Open a bank to see its QR code.</p>
+              {qrCodes.map((q, i) => {
+                const k = keyOf(q, i);
+                return (
+                  <PayAccordion
+                    key={k}
+                    id={`qr-${k}`}
+                    open={openQr === k}
+                    onToggle={() => setOpenQr((o) => (o === k ? null : k))}
+                    mark={monogram(q.name)}
+                    title={q.name}
+                    subtitle={safeImage(q.imageUrl) ? `${q.provider} · scan to pay` : `${q.provider} · coming soon`}
+                  >
+                    <QrDetails qr={q} k={k} amount={amount} reference={reference} copied={copied} copy={copy} />
+                  </PayAccordion>
+                );
+              })}
+            </>
+          ) : (
+            <EmptyMethod text="QR payments are coming soon. Please use a bank account for now." action={{ label: "See bank accounts", onClick: () => setTab("bank") }} />
+          ))}
+      </div>
+
+      <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center">
+        <p className="flex-1 text-body-sm text-[rgba(255,255,255,0.85)]">Paid? Upload the receipt so we can {isBoost ? "promote your profile" : "activate your plan"}.</p>
         <Button variant="white" size="md" className="bg-white text-rose-700 hover:bg-rose-50" onClick={onPaid} rightIcon={<DocumentUpload size={18} color="currentColor" />}>
           I’ve paid, upload receipt
         </Button>
       </div>
     </section>
+  );
+}
+
+/** One bank / QR row on the wine card: tap the header to open or close it (height animates, hidden content is inert). */
+function PayAccordion({
+  id,
+  open,
+  onToggle,
+  mark,
+  title,
+  subtitle,
+  children,
+}: Readonly<{ id: string; open: boolean; onToggle: () => void; mark: string; title: string; subtitle: string; children: React.ReactNode }>) {
+  return (
+    <div
+      className={cn(
+        "rounded-lg ring-1 ring-inset backdrop-blur-[6px] transition-colors duration-300",
+        open ? "bg-[rgba(255,255,255,0.1)] ring-[rgba(255,255,255,0.24)]" : "bg-[rgba(255,255,255,0.05)] ring-[rgba(255,255,255,0.12)] hover:bg-[rgba(255,255,255,0.08)]",
+      )}
+    >
+      <h3>
+        <button
+          type="button"
+          id={`${id}-head`}
+          aria-expanded={open}
+          aria-controls={`${id}-body`}
+          onClick={onToggle}
+          className="flex w-full items-center gap-3 rounded-lg px-4 py-3.5 text-left focus-visible:outline-none focus-visible:shadow-ring-brand"
+        >
+          <span
+            aria-hidden
+            className={cn(
+              "flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-label-sm font-bold tracking-wide transition-colors duration-300",
+              open ? "bg-[linear-gradient(135deg,var(--gold-300),var(--gold-500))] text-gold-900 shadow-md" : "bg-[rgba(255,255,255,0.14)] text-white",
+            )}
+          >
+            {mark}
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block text-label-lg">{title}</span>
+            <span className="block truncate text-body-xs text-[rgba(255,255,255,0.72)]">{subtitle}</span>
+          </span>
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[rgba(255,255,255,0.12)]">
+            <ArrowDown2 size={16} color="currentColor" className={cn("transition-transform duration-300 motion-reduce:transition-none", open && "rotate-180")} />
+          </span>
+        </button>
+      </h3>
+      <section
+        id={`${id}-body`}
+        aria-labelledby={`${id}-head`}
+        className={cn("grid transition-[grid-template-rows] duration-300 ease-out motion-reduce:transition-none", open ? "grid-rows-[1fr]" : "grid-rows-[0fr]")}
+      >
+        <div className="min-h-0 overflow-hidden" inert={!open}>
+          <div className="px-4 pb-4">{children}</div>
+        </div>
+      </section>
+    </div>
+  );
+}
+
+type CopyFn = (key: string, value: string, label: string) => void | Promise<void>;
+
+function BankDetails({ account: a, k, amount, reference, copied, copy }: Readonly<{ account: BankAccount; k: string; amount: number; reference: string; copied: string | null; copy: CopyFn }>) {
+  const rows: { key: string; label: string; value: string; big?: boolean }[] = [
+    { key: "acc", label: "Account number", value: a.accountNumber, big: true },
+    { key: "name", label: "Account name", value: a.accountName },
+    { key: "branch", label: "Branch", value: a.branch },
+    { key: "swift", label: "SWIFT (from overseas)", value: a.swift },
+  ];
+  const all = [
+    `Bank: ${a.bankName}`,
+    `Account name: ${a.accountName}`,
+    `Account number: ${a.accountNumber}`,
+    `Branch: ${a.branch}`,
+    `Amount: ${lkr(amount)}`,
+    `Reference: ${reference}`,
+  ].join("\n");
+  const allKey = `${k}-all`;
+  return (
+    <div className="flex flex-col gap-3 border-t border-[rgba(255,255,255,0.12)] pt-4">
+      <dl className="grid gap-3 sm:grid-cols-2">
+        {rows
+          .filter((r) => r.value)
+          .map((r) => (
+            <div
+              key={r.key}
+              className={cn("flex items-center gap-3 rounded-lg bg-[rgba(255,255,255,0.07)] px-4 py-3 ring-1 ring-inset ring-[rgba(255,255,255,0.12)]", r.big && "sm:col-span-2")}
+            >
+              <div className="min-w-0 flex-1">
+                <dt className="text-label-sm text-[rgba(255,255,255,0.75)]">{r.label}</dt>
+                <dd className={cn("break-words", r.big ? "font-mono text-h5 tracking-[0.06em] sm:text-h3 sm:tracking-[0.08em]" : "text-body-lg font-semibold")}>{r.value}</dd>
+              </div>
+              <CopyButton onBrand done={copied === `${k}-${r.key}`} onClick={() => copy(`${k}-${r.key}`, r.value.replace(/\s/g, r.big ? "" : " "), r.label)} label={r.label.toLowerCase()} />
+            </div>
+          ))}
+      </dl>
+      <button
+        type="button"
+        onClick={() => copy(allKey, all, `${a.bankName} details`)}
+        className="flex h-10 items-center gap-2 self-start rounded-full bg-white px-4 text-button-sm text-rose-700 shadow-md transition-transform hover:-translate-y-0.5 active:scale-95"
+      >
+        {copied === allKey ? <CopySuccess size={18} color="currentColor" /> : <Copy size={18} color="currentColor" />}
+        {copied === allKey ? "Copied" : "Copy all details"}
+      </button>
+    </div>
+  );
+}
+
+function QrDetails({ qr, k, amount, reference, copied, copy }: Readonly<{ qr: PaymentQr; k: string; amount: number; reference: string; copied: string | null; copy: CopyFn }>) {
+  const src = safeImage(qr.imageUrl);
+  if (!src) {
+    return (
+      <div className="flex flex-col items-center gap-3 border-t border-[rgba(255,255,255,0.12)] pt-4 text-center sm:flex-row sm:text-left">
+        <span className="flex h-16 w-16 shrink-0 items-center justify-center rounded-lg border-2 border-dashed border-[rgba(255,255,255,0.3)] bg-[rgba(255,255,255,0.05)]">
+          <ScanBarcode size={28} color="currentColor" className="opacity-80" />
+        </span>
+        <div>
+          <p className="text-label-lg">{qr.name} QR code is coming soon</p>
+          <p className="text-body-sm text-[rgba(255,255,255,0.75)]">Please pay into one of our bank accounts for now.</p>
+        </div>
+      </div>
+    );
+  }
+  const steps = [
+    "Open your bank app and choose Scan / LankaQR.",
+    "Scan this code. On a phone, save it and pick it from your gallery.",
+    `Enter the exact amount: ${lkr(amount)}.`,
+    `Type ${reference} in the remarks / reference box.`,
+  ];
+  return (
+    <div className="grid gap-5 border-t border-[rgba(255,255,255,0.12)] pt-4 sm:grid-cols-[200px_minmax(0,1fr)] sm:items-start">
+      <div className="flex flex-col items-center gap-3">
+        <div className="rounded-lg bg-white p-3 shadow-lg">
+          {/* eslint-disable-next-line @next/next/no-img-element -- the URL comes from the API config */}
+          <img src={src} alt={`${qr.provider} QR code for ${qr.name}, paid to ${qr.accountName}`} width={176} height={176} className="h-44 w-44 object-contain" />
+        </div>
+        <a
+            href={src}
+            download={`vikasitha-${k}-qr.png`}
+            className="flex h-10 items-center gap-2 rounded-full bg-white px-4 text-button-sm text-rose-700 shadow-md transition-transform hover:-translate-y-0.5 active:scale-95"
+          >
+          <DocumentDownload size={18} color="currentColor" /> Save QR code
+        </a>
+      </div>
+      <div className="flex min-w-0 flex-col gap-3">
+        <p className="text-body-sm text-[rgba(255,255,255,0.8)]">
+          Paid to <b className="text-white">{qr.accountName}</b>
+          {qr.note ? ` · ${qr.note}` : ""}
+        </p>
+        <ol className="flex flex-col gap-2">
+          {steps.map((t, i) => (
+            <li key={t} className="flex items-start gap-3 text-body-sm">
+              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[rgba(255,255,255,0.14)] text-label-sm">{i + 1}</span>
+              <span className="pt-0.5">{t}</span>
+            </li>
+          ))}
+        </ol>
+        <div className="grid gap-2 sm:grid-cols-2">
+          <QrCopyTile label="Amount" value={lkr(amount)} done={copied === `${k}-amount`} onCopy={() => copy(`${k}-amount`, String(amount), "Amount")} />
+          <QrCopyTile label="Reference" value={reference} done={copied === `${k}-ref`} onCopy={() => copy(`${k}-ref`, reference, "Reference")} mono />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function QrCopyTile({ label, value, done, onCopy, mono }: Readonly<{ label: string; value: string; done: boolean; onCopy: () => void; mono?: boolean }>) {
+  return (
+    <div className="flex items-center gap-2 rounded-lg bg-[rgba(255,255,255,0.07)] px-3 py-2.5 ring-1 ring-inset ring-[rgba(255,255,255,0.12)]">
+      <div className="min-w-0 flex-1">
+        <p className="text-label-sm text-[rgba(255,255,255,0.75)]">{label}</p>
+        <p className={cn("truncate text-label-lg", mono && "font-mono tracking-wide")}>{value}</p>
+      </div>
+      <CopyButton onBrand done={done} onClick={onCopy} label={label.toLowerCase()} />
+    </div>
+  );
+}
+
+function EmptyMethod({ text, action }: Readonly<{ text: string; action?: { label: string; onClick: () => void } }>) {
+  return (
+    <div className="flex flex-col items-start gap-3 rounded-lg border border-dashed border-[rgba(255,255,255,0.3)] bg-[rgba(255,255,255,0.05)] p-5 sm:flex-row sm:items-center">
+      <p className="flex-1 text-body-sm text-[rgba(255,255,255,0.85)]">{text}</p>
+      {action && (
+        <button type="button" onClick={action.onClick} className="h-10 rounded-full bg-white px-4 text-button-sm text-rose-700 shadow-md">
+          {action.label}
+        </button>
+      )}
+    </div>
   );
 }
 

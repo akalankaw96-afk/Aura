@@ -17,6 +17,8 @@ export type { OtpState } from "./OtpInput";
 export { Checkbox } from "./Checkbox";
 export { Chip } from "./Chip";
 export { Badge } from "./Badge";
+export { CopyButton, useCopy } from "./CopyButton";
+export { ShareIcon } from "./ShareIcon";
 export type { BadgeTone } from "./Badge";
 export { Alert } from "./Alert";
 export { StatusIcon } from "./StatusIcon";

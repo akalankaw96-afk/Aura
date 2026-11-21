@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import React, { useEffect, useRef, useState } from "react";
+import { flushSync } from "react-dom";
 import Link from "next/link";
 import { Global, Moon, Sun1 } from "iconsax-react";
 import { cn } from "@/lib/cn";
@@ -104,6 +105,41 @@ export function LanguageSwitch({ surface = "default" }: { surface?: Surface }) {
    One 40px round button (no border): 32px inner circle with the current
    mode icon (sun / moon). Default = gradient circle, white icon; Glass =
    white 14 % shell, white circle, brand icon. Click switches the mode. */
+type ViewTransitionDoc = Document & { startViewTransition?: (cb: () => void) => { finished: Promise<void> } };
+
+/**
+ * Theme switch with a circular reveal: the new theme grows from the toggle (top right) until it covers the
+ * farthest corner (bottom left), one pass. The circle is a CSS animation on ::view-transition-new(root)
+ * (`.theme-reveal` in globals.css), so it is clipped from the very first frame to the last — no flash of the full
+ * new theme before it starts or after it ends. Browsers without View Transitions, and "reduce motion", switch at once.
+ */
+function revealTheme(origin: HTMLElement, apply: () => void) {
+  const doc = document as ViewTransitionDoc;
+  const root = document.documentElement;
+  const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  // .theme-switching turns off every colour fade while the theme changes, so nothing fades again afterwards
+  root.classList.add("theme-switching");
+  const done = () => requestAnimationFrame(() => root.classList.remove("theme-switching", "theme-reveal"));
+  if (!doc.startViewTransition || reduce) {
+    apply();
+    done();
+    return;
+  }
+  const r = origin.getBoundingClientRect();
+  // hidden toggle (no box) → start from the top-right corner
+  const x = r.width ? r.left + r.width / 2 : window.innerWidth;
+  const y = r.height ? r.top + r.height / 2 : 0;
+  const radius = Math.ceil(Math.hypot(Math.max(x, window.innerWidth - x), Math.max(y, window.innerHeight - y)));
+  root.style.setProperty("--reveal-x", `${x}px`);
+  root.style.setProperty("--reveal-y", `${y}px`);
+  root.style.setProperty("--reveal-r", `${radius}px`);
+  root.classList.add("theme-reveal");
+  doc
+    .startViewTransition(apply)
+    .finished.catch(() => undefined)
+    .finally(done);
+}
+
 export function ThemeToggle({ surface = "default" }: { surface?: Surface }) {
   const [dark, setDark] = useState(false);
 
@@ -111,12 +147,15 @@ export function ThemeToggle({ surface = "default" }: { surface?: Surface }) {
     setDark(document.documentElement.getAttribute("data-theme") === "dark");
   }, []);
 
-  const toggle = () => {
+  const toggle = (e: React.MouseEvent<HTMLButtonElement>) => {
     const next = !dark;
-    setDark(next);
-    if (next) document.documentElement.setAttribute("data-theme", "dark");
-    else document.documentElement.removeAttribute("data-theme");
-    storage.set(KEYS.theme, next ? "dark" : "light");
+    const apply = () => {
+      flushSync(() => setDark(next)); // the icon is part of the "after" snapshot
+      if (next) document.documentElement.setAttribute("data-theme", "dark");
+      else document.documentElement.removeAttribute("data-theme");
+      storage.set(KEYS.theme, next ? "dark" : "light");
+    };
+    revealTheme(e.currentTarget, apply);
   };
 
   const Icon = dark ? Moon : Sun1;

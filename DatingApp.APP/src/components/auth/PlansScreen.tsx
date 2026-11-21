@@ -111,15 +111,35 @@ export function PlansScreen() {
 
       {/* plan cards — same Pricing Card spec as Home (padding 32, gap 24, radius xl) */}
       <div className="mx-auto grid w-full max-w-xl gap-6 lg:max-w-none lg:grid-cols-3">
-        {PLANS.map((plan) => {
+        {PLANS.map((plan, idx) => {
           const featured = plan.id === "gold";
           const isCurrent = current === plan.id;
           const price = plan.id === "free" ? 0 : PRICES[plan.id][period];
           return (
             <article
               key={plan.id}
-              className={cn("flex min-w-0 flex-col gap-6 rounded-xl p-6 sm:p-8", featured ? "bg-brand-strong text-ink-on-brand shadow-xl" : "border border-line bg-surface-card shadow-sm")}
+              style={{ "--enter-delay": `${120 + idx * 110}ms` } as React.CSSProperties}
+              className={cn(
+                // hover / keyboard focus: lift + deeper shadow (no movement with "reduce motion")
+                "enter group relative isolate flex min-w-0 flex-col gap-6 overflow-hidden rounded-xl p-6 transition-[transform,box-shadow,border-color] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] hover:-translate-y-2 focus-within:-translate-y-2 motion-reduce:hover:translate-y-0 motion-reduce:focus-within:translate-y-0 sm:p-8",
+                featured
+                  ? "bg-brand-strong text-ink-on-brand shadow-xl hover:shadow-[0_24px_60px_-12px_rgba(190,24,93,0.55)] focus-within:shadow-[0_24px_60px_-12px_rgba(190,24,93,0.55)]"
+                  : "border border-line bg-surface-card shadow-sm hover:border-brand-focus hover:shadow-xl focus-within:border-brand-focus focus-within:shadow-xl",
+              )}
             >
+              {featured ? (
+                <>
+                  {/* soft glow + light sweep across the Gold card */}
+                  <span aria-hidden className="pointer-events-none absolute -right-20 -top-24 -z-10 h-64 w-64 rounded-full bg-[radial-gradient(circle,rgba(253,224,171,0.35),transparent_65%)] opacity-60 transition-opacity duration-500 group-hover:opacity-100" />
+                  <span
+                    aria-hidden
+                    className="pointer-events-none absolute inset-y-0 left-0 z-10 w-1/3 -translate-x-[150%] -skew-x-12 bg-[linear-gradient(90deg,transparent,rgba(255,255,255,0.28),transparent)] transition-transform duration-[900ms] ease-out group-hover:translate-x-[420%] motion-reduce:hidden"
+                  />
+                </>
+              ) : (
+                /* brand bar grows along the top edge */
+                <span aria-hidden className="pointer-events-none absolute inset-x-0 top-0 h-1 origin-left scale-x-0 bg-brand-gradient transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:scale-x-100 group-focus-within:scale-x-100" />
+              )}
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <h2 className="text-h5">{plan.name}</h2>
                 {featured && (
@@ -131,9 +151,19 @@ export function PlansScreen() {
               </div>
               <p className={cn("text-body-md", featured ? "text-ink-on-brand" : "text-ink-secondary")}>{isCurrent ? "Your current plan" : plan.id === "free" ? "Basic access" : plan.tagline}</p>
               <ul className="flex flex-col gap-3">
-                {plan.features.map((f) => (
+                {plan.features.map((f, i) => (
                   <li key={f} className={cn("flex items-center gap-2 text-body-md", featured ? "text-ink-on-brand" : "text-ink")}>
-                    <TickCircle size={20} color="currentColor" className={featured ? "text-ink-on-brand" : "text-success-fg"} /> {f}
+                    <TickCircle
+                      size={20}
+                      color="currentColor"
+                      // ticks pop one after another on hover
+                      style={{ transitionDelay: `${i * 45}ms` }}
+                      className={cn(
+                        "shrink-0 transition-transform duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)] group-hover:scale-125 motion-reduce:group-hover:scale-100",
+                        featured ? "text-ink-on-brand" : "text-success-fg",
+                      )}
+                    />{" "}
+                    {f}
                   </li>
                 ))}
               </ul>
@@ -158,17 +188,6 @@ export function PlansScreen() {
             </article>
           );
         })}
-      </div>
-
-      <div className="flex flex-wrap items-center justify-center gap-2 text-body-xs text-ink-tertiary">
-        Pay with
-        <span className="rounded-sm border border-brand-focus bg-brand-subtle px-3 py-1.5 font-semibold text-brand-text">Bank transfer</span>
-        {["Visa", "Mastercard", "LankaQR", "eZ Cash"].map((m) => (
-          <span key={m} className="rounded-sm border border-line bg-surface-card px-3 py-1.5 text-ink-tertiary opacity-70">
-            {m}
-          </span>
-        ))}
-        <span className="text-ink-tertiary">· cards and wallets coming soon</span>
       </div>
 
       {/* FAQ — same FAQ Item spec as Home */}

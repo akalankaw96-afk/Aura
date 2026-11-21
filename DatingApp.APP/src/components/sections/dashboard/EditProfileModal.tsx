@@ -31,6 +31,10 @@ const OPEN_EVENT = "vk-edit-profile";
 const MAX_PHOTOS = 6;
 const MAX_ABOUT = 500;
 
+/** Fired after the description or photos change, so open views (e.g. /profile/preview) can reload. */
+export const PROFILE_UPDATED_EVENT = "vk-profile-updated";
+const announceUpdate = () => window.dispatchEvent(new Event(PROFILE_UPDATED_EVENT));
+
 /** Opens the editor from anywhere (hero button, profile-strength todos). */
 export function openEditProfile(tab: Tab | React.MouseEvent = "about") {
   window.dispatchEvent(new CustomEvent(OPEN_EVENT, { detail: typeof tab === "string" ? tab : "about" }));
@@ -52,6 +56,7 @@ export function EditProfileModal() {
   const reloadPhotos = async () => {
     try {
       setPhotos((await listMyPhotos()).filter((p) => p.status !== "Rejected" || p.isMain));
+      announceUpdate();
     } catch (err) {
       log.warn("photos not refreshed (offline?) — keeping what we have", err);
     }
@@ -141,6 +146,7 @@ export function EditProfileModal() {
       setSavedAbout(about.trim());
       close();
       toast.success("Profile updated", "Your description is live.");
+      announceUpdate();
     } catch (err) {
       toast.error("Couldn’t save", err instanceof Error ? err.message : "Please try again.");
     } finally {

@@ -4,9 +4,10 @@ import { SUPPORT } from "@/content/support";
 
 export const metadata: Metadata = {
   title: "Contact support | Vikasitha",
-  description: SUPPORT.subtitle,
+  description: "Questions about your account, verification or payments? Contact the Vikasitha support team.",
 };
 
 export default function SupportPage() {
-  return <SupportScreen />;
+  // read here (server): SUPPORT_WHATSAPP_NUMBER / SUPPORT_HOTLINE_NUMBER aren't available in the browser
+  return <SupportScreen channels={SUPPORT.channels} />;
 }

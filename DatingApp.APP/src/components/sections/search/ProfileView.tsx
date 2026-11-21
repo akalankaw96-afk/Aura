@@ -14,6 +14,7 @@ import {
   Flag as FlagIcon,
   Gallery,
   Heart,
+  InfoCircle,
   Location,
   Lock1,
   Maximize4,
@@ -21,7 +22,6 @@ import {
   Profile,
   Ruler,
   SearchNormal1,
-  Share,
   Sms,
   Star1,
   Teacher,
@@ -39,6 +39,7 @@ import { ApiError } from "@/lib/http";
 import { useRouter } from "next/navigation";
 import { requireMember, useSignedIn } from "@/lib/session";
 import { Badge } from "@/components/ui/Badge";
+import { ShareIcon } from "@/components/ui/ShareIcon";
 import { BackButton } from "@/components/ui/BackButton";
 import { Button } from "@/components/ui/Button";
 import { Select } from "@/components/ui/Select";
@@ -208,7 +209,7 @@ export function ProfileView({
         </section>
 
         {/* Right — profile detail */}
-          <Detail key={selected.id} p={selected} x={extrasById[selected.id]} onInterest={onInterest} />
+          <ProfileDetail key={selected.id} p={selected} x={extrasById[selected.id]} onInterest={onInterest} />
         </div>
       </main>
     </>
@@ -286,7 +287,16 @@ function LockedRow({ icon: Icon, label, placeholder, hint, onOpen }: { icon: Rea
 const iconButton =
   "flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-line bg-surface-card text-brand shadow-xs transition-colors hover:border-brand hover:bg-brand-subtle focus-visible:shadow-ring-brand active:scale-95";
 
-function Detail({ p, x, onInterest }: { p: ViewProfile; x?: ProfileExtras; onInterest: (p: ViewProfile) => boolean | Promise<boolean> }) {
+/**
+ * The full profile card (photo, summary, sections). Also used on /profile/preview with `preview`: the member's own
+ * profile exactly as others see it, minus the actions that make no sense on yourself (interest, save, share, report).
+ */
+export function ProfileDetail({
+  p,
+  x,
+  onInterest,
+  preview = false,
+}: Readonly<{ p: ViewProfile; x?: ProfileExtras; onInterest: (p: ViewProfile) => boolean | Promise<boolean>; preview?: boolean }>) {
   const toast = useToast();
   const signedIn = useSignedIn();
   const { profiles: favourites, save } = useFavourites();
@@ -369,8 +379,16 @@ function Detail({ p, x, onInterest }: { p: ViewProfile; x?: ProfileExtras; onInt
   const visible = sections
     .map((s) => ({ ...s, items: s.items.filter((i) => isHidden(i) || (i.value && i.value !== "—")) }))
     .filter((s) => s.items.length > 0);
-  const lockHint = (_i: DetailItem) => (!signedIn ? "Log in to view" : connected ? "Share contacts in chat" : "Shared after you both agree");
+  const lockHint = (_i: DetailItem) => {
+    if (preview) return "Hidden until you agree to share";
+    if (!signedIn) return "Log in to view";
+    return connected ? "Share contacts in chat" : "Shared after you both agree";
+  };
   const openLocked = (i: DetailItem) => {
+    if (preview) {
+      toast.info("Hidden from other members", i.lock === "contact" ? "Your mobile and email stay private until you agree to share them in a chat." : "Only signed-in members see this.");
+      return;
+    }
     if (!requireMember(i.lock === "contact" ? "see contact details" : `see ${i.label.toLowerCase()}`)) return;
     if (connected) router.push("/messages");
     else toast.info("Contact details are private", `Send an interest. When ${p.id} accepts, you can both agree to share mobile and WhatsApp numbers in chat.`);
@@ -466,9 +484,17 @@ function Detail({ p, x, onInterest }: { p: ViewProfile; x?: ProfileExtras; onInt
                 {x?.posted && <Badge tone="neutral" icon={false}>{x.posted}</Badge>}
               </div>
             </div>
+            {!preview && (
             <div className="flex shrink-0 gap-2">
-              <button type="button" aria-haspopup="dialog" aria-label="Share profile" onClick={share} className={iconButton}>
-                <Share size={18} color="currentColor" />
+              <button
+                type="button"
+                aria-haspopup="dialog"
+                aria-label="Share profile"
+                onClick={share}
+                className="flex h-11 shrink-0 items-center gap-2 rounded-full border border-line bg-surface-card pl-3.5 pr-4 text-label-md text-brand-text shadow-xs transition-colors hover:border-brand hover:bg-brand-subtle focus-visible:shadow-ring-brand active:scale-95"
+              >
+                <ShareIcon size={18} />
+                Share
               </button>
               <button
                 type="button"
@@ -480,6 +506,7 @@ function Detail({ p, x, onInterest }: { p: ViewProfile; x?: ProfileExtras; onInt
                 <Heart size={20} color="currentColor" variant={saved ? "Bold" : "Linear"} />
               </button>
             </div>
+            )}
           </div>
 
           {/* key facts families look at first */}
@@ -496,12 +523,19 @@ function Detail({ p, x, onInterest }: { p: ViewProfile; x?: ProfileExtras; onInt
           </div>
 
           <div className="mt-auto">
-            <ProfileActions profileId={p.id} sent={sent} onSend={send} />
+            {preview ? (
+              <p className="flex items-center gap-2.5 rounded-[16px] border border-dashed border-line-strong px-4 py-3 text-body-sm text-ink-secondary">
+                <InfoCircle size={18} color="currentColor" className="shrink-0 text-icon-brand" />
+                Other members see Send interest, Save and Share here.
+              </p>
+            ) : (
+              <ProfileActions profileId={p.id} sent={sent} onSend={send} />
+            )}
           </div>
         </div>
       </div>
 
-      {sent && (
+      {sent && !preview && (
         <div className="-mt-2 flex animate-fade-up items-center gap-3 rounded-[16px] bg-success-bg p-4 text-success-fg">
           <TickCircle size={22} color="currentColor" variant="Bold" />
           <p className="text-body-sm">
@@ -540,6 +574,7 @@ function Detail({ p, x, onInterest }: { p: ViewProfile; x?: ProfileExtras; onInt
         </section>
       )}
 
+      {!preview && (
       <div className="-mt-2 flex justify-end">
         <button
           type="button"
@@ -551,6 +586,7 @@ function Detail({ p, x, onInterest }: { p: ViewProfile; x?: ProfileExtras; onInt
           {reported ? "Reported" : "Report profile"}
         </button>
       </div>
+      )}
 
       {shareUrl && <ShareProfileDialog url={shareUrl} onClose={() => setShareUrl(null)} />}
 
