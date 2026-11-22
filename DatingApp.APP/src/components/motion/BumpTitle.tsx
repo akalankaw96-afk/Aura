@@ -2,10 +2,10 @@ import React from "react";
 import { cn } from "@/lib/cn";
 
 /**
- * Title "zoom & bump" — the same beat as the page-loader heart:
- * each word zooms in from small + blurred, overshoots, dips, then settles.
- *  - trigger="reveal" (default): plays when the title scrolls into view (RevealObserver)
- *  - trigger="load": plays as soon as the page loader finishes (hero)
+ * Home hero title only — a smooth word-by-word rise: each word fades up a little from a soft blur and settles
+ * (long ease-out, no overshoot). Other titles are plain headings (the old "zoom & bump" was removed everywhere).
+ *  - trigger="load" (hero): plays as soon as the page loader finishes
+ *  - trigger="reveal": plays when the title scrolls into view (RevealObserver)
  * Plain strings are split into words; any other children animate as one block.
  * A "\n" in a string (or a <br />) starts a new line — use it to control where a title breaks.
  * Respects prefers-reduced-motion (globals.css).
@@ -16,7 +16,7 @@ export function BumpTitle({
   className,
   trigger = "reveal",
   delay = 0,
-  stagger = 70,
+  stagger = 80,
 }: {
   as?: "h1" | "h2" | "h3" | "p" | "span";
   children: React.ReactNode;

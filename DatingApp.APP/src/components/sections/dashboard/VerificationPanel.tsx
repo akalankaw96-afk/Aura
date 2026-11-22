@@ -189,7 +189,7 @@ export function VerificationPanel() {
               {todo.length ? `${todo.length} thing${todo.length === 1 ? "" : "s"} to add before you submit` : "Everything is ready — submit your profile"}
             </span>
             {todo.length > 0 && (
-              <ul className="grid gap-2 sm:grid-cols-2">
+              <ul className="grid grid-cols-[minmax(0,1fr)] gap-2 sm:grid-cols-2">
                 {todo.map(({ key, label, note, Icon, step }) => (
                   <li key={key}>
                     <Link href={`/profile/complete?step=${step}`} className="group flex items-center gap-3 rounded-md bg-surface-card px-3 py-2.5 shadow-xs transition-all hover:-translate-y-0.5 hover:shadow-md">
@@ -285,8 +285,9 @@ export function VerificationPanel() {
           </div>
         ) : isDraft ? null : (
           /* What we check / what you can do now */
-          <div className="mt-6 grid gap-4 md:grid-cols-2">
-            <div className="rounded-md bg-surface-subtle p-4">
+          // minmax(0,1fr): one long single-line note (e.g. "While you wait" subtitles) can't widen the column on phones
+          <div className="mt-6 grid grid-cols-[minmax(0,1fr)] gap-4 md:grid-cols-2">
+            <div className="min-w-0 rounded-md bg-surface-subtle p-4">
               <p className="mb-3 text-label-md text-ink">What we’re checking</p>
               <ul className="flex flex-col gap-2.5 text-body-sm">
                 <CheckItem Icon={Mobile} done label="Mobile number" note="Verified" />
@@ -296,7 +297,7 @@ export function VerificationPanel() {
                 <CheckItem Icon={ShieldTick} label="Safety" note="No contact details in your bio" />
               </ul>
             </div>
-            <div className="flex flex-col gap-3 rounded-md bg-surface-subtle p-4">
+            <div className="flex min-w-0 flex-col gap-3 rounded-md bg-surface-subtle p-4">
               <p className="text-label-md text-ink">While you wait</p>
               <QuickAction href="/search" Icon={SearchNormal1} title="Browse profiles" sub="Look around, sending interest unlocks soon" />
               <QuickAction href="/plans" Icon={Crown1} title="Explore Gold" sub="Unlimited interests once you’re live" tone="premium" />

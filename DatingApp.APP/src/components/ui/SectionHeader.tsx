@@ -1,6 +1,5 @@
 import React from "react";
 import { cn } from "@/lib/cn";
-import { BumpTitle } from "@/components/motion/BumpTitle";
 
 /**
  * Figma: Section Header — Eyebrow (Overline, brand) + Title (H2) +
@@ -21,9 +20,7 @@ export function SectionHeader({ eyebrow, title, description, align = "center", t
   return (
     <div className={cn("reveal flex max-w-[720px] flex-col gap-3", align === "center" ? "mx-auto items-center text-center" : "items-start text-left", className)}>
       <p className={cn("text-overline uppercase", onBrand ? "text-ink-on-brand" : "text-brand-text")}>{eyebrow}</p>
-      <BumpTitle as={Tag} delay={120} className={cn("text-h3 md:text-h2", onBrand ? "text-ink-on-brand" : "text-ink")}>
-        {title}
-      </BumpTitle>
+      <Tag className={cn("text-h3 md:text-h2", onBrand ? "text-ink-on-brand" : "text-ink")}>{title}</Tag>
       {description && <p className={cn("text-body-md md:text-body-lg", onBrand ? "text-ink-on-brand" : "text-ink-secondary")}>{description}</p>}
     </div>
   );

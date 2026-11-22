@@ -7,7 +7,7 @@ import { usePathname } from "next/navigation";
  * Scroll reveal for the whole site. Mount once (root layout).
  *  - `.reveal`, `.reveal-zoom` → animate in when 15 % visible
  *  - `.reveal-stagger` → each direct child animates in, 90 ms apart
- *  - `.bump-title` → <BumpTitle> words zoom & bump in
+ *  - `.bump-title` → <BumpTitle> words rise in (home hero title only)
  * Sets `data-in` (an attribute React never touches, so re-renders keep it).
  */
 export function RevealObserver() {

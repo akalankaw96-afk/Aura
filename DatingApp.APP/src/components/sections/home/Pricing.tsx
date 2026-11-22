@@ -7,7 +7,6 @@ import { cn } from "@/lib/cn";
 import { SectionHeader } from "@/components/ui/SectionHeader";
 import { useLanguage } from "@/context/LanguageContext";
 import { PRICING } from "@/content/home";
-import { BumpTitle } from "@/components/motion/BumpTitle";
 
 /**
  * Figma: 06 Pricing — padding 96/80, gap 48. Three Pricing Cards
@@ -68,7 +67,7 @@ export function Pricing() {
                 )}
               >
                 <div className="flex items-center justify-between">
-                  <BumpTitle as="h3" delay={150} className="text-h5">{name}</BumpTitle>
+                  <h3 className="text-h5">{name}</h3>
                   {gold && (
                     <span className="inline-flex h-[22px] items-center gap-1 rounded-full bg-premium-bg px-2 text-label-sm text-premium-fg">
                       <Crown1 size={14} color="currentColor" /> {lang === "si" ? "වඩාත් ජනප්‍රියයි" : "Most popular"}

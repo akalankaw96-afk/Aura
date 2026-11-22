@@ -33,11 +33,13 @@ export function FeatureGate({
   return (
     // content and card share one grid cell: the section is as tall as the taller of the two, so a roomy card
     // never spills over the rows above and below
-    <div className={cn("relative grid", className)}>
-      <div aria-hidden inert className="pointer-events-none col-start-1 row-start-1 select-none opacity-60 blur-[3px] saturate-50 transition-all duration-500">
+    // minmax(0,1fr): the cell never grows wider than the page, even when the content is a wide sliding strip
+    // (Best matches) — otherwise the section and the card centre on that extra width
+    <div className={cn("relative grid grid-cols-[minmax(0,1fr)]", className)}>
+      <div aria-hidden inert className="pointer-events-none col-start-1 row-start-1 min-w-0 select-none opacity-60 blur-[3px] saturate-50 transition-all duration-500">
         {children}
       </div>
-      <div className="z-10 col-start-1 row-start-1 flex items-center justify-center p-4 sm:p-6">
+      <div className="z-10 col-start-1 row-start-1 flex min-w-0 items-center justify-center p-4 sm:p-6">
         <div className="kyc-in flex w-full max-w-md flex-col items-center gap-3 rounded-xl border border-line bg-surface-card px-6 py-7 text-center shadow-xl sm:px-10 sm:py-8">
           <span
             className={cn(

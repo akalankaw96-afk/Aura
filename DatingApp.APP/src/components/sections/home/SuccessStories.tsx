@@ -7,7 +7,6 @@ import { SectionHeader } from "@/components/ui/SectionHeader";
 import { useLanguage } from "@/context/LanguageContext";
 import { apiService } from "@/services/api";
 import type { SuccessStory } from "@/types";
-import { BumpTitle } from "@/components/motion/BumpTitle";
 
 /**
  * Figma: 05 Success stories (auto-scroll) — 1440 × 880, padding 96/0.
@@ -267,7 +266,7 @@ function StoryText({ story }: { story: Story }) {
         <span className="inline-flex h-[22px] w-fit items-center gap-1 rounded-full bg-success-bg px-2 text-label-sm text-success-fg">
           <Verify size={14} color="currentColor" /> {story.badge}
         </span>
-        <BumpTitle as="h3" stagger={55} className="text-h4 md:text-h3">{story.headline}</BumpTitle>
+        <h3 className="text-h4 md:text-h3">{story.headline}</h3>
       </div>
       <blockquote className="flex flex-col gap-1">
         <span aria-hidden className="h-[34px] text-[48px] font-bold leading-[1.2] text-brand-text">“</span>
