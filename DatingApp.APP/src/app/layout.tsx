@@ -28,12 +28,18 @@ import { AccountSettingsDialog } from "@/components/account/AccountSettingsDialo
 import { GuidedTourDialog } from "@/components/tour/GuidedTourDialog";
 
 export const metadata: Metadata = {
-  title: "Vikasitha | Find a life partner your whole family can trust",
+  title: "Yugadiwi | Find a life partner your whole family can trust",
   description:
     "Real, photo-verified marriage proposals from across Sri Lanka and Sri Lankans overseas. Your contact details stay private until you say yes.",
   keywords: "matrimony, marriage proposals, sri lanka matrimony, poruwa, verified profiles",
-  appleWebApp: { capable: true, title: "Vikasitha", statusBarStyle: "default" },
-  icons: { icon: "/icons/vk-icon-192.png", apple: "/icons/vk-apple-touch-icon.png" },
+  appleWebApp: { capable: true, title: "Yugadiwi", statusBarStyle: "default" },
+  icons: {
+    icon: [
+      { url: "/icons/yd-favicon-48.png", sizes: "48x48", type: "image/png" },
+      { url: "/icons/yd-icon-192.png", sizes: "192x192", type: "image/png" },
+    ],
+    apple: "/icons/yd-apple-touch-icon.png",
+  },
 };
 
 export const viewport: Viewport = {
@@ -60,7 +66,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
         <FloatingHearts />
         <LanguageProvider>
           <ToastProvider>
-            {/* phones: "Get the Vikasitha app" install banner + how-to sheet (PWA) */}
+            {/* phones: "Get the Yugadiwi app" install banner + how-to sheet (PWA) */}
             <InstallAppBanner />
             {children}
             {/* signed-in members on phones: floating app-style tab bar */}

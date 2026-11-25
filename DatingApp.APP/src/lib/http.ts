@@ -9,8 +9,8 @@ import { KEYS, storage } from "@/lib/storage";
  */
 export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
 
-export const NETWORK_ERROR = "We couldn’t reach Vikasitha. Check your connection and try again.";
-const TIMEOUT_ERROR = "Vikasitha is taking too long to answer. Please try again.";
+export const NETWORK_ERROR = "We couldn’t reach Yugadiwi. Check your connection and try again.";
+const TIMEOUT_ERROR = "Yugadiwi is taking too long to answer. Please try again.";
 const DEFAULT_TIMEOUT_MS = 15_000;
 
 /** Signed-in member details kept in localStorage — never the token (see `SESSION_KEY`). */

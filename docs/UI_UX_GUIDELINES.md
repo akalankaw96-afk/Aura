@@ -4,6 +4,10 @@ Figma file `jyoGCUqvQuZsoUp2uUi95W` is the source of truth. Detailed front-end r
 and `DatingApp.APP/CLAUDE.md`. This page is the short, project-wide version.
 
 ## 1. Brand and tone
+Name: **Yugadiwi** (Sinhala **යුගදිවි**) — renamed from Vikasitha on 2026-11-25. Logo: always use `Logo` / `BrandLogo`
+(`ui/Brand.tsx`), never the PNG directly; it switches to the soft-rose artwork in dark mode. On a surface that is dark
+in both themes (Footer) pass `tone="onDark"`. Width = height × `LOGO_RATIO` (766 / 288). App icons: `public/icons/yd-*`.
+
 Naming: the member page for friends, favourites and interests is **Friends** (`/friends`) — chosen because Sri Lankan
 members understand it best. Keep the action wording "Send interest" for the button.
 

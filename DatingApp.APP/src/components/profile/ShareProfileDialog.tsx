@@ -11,11 +11,11 @@ import { log } from "@/lib/log";
 export function ShareProfileDialog({ url, onClose }: { url: string; onClose: () => void }) {
   const linkRef = useRef<HTMLInputElement>(null);
   const [feedback, setFeedback] = useState("");
-  const shareText = encodeURIComponent(`See this profile on Vikasitha: ${url}`);
+  const shareText = encodeURIComponent(`See this profile on Yugadiwi: ${url}`);
   const channels = [
     { label: "WhatsApp", Icon: Whatsapp, href: `https://wa.me/?text=${shareText}`, newTab: true },
     { label: "SMS", Icon: MessageText, href: `sms:?body=${shareText}` },
-    { label: "Email", Icon: Sms, href: `mailto:?subject=${encodeURIComponent("Vikasitha profile")}&body=${shareText}` },
+    { label: "Email", Icon: Sms, href: `mailto:?subject=${encodeURIComponent("Yugadiwi profile")}&body=${shareText}` },
   ];
 
   function canShare() {

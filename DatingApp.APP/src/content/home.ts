@@ -233,5 +233,5 @@ export const FOOTER = {
     { title: "Company", links: [["About us", "/about"], ["How it works", "/#how-it-works"], ["Pricing", "/#pricing"], ["Contact", "/contact"]] },
     { title: "Support", links: [["Safety tips", "/safety"], ["Report a profile", "/report"], ["Privacy policy", "/privacy"], ["Terms of use", "/terms"]] },
   ] as { title: string; links: [string, string][] }[],
-  copyright: "© 2026 Vikasitha. All rights reserved.",
+  copyright: "© 2026 Yugadiwi. All rights reserved.",
 };

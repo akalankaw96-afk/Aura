@@ -119,7 +119,7 @@ builder.Services.AddSwaggerGen(c =>
 {
     c.SwaggerDoc("v1", new OpenApiInfo
     {
-        Title = "Aura Matrimony API - .NET 9 Clean Architecture",
+        Title = "Yugadiwi Matrimony API - .NET 9 Clean Architecture",
         Version = "v1",
         Description = "Backend API for professional matrimony & matchmaking with SQL Server and Clean Architecture."
     });

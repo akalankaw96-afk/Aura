@@ -271,7 +271,7 @@ export function ReviewScreen({ profileId, onClose }: { profileId: string; onClos
               </>
             ) : (
               <>
-                <Alert type="error" title="Suspend this profile?">The member can’t use Vikasitha until a staff member reinstates them.</Alert>
+                <Alert type="error" title="Suspend this profile?">The member can’t use Yugadiwi until a staff member reinstates them.</Alert>
                 <Textarea label="Reason" value={note} onChange={setNote} rows={3} maxLength={500} />
                 <Button disabled={busy || !note.trim()} loading={busy} onClick={() => act(() => suspendProfile(profileId, note.trim()), "Profile suspended")}>
                   Suspend

@@ -301,7 +301,7 @@ export function VerificationPanel() {
               <p className="text-label-md text-ink">While you wait</p>
               <QuickAction href="/search" Icon={SearchNormal1} title="Browse profiles" sub="Look around, sending interest unlocks soon" />
               <QuickAction href="/plans" Icon={Crown1} title="Explore Gold" sub="Unlimited interests once you’re live" tone="premium" />
-              <QuickAction href="/terms" Icon={ShieldTick} title="Safety tips" sub="How to connect safely on Vikasitha" />
+              <QuickAction href="/terms" Icon={ShieldTick} title="Safety tips" sub="How to connect safely on Yugadiwi" />
             </div>
           </div>
         )}

@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 import { ReviewStatus } from "@/components/auth/ReviewStatus";
 
-export const metadata: Metadata = { title: "Fix your profile | Vikasitha" };
+export const metadata: Metadata = { title: "Fix your profile | Yugadiwi" };
 
 /** Fix the fields our safety team rejected (?fix=details | photo). Other states → Dashboard. */
 export default function ReviewStatusPage() {

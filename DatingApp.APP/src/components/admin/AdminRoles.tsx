@@ -505,7 +505,7 @@ function AddStaffModal({ roles, onClose, onCreated }: Readonly<{ roles: AdminRol
           placeholder="shehani"
           autoComplete="off"
         />
-        <Input label="Email" hint="Optional" type="email" value={f.email} onChange={(e) => setF({ ...f, email: e.target.value })} error={tried ? err.email : undefined} placeholder="name@vikasitha.lk" />
+        <Input label="Email" hint="Optional" type="email" value={f.email} onChange={(e) => setF({ ...f, email: e.target.value })} error={tried ? err.email : undefined} placeholder="name@yugadiwi.lk" />
         <Select label="Role" options={roles.map((r) => ({ value: r.id, label: r.name }))} value={f.roleId} onChange={(v) => setF({ ...f, roleId: v })} />
       </div>
       <div className="flex flex-col gap-2">

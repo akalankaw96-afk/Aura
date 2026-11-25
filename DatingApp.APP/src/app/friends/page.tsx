@@ -3,7 +3,7 @@ import { RequestsScreen } from "@/components/sections/member/RequestsScreen";
 import { REQUEST_TABS } from "@/content/dashboard";
 import { RequireMember } from "@/components/auth/RequireMember";
 
-export const metadata: Metadata = { title: "Friends | Vikasitha" };
+export const metadata: Metadata = { title: "Friends | Yugadiwi" };
 
 /**
  * Friends — friends (accepted interests), favourites, received and sent interests.

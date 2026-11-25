@@ -49,7 +49,7 @@ export function Footer() {
       <div className="container-page flex flex-col gap-12 pb-8 pt-16">
         <div className="flex flex-col gap-10 md:flex-row md:justify-between">
           <div className="flex max-w-[320px] flex-col gap-4">
-            <Logo height={72} />
+            <Logo height={64} tone="onDark" />
             <p className="text-body-md">{t.footer.tagline}</p>
           </div>
           <div className="grid grid-cols-2 gap-x-8 gap-y-10 sm:flex sm:gap-20">
@@ -67,7 +67,7 @@ export function Footer() {
         </div>
         <div className="h-px bg-gray-600 opacity-40" />
         <div className="flex flex-col gap-2 text-caption sm:flex-row sm:justify-between">
-          <p>{lang === "si" ? "© 2026 විකසිත. සියලුම හිමිකම් ඇවිරිණි." : FOOTER.copyright}</p>
+          <p>{lang === "si" ? "© 2026 යුගදිවි. සියලුම හිමිකම් ඇවිරිණි." : FOOTER.copyright}</p>
           <p>
             English · <span lang="si">සිංහල</span> · <span lang="ta">தமிழ்</span>
           </p>

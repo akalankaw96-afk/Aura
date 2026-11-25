@@ -143,14 +143,14 @@ public class OtpService : IOtpService
         var minutes = (int)AuthRules.CodeLifetime.TotalMinutes;
         var text = purpose switch
         {
-            OtpPurpose.ResetPassword => $"Your Vikasitha password reset code is {code}. It expires in {minutes} minutes. Never share this code.",
-            OtpPurpose.DeleteAccount => $"Your Vikasitha code to DELETE your account is {code}. It expires in {minutes} minutes. If you didn't ask for this, change your password.",
-            _ => $"Your Vikasitha verification code is {code}. It expires in {minutes} minutes. Never share this code."
+            OtpPurpose.ResetPassword => $"Your Yugadiwi password reset code is {code}. It expires in {minutes} minutes. Never share this code.",
+            OtpPurpose.DeleteAccount => $"Your Yugadiwi code to DELETE your account is {code}. It expires in {minutes} minutes. If you didn't ask for this, change your password.",
+            _ => $"Your Yugadiwi verification code is {code}. It expires in {minutes} minutes. Never share this code."
         };
 
         return channel == OtpChannel.Phone
             ? _sms.SendAsync(destination, text, ct)
-            : _email.SendAsync(destination, "Your Vikasitha code", text, ct);
+            : _email.SendAsync(destination, "Your Yugadiwi code", text, ct);
     }
 
     private static Dictionary<string, object?> AttemptsLeft(int left) => new() { ["attemptsLeft"] = left };

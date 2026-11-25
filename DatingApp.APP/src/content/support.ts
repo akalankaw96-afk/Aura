@@ -1,4 +1,4 @@
-export const SUPPORT_EMAIL = "support@vikasitha.lk";
+export const SUPPORT_EMAIL = "support@yugadiwi.lk";
 
 /** Supply an international number, including the country code. */
 function supportNumber(value?: string) {

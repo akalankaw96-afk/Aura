@@ -10,12 +10,40 @@ import { useLanguage } from "@/context/LanguageContext";
 import { useHomeHref } from "@/lib/session";
 import { KEYS, storage } from "@/lib/storage";
 
-/** Figma: Logo (Variant = Default) — 122 × 72. Links to Home, or the Dashboard once signed in. */
-export function Logo({ height = 72, className }: { height?: number; className?: string }) {
+/** Yugadiwi logo artwork (766 × 288): width = height × LOGO_RATIO. */
+export const LOGO_RATIO = 766 / 288;
+
+/**
+ * The logo picture on its own, no link. Shows the light artwork, or the soft-rose
+ * dark-mode artwork when [data-theme="dark"] is set (CSS: .brand-logo-light / -dark).
+ * tone="onDark" always uses the soft-rose artwork, for surfaces that stay dark in both themes (Footer).
+ */
+export type LogoTone = "auto" | "onDark";
+
+export function BrandLogo({ height = 64, priority = true, tone = "auto", className }: { height?: number; priority?: boolean; tone?: LogoTone; className?: string }) {
+  const width = Math.round(height * LOGO_RATIO);
+  const size = { height, width };
+  if (tone === "onDark") {
+    return (
+      <span className={cn("inline-flex shrink-0", className)} style={size}>
+        <Image src="/brand/logo-dark.png" alt="Yugadiwi" width={width} height={height} priority={priority} style={size} />
+      </span>
+    );
+  }
+  return (
+    <span className={cn("inline-flex shrink-0", className)} style={size}>
+      <Image src="/brand/logo.png" alt="Yugadiwi" width={width} height={height} priority={priority} className="brand-logo-light" style={size} />
+      <Image src="/brand/logo-dark.png" alt="" aria-hidden width={width} height={height} priority={priority} className="brand-logo-dark" style={size} />
+    </span>
+  );
+}
+
+/** Figma: Logo (Variant = Default). Links to Home, or the Dashboard once signed in. */
+export function Logo({ height = 64, tone = "auto", className }: { height?: number; tone?: LogoTone; className?: string }) {
   const home = useHomeHref();
   return (
-    <Link href={home} aria-label={home === "/" ? "Vikasitha home" : "Go to your dashboard"} className={cn("inline-flex shrink-0", className)}>
-      <Image src="/brand/logo.png" alt="Vikasitha" width={Math.round((height * 122) / 72)} height={height} priority style={{ height, width: (height * 122) / 72 }} />
+    <Link href={home} aria-label={home === "/" ? "Yugadiwi home" : "Go to your dashboard"} className={cn("inline-flex shrink-0", className)}>
+      <BrandLogo height={height} tone={tone} />
     </Link>
   );
 }

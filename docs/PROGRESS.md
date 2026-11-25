@@ -145,6 +145,7 @@ admins promote moderators; branch **`S02-kyc`** (from merged `S01-api-auth`).
 | About us page + nav / footer links | Completed | Checked 1440 + 1024 light, 390 dark; footer + phone menu link; top bar fits at 1024 |
 | Gold-only full guide + guided tour popup + dashboard welcome card | Completed (front end) | Tested guest / Free / Gold on How to use; Gold dashboard card → tour (6 steps → done) at 1440 light + 390 dark; Free can’t open; `tsc` clean. Guide text still ships in the JS bundle (see TD) |
 | Staff area redesign: admin sidebar layout, dashboard, members table, roles & staff accounts | Completed (front end) | Tested as Admin at 1440 light / dark and 390: dashboard counts + tables, members search / filter / paging / block with reason, new role created, staff account added → temporary password shown; Moderator has no Roles link; Member is sent to /dashboard; no horizontal scroll at 390; `tsc` clean. Review queue + photos + moderators use the live API; members, stats, roles and staff accounts need the planned endpoints (demo data in development only) |
+| Rebrand Vikasitha → Yugadiwi: new logo (light + dark), app icons, all EN/SI text, API code messages | Testing | `tsc` passes; header, footer, login checked 1440/390 light + dark. Owner: confirm `support@yugadiwi.lk` exists, check the Sinhala wording, rebuild the API (`dotnet build` + `dotnet test`), reinstall the phone app to see the new icon |
 
 ## Owner requests
 | Change | Status | Notes |

@@ -1,5 +1,5 @@
 /**
- * Vikasitha UI kit — React versions of the Figma components
+ * Yugadiwi UI kit — React versions of the Figma components
  * (Figma file "AI-Learning-2", page 🧩 Components).
  * Preview them all at /components.
  */
@@ -27,8 +27,8 @@ export { ToastProvider, ToastCard, useToast, useFlashToast, flashToast } from ".
 export { Stepper } from "./Stepper";
 export { Textarea } from "./Textarea";
 export { Card, CardTitle, OrDivider } from "./Card";
-export { Logo, CoupleAvatar, LanguageSwitch, ThemeToggle } from "./Brand";
-export type { Surface } from "./Brand";
+export { Logo, BrandLogo, LOGO_RATIO, CoupleAvatar, LanguageSwitch, ThemeToggle } from "./Brand";
+export type { Surface, LogoTone } from "./Brand";
 export { HeartPattern, LoveScene, LoveSticker } from "./Decor";
 export type { LoveStickerStyle } from "./Decor";
 export { Flag } from "./Flag";

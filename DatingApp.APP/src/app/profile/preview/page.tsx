@@ -5,7 +5,7 @@ import { HeartPattern } from "@/components/ui/Decor";
 import { RequireMember } from "@/components/auth/RequireMember";
 import { ProfilePreviewScreen } from "@/components/profile/ProfilePreviewScreen";
 
-export const metadata: Metadata = { title: "Preview my profile | Vikasitha", robots: { index: false, follow: false } };
+export const metadata: Metadata = { title: "Preview my profile | Yugadiwi", robots: { index: false, follow: false } };
 
 /** "Preview my profile" (dashboard): your own profile as other members see it, with Exit preview. */
 export default function ProfilePreviewPage() {

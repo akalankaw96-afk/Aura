@@ -323,7 +323,7 @@ export const apiService = {
         body: JSON.stringify({ idToken: data.idToken }),
       });
     } catch {
-      throw new Error('We couldn’t reach Vikasitha. Check your connection and try again.');
+      throw new Error('We couldn’t reach Yugadiwi. Check your connection and try again.');
     }
     if (!res.ok) throw new Error(await problemMessage(res, 'Google sign-in failed. Please try again.'));
 

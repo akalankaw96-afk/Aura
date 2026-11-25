@@ -24,7 +24,7 @@ const DEV = process.env.NODE_ENV !== "production";
  * Development builds show the same SAMPLE banks and QR codes as appsettings.Development.json, so the page can be tried
  * without the API; production builds show [placeholders] and never the samples.
  */
-const SAMPLE_NAME = "Vikasitha (Pvt) Ltd (SAMPLE)";
+const SAMPLE_NAME = "Yugadiwi (Pvt) Ltd (SAMPLE)";
 export const BANK_ACCOUNTS = DEV
   ? [
       { id: "combank", bankName: "Commercial Bank", accountName: SAMPLE_NAME, accountNumber: "8000 1234 5678", branch: "Colombo 07", swift: "SAMPLE01" },

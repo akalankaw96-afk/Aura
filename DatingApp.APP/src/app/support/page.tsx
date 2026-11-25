@@ -3,8 +3,8 @@ import { SupportScreen } from "@/components/sections/support/SupportScreen";
 import { SUPPORT } from "@/content/support";
 
 export const metadata: Metadata = {
-  title: "Contact support | Vikasitha",
-  description: "Questions about your account, verification or payments? Contact the Vikasitha support team.",
+  title: "Contact support | Yugadiwi",
+  description: "Questions about your account, verification or payments? Contact the Yugadiwi support team.",
 };
 
 export default function SupportPage() {

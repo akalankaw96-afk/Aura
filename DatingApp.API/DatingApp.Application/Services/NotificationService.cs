@@ -34,7 +34,7 @@ public class NotificationService : INotificationService
 
         if (!sms) return;
         var phone = await _context.Users.Where(u => u.Id == userId).Select(u => u.PhoneNumber).FirstOrDefaultAsync(ct);
-        if (!string.IsNullOrEmpty(phone)) await _sms.SendAsync(phone, $"Vikasitha: {body}", ct);
+        if (!string.IsNullOrEmpty(phone)) await _sms.SendAsync(phone, $"Yugadiwi: {body}", ct);
     }
 
     public async Task<List<NotificationDto>> ListAsync(Guid userId, int take, CancellationToken ct = default)

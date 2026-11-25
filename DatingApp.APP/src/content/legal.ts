@@ -30,23 +30,23 @@ export const LEGAL_UPDATED = "15 November 2026";
 export const TERMS: LegalDoc = {
   crumb: "Terms & Conditions",
   title: "Terms & Conditions",
-  subtitle: "The rules that keep Vikasitha safe, genuine and respectful for every family.",
+  subtitle: "The rules that keep Yugadiwi safe, genuine and respectful for every family.",
   updated: LEGAL_UPDATED,
   readMins: 6,
   summary:
-    "In short: be genuine, be respectful, and use Vikasitha only to find a marriage partner. We can remove profiles that break these rules, and you can delete your account at any time.",
+    "In short: be genuine, be respectful, and use Yugadiwi only to find a marriage partner. We can remove profiles that break these rules, and you can delete your account at any time.",
   sections: [
     {
       id: "acceptance",
       title: "Acceptance of terms",
       body: [
-        "By creating an account or using Vikasitha you agree to these Terms. If you do not agree, please do not use the service.",
+        "By creating an account or using Yugadiwi you agree to these Terms. If you do not agree, please do not use the service.",
         "These Terms work together with our Privacy Policy, which explains how we handle your information.",
       ],
     },
     {
       id: "who-can-use",
-      title: "Who can use Vikasitha",
+      title: "Who can use Yugadiwi",
       body: [
         "You must be at least 18 years old (or the legal age of marriage where you live) and legally free to marry.",
         "Parents, siblings or relatives may create and manage a profile on behalf of an adult family member, with that person’s knowledge and consent.",
@@ -97,7 +97,7 @@ export const TERMS: LegalDoc = {
       id: "liability",
       title: "Liability",
       body: [
-        "Vikasitha introduces members; we are not a party to any relationship or marriage that results. [Your legal adviser should complete this section.]",
+        "Yugadiwi introduces members; we are not a party to any relationship or marriage that results. [Your legal adviser should complete this section.]",
       ],
     },
     {
@@ -149,7 +149,7 @@ export const PRIVACY: LegalDoc = {
       id: "sharing",
       title: "Sharing with others",
       body: [
-        "We share data only with service providers who help us run Vikasitha (hosting, SMS, payments) under confidentiality agreements, or when required by law.",
+        "We share data only with service providers who help us run Yugadiwi (hosting, SMS, payments) under confidentiality agreements, or when required by law.",
       ],
     },
     {

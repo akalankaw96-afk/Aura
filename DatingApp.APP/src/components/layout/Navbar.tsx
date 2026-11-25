@@ -141,8 +141,8 @@ export function Navbar({ variant = "light" }: { variant?: NavbarVariant }) {
       )}
     >
       <div className="container-page flex h-16 items-center justify-between gap-4 lg:h-[104px]">
-        <Logo height={72} className="hidden lg:inline-flex" />
-        <Logo height={44} className="lg:hidden" />
+        <Logo height={64} className="hidden lg:inline-flex" />
+        <Logo height={40} className="lg:hidden" />
 
         <nav aria-label="Main" className="hidden items-center gap-8 lg:flex">
           {links.map((l) => {

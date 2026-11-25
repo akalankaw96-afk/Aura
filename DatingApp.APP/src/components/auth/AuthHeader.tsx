@@ -22,8 +22,8 @@ export type AuthHeaderAction = "create-account" | "login" | "avatar" | "none";
 export function AuthHeader({ action = "none" }: { action?: AuthHeaderAction }) {
   return (
     <header className="container-page relative z-20 flex h-16 items-center justify-between gap-3 md:h-[90px]">
-      <Logo height={58} className="max-md:hidden" />
-      <Logo height={40} className="md:hidden" />
+      <Logo height={52} className="max-md:hidden" />
+      <Logo height={36} className="md:hidden" />
       <div className="flex items-center gap-3 md:gap-4">
         <LanguageSwitch />
         <ThemeToggle />

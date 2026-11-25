@@ -40,6 +40,7 @@ Bugs go to `BUG_TRACKER.md`; debt goes here. Add an item whenever you knowingly 
 | TD-30 | P2 | API + Web | Search: multi-select religion / profession, countries, height, "with photo" and the "More" filters (ethnicity, civil status, education, posted by) run on the loaded page only (counted as a search via `filtered=true` since 2026-11-15) | With many members a match on a later API page shows only after "Load more" | Planned: list parameters + KYC detail columns on the search API (Sprint 05/06) |
 | TD-31 | P2 | API + Web | No online payment gateway — bank transfer with manual approval only (owner decision 2026-11-16) | Slower activation; staff must check every slip | Planned after Sprint 04: PayHere hosted checkout + notify callback (needs a public URL), same `Payment` records |
 | TD-32 | P3 | Web/API | Admin back office: no member detail page (plan, payments, reports, review history in one place) and no payments CSV export — planned in S04-T07, not built | Staff open several screens to see one member's history | Planned (Sprint 06 — owner, 2026-11-17) |
+| TD-33 | P3 | Web | Old brand prefix in internal names: storage keys `vk-theme` / `vk-lang`, cookie `vk_refresh`, `__vkInstallPrompt`, CSS / file names with "vk" | None for members; confusing for new developers | Open — kept on purpose in the Yugadiwi rebrand (2026-11-25) so members are not signed out; rename with a one-time migration if ever needed |
 
 ## Rules
 - Paying down debt is a task in a sprint with acceptance criteria — not a side effect of a feature task.

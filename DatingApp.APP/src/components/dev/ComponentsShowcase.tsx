@@ -62,7 +62,7 @@ const NAV = ["Buttons", "Inputs", "Dropdown", "Number & Range", "Phone & Passwor
 export function ComponentsShowcase() {
   const toast = useToast();
   const [phone, setPhone] = useState("771234567");
-  const [pw, setPw] = useState("Vikasitha1");
+  const [pw, setPw] = useState("Yugadiwi1");
   const [otp, setOtp] = useState("482");
   const [check, setCheck] = useState(true);
   const [chip, setChip] = useState("Myself");
@@ -97,7 +97,7 @@ export function ComponentsShowcase() {
 
       <main className="mx-auto max-w-[1280px] space-y-10 px-6 py-10">
         <div>
-          <h1 className="text-h1">Vikasitha UI kit</h1>
+          <h1 className="text-h1">Yugadiwi UI kit</h1>
           <p className="mt-2 text-ink-secondary">React components built from the Figma design system. Tokens live in <code>tailwind.config.ts</code>.</p>
         </div>
 

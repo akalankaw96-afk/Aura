@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -21,7 +20,7 @@ import {
   Wallet,
 } from "iconsax-react";
 import { cn } from "@/lib/cn";
-import { LanguageSwitch, Logo, ThemeToggle } from "@/components/ui/Brand";
+import { BrandLogo, LanguageSwitch, Logo, ThemeToggle } from "@/components/ui/Brand";
 import { Modal } from "@/components/ui/Modal";
 import { useAuthSession } from "@/lib/session";
 import { apiService } from "@/services/api";
@@ -119,7 +118,7 @@ export function AdminShell({ children }: Readonly<{ children: React.ReactNode }>
             <HambergerMenu size={22} color="currentColor" />
           </button>
           <Link href="/admin" className="flex items-center gap-3" aria-label="Staff dashboard">
-            <Image src="/brand/logo.png" alt="Vikasitha" width={68} height={40} priority style={{ height: 40, width: (40 * 122) / 72 }} />
+            <BrandLogo height={36} />
             <span className="hidden h-6 items-center rounded-full bg-brand-subtle px-2.5 text-label-sm text-brand-text sm:inline-flex">Staff area</span>
           </Link>
           <div className="ml-auto flex items-center gap-2">

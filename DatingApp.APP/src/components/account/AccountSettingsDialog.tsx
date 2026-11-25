@@ -51,7 +51,7 @@ export const openAccountSettings = () => window.dispatchEvent(new Event(ACCOUNT_
 type Step = "home" | "break" | "ask" | "reason" | "confirm" | "code" | "done";
 
 const REASONS = [
-  { id: "found-here", label: "I found my partner on Vikasitha", happy: true },
+  { id: "found-here", label: "I found my partner on Yugadiwi", happy: true },
   { id: "found-elsewhere", label: "I found a partner elsewhere" },
   { id: "not-ready", label: "I’m not ready to marry yet" },
   { id: "no-matches", label: "I didn’t find suitable matches" },
@@ -380,7 +380,7 @@ function HomeStep({
 
       {/* delete: deliberately low-key, opens a confirmation first */}
       <div className="flex items-center justify-between gap-3 border-t border-line pt-4">
-        <p className="text-body-xs text-ink-tertiary">Want to leave Vikasitha for good?</p>
+        <p className="text-body-xs text-ink-tertiary">Want to leave Yugadiwi for good?</p>
         <button
           type="button"
           onClick={onDelete}
@@ -710,7 +710,7 @@ function DoneStep({ demo, onHome }: Readonly<{ demo: boolean; onHome: () => void
         <p className="text-body-md text-ink-secondary">
           {demo
             ? "Demo: nothing was deleted on the server. In the real flow your profile is removed now and your data within 30 days."
-            : "Your profile is gone from Vikasitha and the rest of your data will be erased within 30 days. Thank you for being part of our community."}
+            : "Your profile is gone from Yugadiwi and the rest of your data will be erased within 30 days. Thank you for being part of our community."}
         </p>
       </div>
       <Button size="lg" fullWidth onClick={onHome}>

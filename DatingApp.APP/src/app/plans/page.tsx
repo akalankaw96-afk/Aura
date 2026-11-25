@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { PlansScreen } from "@/components/auth/PlansScreen";
 
-export const metadata: Metadata = { title: "Plans | Vikasitha" };
+export const metadata: Metadata = { title: "Plans | Yugadiwi" };
 
 export default function PlansPage() {
   return <PlansScreen />;

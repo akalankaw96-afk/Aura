@@ -352,7 +352,7 @@ function AccountStep({
 
       {taken && (
         <Alert type="error" title="This number is already registered" action={<Link href="/login" className="font-bold text-brand hover:underline">Log in instead →</Link>}>
-          {formatPhone(mobile)} already has a Vikasitha account.
+          {formatPhone(mobile)} already has a Yugadiwi account.
         </Alert>
       )}
 
@@ -626,7 +626,7 @@ export function ProfileStep({
   const [showMissing, setShowMissing] = useState(false);
   const age = ageFrom(draft.dob);
   const underage = age !== null && age < 18;
-  const aboutError = containsContactDetails(draft.about) ? "Please remove phone numbers or emails. Members connect safely through Vikasitha" : undefined;
+  const aboutError = containsContactDetails(draft.about) ? "Please remove phone numbers or emails. Members connect safely through Yugadiwi" : undefined;
 
   const setValue = (k: ProfileKey, v: string) => {
     const patch: Partial<RegistrationDraft> = { [k]: v };
@@ -696,7 +696,7 @@ export function ProfileStep({
 
       {underage && (
         <Alert type="error" title="Registration not allowed">
-          Vikasitha is only for adults aged 18 and over.
+          Yugadiwi is only for adults aged 18 and over.
         </Alert>
       )}
       {showMissing && !underage && (

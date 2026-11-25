@@ -167,7 +167,7 @@ export function FeedbackDialog() {
             {step === "rate" && (
               <>
                 <div className="flex flex-col gap-1 text-center">
-                  <h2 id={titleId} className="text-h5 text-ink">How’s Vikasitha going for you?</h2>
+                  <h2 id={titleId} className="text-h5 text-ink">How’s Yugadiwi going for you?</h2>
                   <p className="text-body-sm text-ink-secondary">One tap helps us make it better for families like yours.</p>
                 </div>
                 <Stars value={shown} onHover={setHover} onPick={pickRating} size={40} />
@@ -270,7 +270,7 @@ export function FeedbackDialog() {
                   <Input label="Wedding date" hint="Optional" type="date" value={story.date} onChange={(e) => setStory({ ...story, date: e.target.value })} />
                   <Input label="City" hint="Optional" value={story.city} onChange={(e) => setStory({ ...story, city: e.target.value })} placeholder="Kandy" />
                 </div>
-                <Textarea label="How did you meet on Vikasitha?" rows={4} maxLength={800} value={story.text} onChange={(v) => setStory({ ...story, text: v })} placeholder="How you found each other, the first chat, meeting the families…" error={storyErrors.text} />
+                <Textarea label="How did you meet on Yugadiwi?" rows={4} maxLength={800} value={story.text} onChange={(v) => setStory({ ...story, text: v })} placeholder="How you found each other, the first chat, meeting the families…" error={storyErrors.text} />
                 <div className="flex flex-col gap-2">
                   <p className="text-label-md text-ink">
                     Photos <span className="text-ink-tertiary">· optional, up to {MAX_PHOTOS}</span>
@@ -284,7 +284,7 @@ export function FeedbackDialog() {
                   <input ref={fileRef} type="file" accept="image/*" multiple hidden onChange={(e) => { onFiles(e.target.files); e.target.value = ""; }} />
                 </div>
                 <Checkbox checked={consent} onChange={setConsent} error={storyErrors.consent}>
-                  We both agree to publish this story and photos on Vikasitha
+                  We both agree to publish this story and photos on Yugadiwi
                 </Checkbox>
                 {storyErrors.consent && <p role="alert" className="-mt-2 text-body-xs text-error-fg">Both of you need to agree before we can publish</p>}
                 <Button size="lg" fullWidth onClick={sendStory}>
@@ -300,10 +300,10 @@ export function FeedbackDialog() {
                 </h2>
                 <p className="text-body-sm text-ink-secondary">
                   {thanksFor === "story"
-                    ? "Our team will read it and contact you before it appears on Vikasitha."
+                    ? "Our team will read it and contact you before it appears on Yugadiwi."
                     : thanksFor === "private"
-                      ? "Our team reads every message. We’ll use it to make Vikasitha better."
-                      : "It means a lot to us and helps other families trust Vikasitha."}
+                      ? "Our team reads every message. We’ll use it to make Yugadiwi better."
+                      : "It means a lot to us and helps other families trust Yugadiwi."}
                 </p>
                 <span className="rounded-full bg-surface-subtle px-3 py-1 text-label-sm text-ink-secondary">Reference {reference}</span>
                 <Button size="lg" fullWidth onClick={close} className="mt-1">

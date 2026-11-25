@@ -58,7 +58,7 @@ export function StaffManager() {
       </Card>
       <Card className="flex flex-col gap-3 p-5">
         <h2 className="text-h6 text-ink">Add a moderator</h2>
-        <p className="text-body-sm text-ink-secondary">The person must already have a Vikasitha account.</p>
+        <p className="text-body-sm text-ink-secondary">The person must already have a Yugadiwi account.</p>
         <div className="flex gap-2">
           <Input aria-label="Mobile number" placeholder="+94 77 123 4567" value={phone} onChange={(e) => setPhone(e.target.value)} containerClassName="flex-1" />
           <Button onClick={find} disabled={!phone.trim()}>Find</Button>

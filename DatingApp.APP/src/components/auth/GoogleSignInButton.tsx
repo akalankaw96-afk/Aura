@@ -205,7 +205,7 @@ export function GoogleSignInButton({ isSignUp = false, onSuccess, className = ""
       const session = await apiService.googleLogin(data);
       toast.success(
         isSignUp ? "Account Created with Google" : "Signed In Successfully",
-        `Welcome to Vikasitha, ${session.fullName}!`
+        `Welcome to Yugadiwi, ${session.fullName}!`
       );
 
       if (onSuccess) {

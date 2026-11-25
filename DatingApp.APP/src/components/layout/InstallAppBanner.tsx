@@ -47,11 +47,11 @@ type Platform = "ios" | "android";
 
 const COPY = {
   en: {
-    title: "Get the Vikasitha app",
+    title: "Get the Yugadiwi app",
     sub: "Free",
     details: "View details",
     install: "Install",
-    sheetTitle: "Install Vikasitha on your phone",
+    sheetTitle: "Install Yugadiwi on your phone",
     sheetSub: "It’s free, takes 10 seconds and uses almost no storage, no app store needed.",
     benefits: [
       { title: "Opens instantly", text: "One tap from your home screen, full screen like an app" },
@@ -69,20 +69,20 @@ const COPY = {
     androidSteps: [
       { icon: "more", text: "Tap the ⋮ menu at the top right of Chrome" },
       { icon: "install", text: "Tap “Install app” (or “Add to Home screen”)" },
-      { icon: "done", text: "Tap “Install”, open Vikasitha from your home screen" },
+      { icon: "done", text: "Tap “Install”, open Yugadiwi from your home screen" },
     ],
     installNow: "Install now",
     gotIt: "Got it",
     notNow: "Not now",
-    installed: "Vikasitha is installed 🎉",
+    installed: "Yugadiwi is installed 🎉",
     iosNote: "On iPhone this works in Safari. If you’re in another browser, open this page in Safari first.",
   },
   si: {
-    title: "විකසිත යෙදුම ලබාගන්න",
+    title: "යුගදිවි යෙදුම ලබාගන්න",
     sub: "නොමිලේ",
     details: "විස්තර බලන්න",
     install: "ස්ථාපනය",
-    sheetTitle: "විකසිත ඔබේ දුරකථනයට ස්ථාපනය කරන්න",
+    sheetTitle: "යුගදිවි ඔබේ දුරකථනයට ස්ථාපනය කරන්න",
     sheetSub: "නොමිලේ, තත්පර 10ක් ගතවේ, ඉඩ ඉතා අල්පයි, යෙදුම් වෙළඳසැලක් අවශ්‍ය නැත.",
     benefits: [
       { title: "ක්ෂණිකව විවෘත වේ", text: "මුල් තිරයෙන් එක් තට්ටුවකින්, යෙදුමක් ලෙස සම්පූර්ණ තිරයෙන්" },
@@ -100,12 +100,12 @@ const COPY = {
     androidSteps: [
       { icon: "more", text: "Chrome හි ඉහළ දකුණේ ⋮ මෙනුව ඔබන්න" },
       { icon: "install", text: "“Install app” (හෝ “Add to Home screen”) ඔබන්න" },
-      { icon: "done", text: "“Install” ඔබන්න, මුල් තිරයෙන් විකසිත විවෘත කරන්න" },
+      { icon: "done", text: "“Install” ඔබන්න, මුල් තිරයෙන් යුගදිවි විවෘත කරන්න" },
     ],
     installNow: "දැන් ස්ථාපනය කරන්න",
     gotIt: "හරි",
     notNow: "පසුව",
-    installed: "විකසිත ස්ථාපනය විය 🎉",
+    installed: "යුගදිවි ස්ථාපනය විය 🎉",
     iosNote: "iPhone හි මෙය Safari තුළ ක්‍රියා කරයි. වෙනත් බ්‍රව්සරයක නම්, පළමුව මෙම පිටුව Safari හි විවෘත කරන්න.",
   },
 };
@@ -246,7 +246,7 @@ export function InstallAppBanner() {
             >
               <CloseCircle size={18} color="currentColor" />
             </button>
-            <Image src="/icons/vk-icon-192.png" alt="" width={44} height={44} className="install-icon h-11 w-11 shrink-0 rounded-[12px] border border-line shadow-sm" />
+            <Image src="/icons/yd-icon-192.png" alt="" width={44} height={44} className="install-icon h-11 w-11 shrink-0 rounded-[12px] border border-line shadow-sm" />
             <div className="min-w-0 flex-1">
               <p className="truncate text-label-md text-ink">{c.title}</p>
               <p className="flex min-w-0 items-center gap-1.5 text-caption text-ink-secondary">
@@ -277,7 +277,7 @@ export function InstallAppBanner() {
             <div className="mx-auto mb-4 h-1.5 w-10 rounded-full bg-surface-muted lg:hidden" />
 
             <div className="flex items-start gap-3">
-              <Image src="/icons/vk-icon-192.png" alt="" width={56} height={56} className="install-icon h-14 w-14 shrink-0 rounded-[16px] border border-line shadow-md" />
+              <Image src="/icons/yd-icon-192.png" alt="" width={56} height={56} className="install-icon h-14 w-14 shrink-0 rounded-[16px] border border-line shadow-md" />
               <div className="min-w-0 flex-1">
                 <h2 id="install-sheet-title" className="text-h5 text-ink">{c.sheetTitle}</h2>
                 <p className="mt-1 text-body-sm text-ink-secondary">{c.sheetSub}</p>

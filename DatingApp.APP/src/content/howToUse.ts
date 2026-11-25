@@ -66,7 +66,7 @@ const S = (name: string, alt: string): Shot => ({ src: `/how-to-use/${name}.webp
 
 const en: HowToUseCopy = {
   crumb: "How to use",
-  title: "How Vikasitha works",
+  title: "How Yugadiwi works",
   subtitle: "Every step from creating your account to sharing contact details, with the real screens you’ll see.",
   trust: ["ID-verified members", "Private by default", "Sri Lanka & abroad"],
   tourLink: "See the full tour",
@@ -131,7 +131,7 @@ const en: HowToUseCopy = {
   ],
   tourEyebrow: "The full tour",
   tourTitle: "Everything you can do",
-  tourText: "A closer look at each part of Vikasitha, and where to find it.",
+  tourText: "A closer look at each part of Yugadiwi, and where to find it.",
   groups: [
     {
       id: "account",
@@ -358,7 +358,7 @@ const en: HowToUseCopy = {
 const si: HowToUseCopy = {
   ...en,
   crumb: "භාවිතා කරන ආකාරය",
-  title: "විකසිත භාවිතා කරන ආකාරය",
+  title: "යුගදිවි භාවිතා කරන ආකාරය",
   subtitle: "ගිණුමක් සෑදීමේ සිට සම්බන්ධතා තොරතුරු බෙදා ගැනීම දක්වා සෑම පියවරක්ම, ඔබට පෙනෙන සැබෑ තිර සමඟ.",
   trust: ["හැඳුනුම්පත සත්‍යාපිත සාමාජිකයින්", "පෙරනිමියෙන් පෞද්ගලිකයි", "ශ්‍රී ලංකාව සහ විදේශ"],
   tourLink: "සම්පූර්ණ මාර්ගෝපදේශය බලන්න",
@@ -405,7 +405,7 @@ const si: HowToUseCopy = {
   ],
   tourEyebrow: "සම්පූර්ණ මාර්ගෝපදේශය",
   tourTitle: "ඔබට කළ හැකි සියල්ල",
-  tourText: "විකසිතයේ සෑම කොටසක්ම සහ එය සොයා ගත හැකි තැන.",
+  tourText: "යුගදිවි හි සෑම කොටසක්ම සහ එය සොයා ගත හැකි තැන.",
   ctaTitle: "ඔබේ සහකරු හමු වීමට සූදානම්ද?",
   ctaText: "මිනිත්තු කිහිපයකින් නොමිලේ ගිණුමක් සාදන්න. සූදානම් වූ විට පමණක් උසස් කරන්න.",
   ctaMemberTitle: "ඔබ සූදානම්",

@@ -426,6 +426,17 @@
 
 /* Status badges sitting on a photo: dark mode tints are translucent, which vanish on
    light photos — give them a dark glass backing so the light text stays readable. */
+/* Logo: light artwork by default, soft-rose artwork in dark mode (ui/Brand.tsx BrandLogo) */
+.brand-logo-dark {
+  display: none;
+}
+[data-theme="dark"] .brand-logo-light {
+  display: none;
+}
+[data-theme="dark"] .brand-logo-dark {
+  display: block;
+}
+
 [data-theme="dark"] .on-photo {
   background-color: rgba(17, 11, 14, 0.78);
   -webkit-backdrop-filter: blur(6px);

@@ -20,7 +20,7 @@ export function ShareFeedbackCard() {
             <Crown1 size={14} color="currentColor" /> Gold and Platinum
           </span>
         </h2>
-        <p className="text-body-sm text-ink-secondary">Rate Vikasitha, tell us what to improve, or share your success story with other families.</p>
+        <p className="text-body-sm text-ink-secondary">Rate Yugadiwi, tell us what to improve, or share your success story with other families.</p>
       </div>
       <div className="flex shrink-0 flex-wrap gap-2">
         <Button variant="outline" size="md" onClick={() => openFeedback("story")}>

@@ -7,11 +7,11 @@ import type { LegalDoc } from "@/content/legal";
  */
 export const ABOUT: LegalDoc = {
   crumb: "About us",
-  title: "About Vikasitha",
+  title: "About Yugadiwi",
   subtitle: "A Sri Lankan marriage proposals service built around trust, families and respect.",
   readMins: 3,
   summary:
-    "Vikasitha helps Sri Lankan families and individuals, at home and abroad, find a life partner safely. Every member verifies their mobile, profiles are checked by our team, and nobody sees your contact details until you choose to share them.",
+    "Yugadiwi helps Sri Lankan families and individuals, at home and abroad, find a life partner safely. Every member verifies their mobile, profiles are checked by our team, and nobody sees your contact details until you choose to share them.",
   helpTitle: "Want to talk to us?",
   related: [
     { href: "/how-to-use", label: "How it works" },
@@ -23,8 +23,8 @@ export const ABOUT: LegalDoc = {
       id: "who-we-are",
       title: "Who we are",
       body: [
-        "Vikasitha (විකසිත, “blossomed”) is a Sri Lankan marriage proposals platform. We bring the trusted way families have always looked for a partner, through introductions, horoscopes and family values, into a simple, safe website and app.",
-        "We started Vikasitha in [year] in [city] because finding a genuine proposal online was harder and riskier than it should be. [Add a short founder story here.]",
+        "Yugadiwi (යුගදිවි, “a life together”) is a Sri Lankan marriage proposals platform. We bring the trusted way families have always looked for a partner, through introductions, horoscopes and family values, into a simple, safe website and app.",
+        "We started Yugadiwi in [year] in [city] because finding a genuine proposal online was harder and riskier than it should be. [Add a short founder story here.]",
       ],
     },
     {
@@ -49,7 +49,7 @@ export const ABOUT: LegalDoc = {
     },
     {
       id: "what-you-can-do",
-      title: "What you can do on Vikasitha",
+      title: "What you can do on Yugadiwi",
       body: [
         "Search brides and grooms by age, religion, district, education and more, send interests, chat with friends you have accepted, match horoscopes, and share contact details when you are ready. Free members can try everything; Gold and Platinum unlock unlimited searches, chats and extra features.",
       ],

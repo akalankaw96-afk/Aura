@@ -129,7 +129,7 @@ export interface Conversation {
   messages: ChatMessage[];
 }
 
-export const SAFETY_NOTE = "Keep chats on Vikasitha. Never share bank details or send money.";
+export const SAFETY_NOTE = "Keep chats on Yugadiwi. Never share bank details or send money.";
 
 export const CONVERSATIONS: Conversation[] = [];
 
